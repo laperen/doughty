@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+	<title>Doughty</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0a0d13" />
+    <meta name="description" content="A 3D graybox arena for prototyping and testing game mechanics." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/" } }
+    </script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <div id="scene" class="scene" aria-label="Interactive 3D preview of the mechanics test arena"></div>
+      <div class="scene-vignette" aria-hidden="true"></div>
+
+      <header class="topbar">
+        <button id="settingsToggle" class="menu-button" aria-controls="settingsMenu" aria-expanded="false">Settings</button>
+      </header>
+
+      <section id="homeScreen" class="screen home-screen">
+        <div class="hero-copy">
+          <div class="hero-title"><h1>Doughty</h1><span class="dictionary-pronunciation">/ˈdaʊti/</span></div>
+          <div class="dictionary-entry" aria-label="Definition of doughty">
+            <p class="dictionary-part-of-speech"><em>adjective</em></p>
+            <ol class="dictionary-definitions"><li>Brave, determined, and persistent in the face of difficulty.</li></ol>
+            <p class="dictionary-synonyms"><span>synonyms:</span> <strong>Dauntless</strong></p>
+          </div>
+            <div class="camera-settings arena-selection" role="group" aria-labelledby="arenaSelectTitle">
+              <div class="settings-heading"><span class="settings-rule"></span><span id="arenaSelectTitle">ARENA</span></div>
+              <label class="arena-option"><input type="radio" name="arena" value="range" checked><span><strong>Open Range</strong></span></label>
+              <label class="arena-option"><input type="radio" name="arena" value="island"><span><strong>Cinderwild Isle</strong></span></label>
+            </div>
+          <button id="enterButton" class="primary-button">Enter arena <span class="button-icon">&#8599;</span></button>
+        </div>
+        <div class="hero-side-note"><span class="side-note-line"></span><span>SPIN THE SCENE<br />TO TAKE A LOOK</span></div>
+        <div class="scroll-cue"><span class="scroll-cue-line"></span> DRAG TO ORBIT</div>
+        <div class="home-index"><span id="selectedArenaName">Open Range</span></div>
+      </section>
+
+      <section id="arenaScreen" class="screen arena-screen hidden" aria-label="Arena controls">
+        <div class="legacy-readouts" hidden>
+        <div class="arena-heading"><p class="eyebrow"><span class="eyebrow-rule"></span> TEST ENVIRONMENT <span class="eyebrow-index">/ 01</span></p><h2>The range<span class="heading-period">.</span></h2></div>
+        <div class="arena-badge"><span class="live-dot"></span><span id="arenaModeBadge">MOVEMENT TEST</span></div>
+        <div class="arena-hud-left"><div class="stamina-readout"><div class="stamina-heading"><span class="hud-label">STAMINA</span><span id="staminaValue" class="stamina-value">100 / 100</span></div><div id="staminaBar" class="stamina-bar" role="meter" aria-label="Stamina" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><div id="staminaFill" class="stamina-fill"></div></div></div><div class="hud-label">EQUIPPED WEAPON</div><div id="combatStatus" class="hud-value">SHEATHED - ATTACK TO DRAW</div><div class="mantra-readout"><span class="mantra-label">MANTRA</span><div id="combatMantraDots" class="mantra-dots" role="group" aria-label="Mantra slots"><span class="mantra-dot" data-mantra-slot="focused-assault" title="Focused Assault" aria-label="Focused Assault Mantra slot" aria-pressed="false"></span><span class="mantra-dot" data-mantra-slot="spirit-barrage" title="Spirit Barrage" aria-label="Spirit Barrage Mantra slot" aria-pressed="false"></span><span class="mantra-dot" data-mantra-slot="mighty-squall" title="Mighty Squall" aria-label="Mighty Squall Mantra slot" aria-pressed="false"></span></div></div><div id="combatResources" class="hud-detail">TEMPEST OFF - SURGE</div><div id="combatTargetStatus" class="hud-detail">TRAINING TARGET 1000 / 1000</div></div>
+        <div class="arena-hud-right"><div class="hud-label">CONTROLS</div><div class="camera-value">STRIKER SWORD</div><div id="cameraHint" class="hud-detail">MOUSE LOOK - ALT FOR CURSOR - ESC SETTINGS</div><div class="hud-detail">WASD MOVE - SHIFT SPRINT - F JUMP - SPACE DODGE</div><div class="hud-detail">LMB LIGHT - RMB HEAVY - Q / HOLD Q ABILITY - X SHEATHE</div><div class="hud-detail">LLL FOCUSED - LHH SPIRIT - HHH MIGHTY</div></div>
+
+        <div class="arena-caption"><span class="caption-index">01</span><span id="arenaCaption">ENCLOSED RANGE<br />OPEN APPROACH</span></div>
+        </div>
+        <div class="crosshair" aria-hidden="true" hidden><span></span><span></span></div>
+      </section>
+
+      <dialog id="settingsMenu" class="settings-menu" aria-labelledby="settingsTitle">
+        <div class="settings-menu-heading"><h2 id="settingsTitle">Settings</h2><button id="settingsClose" class="menu-button">Close</button></div>
+            <div class="camera-settings" aria-labelledby="cameraSettingsTitle">
+              <div class="settings-heading"><span class="settings-rule"></span><span id="cameraSettingsTitle">CAMERA SETTINGS</span></div>
+              <label class="fov-control" for="fovSlider"><span class="fov-label">FOV</span><output id="fovValue" for="fovSlider">70&#176;</output></label>
+              <input id="fovSlider" class="fov-slider" type="range" min="50" max="100" step="1" value="70" aria-label="Field of view">
+              <div class="fov-range"><span>50&#176;</span><span>100&#176;</span></div>
+            </div>
+            <div class="camera-settings visual-settings" aria-labelledby="visualSettingsTitle">
+              <div class="settings-heading"><span class="settings-rule"></span><span id="visualSettingsTitle">VISUALS</span></div>
+              <label class="fov-control" for="shadowQuality"><span class="fov-label">Shadow quality</span>
+                <select id="shadowQuality" aria-describedby="shadowQualityHint">
+                  <option value="0">0 — Off</option>
+                  <option value="512">512 — Low</option>
+                  <option value="1024" selected>1024 — Medium</option>
+                  <option value="2048">2048 — High</option>
+                </select>
+              </label>
+              <p id="shadowQualityHint" class="shadow-quality-hint">Applies immediately. Higher quality costs more performance.</p>
+              <label class="visual-toggle-row" for="collisionVisibilityToggle">
+                <span class="fov-label">Visible collision</span>
+                <input id="collisionVisibilityToggle" class="visual-toggle-input" type="checkbox" aria-label="Show collision volumes">
+                <span class="visual-toggle" aria-hidden="true"></span>
+              </label>
+            </div>
+        <details id="environmentSettings" class="camera-settings environment-settings">
+          <summary>ENVIRONMENT</summary>
+          <div class="environment-controls">
+            <label class="environment-color" for="env-skyTop"><span>Upper sky</span><input id="env-skyTop" type="color" data-environment="skyTop" value="#3ee6ee"></label>
+            <label class="environment-color" for="env-skyHorizon"><span>Horizon and haze</span><input id="env-skyHorizon" type="color" data-environment="skyHorizon" value="#baefde"></label>
+            <label class="fov-control" for="env-sunAngle"><span>Sun direction</span><output data-value="sunAngle" for="env-sunAngle">145</output></label>
+            <input id="env-sunAngle" class="fov-slider" type="range" data-environment="sunAngle" min="0" max="360" step="1" value="145">
+            <label class="fov-control" for="env-sunlight"><span>Sun brightness</span><output data-value="sunlight" for="env-sunlight">3.20</output></label>
+            <input id="env-sunlight" class="fov-slider" type="range" data-environment="sunlight" min="0" max="5" step="0.1" value="3.2">
+            <label class="fov-control" for="env-ambient"><span>Ambient brightness</span><output data-value="ambient" for="env-ambient">1.90</output></label>
+            <input id="env-ambient" class="fov-slider" type="range" data-environment="ambient" min="0" max="3" step="0.1" value="1.9">
+            <label class="fov-control" for="env-clouds"><span>Cloud coverage</span><output data-value="clouds" for="env-clouds">0.45</output></label>
+            <input id="env-clouds" class="fov-slider" type="range" data-environment="clouds" min="0" max="1" step="0.1" value="0.45">
+            <label class="fov-control" for="env-wind"><span>Wind speed</span><output data-value="wind" for="env-wind">0.70</output></label>
+            <input id="env-wind" class="fov-slider" type="range" data-environment="wind" min="0" max="2" step="0.1" value="0.7">
+            <label class="fov-control" for="env-windDirection"><span>Wind direction</span><output data-value="windDirection" for="env-windDirection">90?</output></label>
+            <input id="env-windDirection" class="fov-slider" type="range" data-environment="windDirection" min="0" max="360" step="1" value="90" aria-describedby="windDirectionHint">
+            <div id="windDirectionHint" class="fov-range">Travel toward: 0? north ? 90? east ? 180? south ? 270? west</div>
+            <label class="fov-control" for="env-fog"><span>Fog strength</span><output data-value="fog" for="env-fog">0.35</output></label>
+            <input id="env-fog" class="fov-slider" type="range" data-environment="fog" min="0" max="1" step="0.05" value="0.35">
+            <button type="button" class="menu-button environment-reset">Reset environment</button>
+          </div>
+        </details>
+        <div id="feedbackSettings" class="camera-settings"><div class="settings-heading">FEEDBACK</div></div>
+        <div id="arenaSettings" hidden>
+            <div class="camera-settings arena-selection" role="group" aria-labelledby="settingsArenaSelectTitle">
+              <div class="settings-heading"><span class="settings-rule"></span><span id="settingsArenaSelectTitle">ARENA</span></div>
+              <label class="arena-option"><input type="radio" name="settings-arena" value="range" checked><span><strong>Open Range</strong></span></label>
+              <label class="arena-option"><input type="radio" name="settings-arena" value="island"><span><strong>Cinderwild Isle</strong></span></label>
+            </div>
+          <button id="goToArenaButton" class="primary-button" disabled>Go to selected arena</button>
+          <button id="resetArenaButton" class="weapon-button">RESET ARENA</button>
+        
+        </div>
+      </dialog>
+      <div id="loading" class="loading"><span class="loading-mark"></span><span>SETTING THE STAGE</span></div>
+      <div id="webglFallback" class="fallback hidden"><span>3D preview requires WebGL and a connection to load Three.js.</span></div>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
