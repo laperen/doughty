@@ -49,10 +49,10 @@ export function createEnvironment(scene, camera, lights) {
     lights.sun.intensity = state.sunlight; lights.ambient.intensity = state.ambient;
     lights.ambient.color.set(state.skyTop).lerp(new THREE.Color('#ffffff'), .6);
     lights.sun.color.set(state.skyHorizon).lerp(new THREE.Color('#ffffff'), .5);
-    const distance = arenaMode === 'island' ? 220 : 150;
+    const distance = arenaMode === 'island' ? 440 : 150;
     scene.fog.color.set(state.skyHorizon);
     scene.fog.near = 25 + (1 - state.fog) * distance;
-    scene.fog.far = scene.fog.near + 40 + (1 - state.fog) * 180;
+    scene.fog.far = scene.fog.near + 40 + (1 - state.fog) * (arenaMode === 'island' ? 360 : 180);
     clouds.forEach((cloud, i) => { cloud.visible = i < Math.round(state.clouds * clouds.length); });
     for (const input of inputs) {
       const key = input.dataset.environment; input.value = state[key];

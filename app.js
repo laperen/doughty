@@ -10,6 +10,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Octree } from 'three/addons/math/Octree.js';
 import { Capsule } from 'three/addons/math/Capsule.js';
 import { ARENA_COLLIDERS, ARENA_SCALE, createPlayerState, resolveWeaponMovement, stepPlayer } from './player-movement.js';
+import { REPEATERS, repeaterFalloff } from './repeaters-weapon.js';
 import { STRIKER_SWORD } from './striker-weapon.js';
 import { sweptMeleeContact } from './swept-melee.js';
 import { spendStamina } from './stamina.js';
@@ -297,7 +298,7 @@ const damageBehemoth = (damage, { part = 'body', stagger = 0, interrupt = false,
 };
 for (const [part, mesh] of Object.entries(behemothView.hitboxes)) registerProjectileTarget({
   id: 'first-behemoth', mesh, sizeClass: 'large',
-  onDamage: (damage, details) => damageBehemoth(damage, { part, stagger: 22, interrupt: details?.interrupt === true }),
+  onDamage: (damage, details) => damageBehemoth(damage, { part, stagger: details?.stagger ?? 22, interrupt: details?.interrupt === true }),
 });
 let projectileObstacleMeshes = [];
 const activeProjectiles = [];
@@ -417,7 +418,7 @@ const movementCollisionWorld = {
           const dz = capsule.start.z - behemothState.position[2];
           const distance = Math.hypot(dx, dz);
           const minimum = radius + BEHEMOTH.bodyRadius;
-          if (distance < minimum && capsule.start.y < 2.2) {
+          if (distance < minimum && capsule.start.y < BEHEMOTH.bodyHeight) {
             const nx = distance > 0.001 ? dx / distance : 1;
             const nz = distance > 0.001 ? dz / distance : 0;
             capsule.translate(new THREE.Vector3(nx * (minimum - distance + skin), 0, nz * (minimum - distance + skin)));
@@ -458,7 +459,7 @@ const movementCollisionWorld = {
     // only penetration into a wall/ceiling as a blocked movement candidate.
     const bossDistance = Math.hypot(capsule.start.x - behemothState.position[0], capsule.start.z - behemothState.position[2]);
     return Boolean(contact) || dummyBlocked || (selectedArena !== 'range' && encounterTouchable(behemothState)
-      && capsule.start.y < 2.2 && bossDistance < radius + BEHEMOTH.bodyRadius);
+      && capsule.start.y < BEHEMOTH.bodyHeight && bossDistance < radius + BEHEMOTH.bodyRadius);
   },
   raycast(origin, direction, distance) {
     movementRaycaster.set(new THREE.Vector3(...origin), new THREE.Vector3(...direction).normalize());
@@ -507,6 +508,24 @@ const aimPoint = new THREE.Vector3();
 const heldKeys = new Set();
 const pressedKeys = new Set();
 let equipment = { definition: STRIKER_SWORD, state: STRIKER_SWORD.createState() };
+let basicFireHeld = false;
+const weaponStates = new Map();
+const rangedEffects = [];
+const buffCollectors = new Set();
+window.registerBuffCollector = collector => { buffCollectors.add(collector); return () => buffCollectors.delete(collector); };
+const weaponSelect = document.querySelector('#weaponSelect');
+const weaponStorageKey = 'doughty-selected-weapon';
+const saveWeaponSelection = id => {
+  try { localStorage.setItem(weaponStorageKey, id); } catch { /* Selection remains usable without storage. */ }
+};
+const autoReloadToggle = document.querySelector('#autoReload');
+try { autoReloadToggle.checked = localStorage.getItem('repeaters-auto-reload') !== 'false'; } catch {}
+autoReloadToggle.addEventListener('change', () => { try { localStorage.setItem('repeaters-auto-reload', autoReloadToggle.checked); } catch {} });
+weaponSelect.addEventListener('change', () => {
+  if (weaponSelect.value === '') window.unequipWeapon();
+  else window.equipWeapon(weaponSelect.value === 'repeaters' ? REPEATERS : STRIKER_SWORD);
+});
+window.availableWeapons = { 'striker-sword': STRIKER_SWORD, repeaters: REPEATERS };
 let equippedWeapon = STRIKER_SWORD; // Weapon availability is separate from its sheathed state.
 const cameraOrbit = { azimuth: Math.PI / 4, polar: 1.15, distance: 13, shoulder: 0 };
 const followCameraScale = 2 / 3;
@@ -516,7 +535,16 @@ let qHeldSince = null;
 let qConsumed = false;
 
 const getCameraYaw = () => cameraOrbit.azimuth;
-const updateGameplayCamera = () => {
+const getWeaponCamera = () => resolveWeaponMovement(
+  equipment?.definition.kind === 'ranged' && equipment.state.sheathed ? null : equippedWeapon,
+).camera;
+const updateGameplayCamera = (dt = 0) => {
+  if (dt > 0) {
+    const view = getWeaponCamera();
+    const blend = 1 - Math.exp(-12 * dt);
+    cameraOrbit.distance += (view.distance * followCameraScale - cameraOrbit.distance) * blend;
+    cameraOrbit.shoulder += (view.shoulder - cameraOrbit.shoulder) * blend;
+  }
   const target = new THREE.Vector3(playerState.position[0], playerState.position[1] + 1.55, playerState.position[2]);
   controls.target.copy(target);
   const horizontal = Math.sin(cameraOrbit.polar) * cameraOrbit.distance;
@@ -525,10 +553,16 @@ const updateGameplayCamera = () => {
     target.y + Math.cos(cameraOrbit.polar) * cameraOrbit.distance,
     target.z + Math.cos(cameraOrbit.azimuth) * horizontal - Math.sin(cameraOrbit.azimuth) * cameraOrbit.shoulder,
   );
-  camera.lookAt(target);
+  // Shift the aim point with the shoulder, keeping the hunter left of the reticle.
+  // Looking back at the hunter would cancel the shoulder offset on screen.
+  const lookTarget = target.clone();
+  lookTarget.x += Math.cos(cameraOrbit.azimuth) * cameraOrbit.shoulder;
+  lookTarget.z -= Math.sin(cameraOrbit.azimuth) * cameraOrbit.shoulder;
+  camera.lookAt(lookTarget);
 };
 const applyWeaponCamera = () => {
-  const view = resolveWeaponMovement(equippedWeapon).camera;
+  if (arenaScreen.classList.contains('hidden')) return;
+  const view = getWeaponCamera();
   const offset = camera.position.clone().sub(controls.target);
   if (Number.isFinite(offset.x) && Number.isFinite(offset.z) && offset.lengthSq() > 0.01) {
     cameraOrbit.azimuth = Math.atan2(offset.x, offset.z);
@@ -595,15 +629,26 @@ window.addEventListener('mousemove', (event) => {
 // Future weapon equip code can call this without changing the movement simulation.
 window.equipWeapon = (definition = STRIKER_SWORD) => {
   if (!definition?.createState || !definition?.handleAttack || !definition?.step || !definition?.setSheathed) throw new Error('Weapon must implement createState, handleAttack, step, and setSheathed.');
-  equipment = { definition, state: definition.createState() };
+  clearInput();
+  if (equipment) { equipment.definition.cancelAction?.(equipment.state); weaponStates.set(equipment.definition, equipment.state); }
+  const nextState = weaponStates.get(definition) ?? definition.createState();
+  definition.cancelAction?.(nextState);
+  definition.setSheathed(nextState, true);
+  equipment = { definition, state: nextState };
+  document.querySelector('#weaponSelect').value = definition.id;
   equippedWeapon = definition;
+  saveWeaponSelection(definition.id);
   if (weaponButton) weaponButton.textContent = `UNEQUIP ${definition.name.toUpperCase()}`;
   applyWeaponCamera();
   renderCombatHud();
 };
 window.unequipWeapon = () => {
+  clearInput();
+  if (equipment) { equipment.definition.cancelAction?.(equipment.state); weaponStates.set(equipment.definition, equipment.state); }
+  document.querySelector('#weaponSelect').value = '';
   equipment = null;
   equippedWeapon = null;
+  saveWeaponSelection('');
   if (weaponButton) weaponButton.textContent = 'EQUIP STRIKER SWORD';
   applyWeaponCamera();
   renderCombatHud();
@@ -611,7 +656,110 @@ window.unequipWeapon = () => {
 window.setMovementWeapon = (weapon) => weapon ? window.equipWeapon(weapon) : window.unequipWeapon();
 window.registerProjectileTarget = registerProjectileTarget;
 
+// Camera aim chooses a point; the muzzle ray enforces range and nearby occlusion.
+function repeaterAim(yawOffset = 0, pitchOffset = 0) {
+  scene.updateMatrixWorld(true);
+  const records = projectileTargets.filter(record => selectedArena === 'range'
+    ? record.kind !== 'first-behemoth' : record.kind !== 'training-dummy' && encounterTouchable(behemothState));
+  const objects = [...projectileObstacleMeshes, ...records.map(record => record.mesh)];
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(new THREE.Vector2(0, 0), camera);
+  ray.far = 100;
+  const cameraHit = ray.intersectObjects(objects, false)[0];
+  const aim = cameraHit?.point ?? ray.ray.at(100, new THREE.Vector3());
+  const origin = new THREE.Vector3(playerState.position[0], playerState.position[1] + 1.3, playerState.position[2]);
+  const direction = aim.clone().sub(origin).normalize();
+  direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), yawOffset);
+  const right = new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize();
+  direction.applyAxisAngle(right, pitchOffset);
+  ray.set(origin, direction); ray.far = 25;
+  const hit = ray.intersectObjects(objects, false)[0];
+  return { origin, end: hit?.point ?? origin.clone().addScaledVector(direction, 25),
+    distance: hit?.distance ?? Infinity, record: hit && records.find(record => record.mesh === hit.object) };
+}
+function fireRepeaters(event) {
+  for (let i = 0; i < event.pellets; i++) {
+    const columns = event.pellets / 2;
+    const yaw = event.pellets === 1 ? 0 : THREE.MathUtils.degToRad((i % columns) / (columns - 1) * event.spread - event.spread / 2);
+    const pitch = event.pellets === 1 ? 0 : THREE.MathUtils.degToRad((i < columns ? -1 : 1) * event.verticalSpread / 2);
+    const hit = repeaterAim(yaw, pitch);
+    hit.record?.onDamage?.(event.damage * repeaterFalloff(hit.distance), { stagger: 0, interrupt: false, source: 'repeaters' });
+    const mesh = new THREE.Line(new THREE.BufferGeometry().setFromPoints([hit.origin, hit.end]),
+      new THREE.LineBasicMaterial({ color: equipment.state.empowered > 0 ? '#68efff' : '#ffe9a0', transparent: true, opacity: .8 }));
+    scene.add(mesh); rangedEffects.push({ mesh, remaining: .07 });
+  }
+  feedback.sound('swing');
+}
+function dropBuffMine(definition) {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(.24, .32, .14, 12),
+    new THREE.MeshStandardMaterial({ color: '#58cfe1', emissive: '#187e91', emissiveIntensity: 1.5 }));
+  const direction = new THREE.Vector3(); camera.getWorldDirection(direction); direction.y = 0; direction.normalize();
+  mesh.position.set(...playerState.position).addScaledVector(direction, 1);
+  mesh.position.y += .1; scene.add(mesh);
+  rangedEffects.push({ mesh, remaining: definition.lifetime, mine: definition, age: 0 });
+}
+// A tapered stream of the same cyan crystal motes used by Behemoth despawning.
+function absorbEmpoweredReload(origin) {
+  const count = 48;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+  const material = new THREE.PointsMaterial({ color: '#8ef5ef', size: .09,
+    transparent: true, opacity: .9, depthWrite: false, blending: THREE.AdditiveBlending });
+  const mesh = new THREE.Points(geometry, material); mesh.frustumCulled = false;
+  scene.add(mesh);
+  rangedEffects.push({ mesh, remaining: .75, age: 0, absorption: origin.clone() });
+  feedback.sound('reward');
+}
+function clearRangedEffects() {
+  for (const effect of rangedEffects) { scene.remove(effect.mesh); effect.mesh.geometry.dispose(); effect.mesh.material.dispose(); }
+  rangedEffects.length = 0;
+}
+function stepRangedEffects(dt) {
+  for (let i = rangedEffects.length - 1; i >= 0; i--) {
+    const effect = rangedEffects[i]; effect.remaining -= dt;
+    if (effect.absorption && effect.remaining > 0) {
+      effect.age += dt;
+      player.updateMatrixWorld(true);
+      const destinations = playerView.pistols.map(gun => gun.getWorldPosition(new THREE.Vector3()));
+      const positions = effect.mesh.geometry.attributes.position;
+      for (let j = 0; j < positions.count; j++) {
+        const progress = THREE.MathUtils.clamp((effect.age / .75 - (j % 8) * .035) / .755, 0, 1);
+        const destination = destinations[j % 2];
+        const axis = destination.clone().sub(effect.absorption).normalize();
+        const right = new THREE.Vector3().crossVectors(axis, new THREE.Vector3(0, 1, 0));
+        if (right.lengthSq() < .001) right.set(1, 0, 0); else right.normalize();
+        const up = new THREE.Vector3().crossVectors(right, axis).normalize();
+        const angle = j * 2.399 + progress * 5;
+        const radius = .65 * Math.sqrt((j + 1) / positions.count) * (1 - progress);
+        const point = effect.absorption.clone().lerp(destination, progress)
+          .addScaledVector(right, Math.cos(angle) * radius).addScaledVector(up, Math.sin(angle) * radius);
+        positions.setXYZ(j, point.x, point.y, point.z);
+      }
+      positions.needsUpdate = true;
+      effect.mesh.material.opacity = .9 * Math.min(1, effect.remaining / .12);
+    }
+    if (effect.mine && effect.remaining > 0) {
+      effect.age += dt;
+      for (const collector of [playerState, ...buffCollectors]) {
+        if (effect.age < .3 || collector.health <= 0 || !collector.position || !collector.statModifiers) continue;
+        if (Math.hypot(collector.position[0] - effect.mesh.position.x, collector.position[2] - effect.mesh.position.z) > .65
+          || Math.abs(collector.position[1] - effect.mesh.position.y) > .7) continue;
+        addTimedStatModifier(collector.statModifiers, { source: 'repeater-haste', stat: 'attackSpeed',
+          percent: effect.mine.attackSpeed, duration: effect.mine.buffDuration });
+        effect.remaining = 0; feedback.sound('reward'); break;
+      }
+    }
+    if (effect.remaining <= 0) {
+      scene.remove(effect.mesh); effect.mesh.geometry.dispose(); effect.mesh.material.dispose(); rangedEffects.splice(i, 1);
+    }
+  }
+}
 const renderCombatHud = () => {
+  const ranged = equipment?.definition.kind === 'ranged';
+  combatMantraDots?.parentElement.classList.toggle('hidden', !equipment || ranged);
+  document.querySelector('#repeaterHelp').classList.toggle('hidden', !ranged);
+  document.querySelector('#repeaterReticle').classList.toggle('hidden', !ranged || equipment.state.sheathed || arenaScreen.classList.contains('hidden'));
+
   playerHud.update(playerState, equipment);
   if (staminaFill && staminaBar && staminaValue) {
     const stamina = Math.max(0, Math.min(100, playerState.stamina));
@@ -639,6 +787,8 @@ const renderCombatHud = () => {
   }
   const tempestRemaining = getStatModifierRemaining(playerState.statModifiers, 'tempest-form');
   combatResources.textContent = !state ? 'TEMPEST OFF · SURGE —' : `TEMPEST ${tempestRemaining > 0 ? `${tempestRemaining.toFixed(1)}S` : 'OFF'} · SURGE ${state.surgeReady ? `${(state.surgeAvailabilityRemaining ?? 0).toFixed(1)}S` : '—'}`;
+  if (ranged) combatResources.textContent = `AMMO ${state.ammo}/12 | ${state.action?.type === 'reload' ? 'RELOADING' : 'R RELOAD'} | EMPOWERED ${state.empowered.toFixed(1)}s`;
+  if (!equipment) combatResources.textContent = '';
   combatTargetStatus.textContent = selectedArena !== 'range' ? '' :
     `TRAINING DUMMY / INDESTRUCTIBLE\nCORE ${Math.round(trainingState.core)} / PART ${Math.round(trainingState.part)} / STAGGER ${Math.round(trainingState.stagger)}\nDPS ${trainingDps(trainingState).toFixed(1)} / LAST ${Math.round(trainingState.lastHit)} / HITS ${trainingState.hits}`;
   behemothHud.classList.toggle('hidden', selectedArena === 'range');
@@ -655,6 +805,9 @@ const renderCombatHud = () => {
       : playerState.health <= 0 ? 'HUNTER DOWN'
       : behemothState.mode === 'reaction' ? behemothState.move.replaceAll('-', ' ').toUpperCase()
       : isInterruptible(behemothState) ? 'HEAD OPEN — INTERRUPT NOW'
+      : behemothState.mode === 'run-out-turn' ? 'PREPARING TO RUN OUT'
+      : behemothState.mode === 'run-out' ? 'RUNNING TO THE PERIMETER'
+      : behemothState.mode === 'turn-back' ? 'TURNING — CHARGE INCOMING'
       : behemothState.mode === 'windup' ? `${behemothState.move.toUpperCase()} WINDUP`
       : behemothState.mode === 'observe' ? 'WATCHING THE HUNTER'
       : behemothState.mode === 'circle' ? 'CIRCLING'
@@ -756,11 +909,25 @@ const stepEncounter = (dt, resolveContacts = () => {}) => {
 };
 const processWeaponStep = (dt) => {
   if (selectedArena !== 'range' && playerState.health <= 0) return { locked: true, movementScale: 0, travelDelta: 0 };
+  for (const [definition, state] of weaponStates) {
+    if (definition !== equipment?.definition && definition.kind === 'ranged') definition.step(state, dt);
+  }
   if (!equipment) return { locked: false, movementScale: 1, travelDelta: 0 };
   const state = equipment.state;
+  if (equipment.definition.kind === 'ranged') {
+    const aim = repeaterAim();
+    const reticle = document.querySelector('#repeaterReticle');
+    reticle.dataset.tier = aim.record ? String(repeaterFalloff(aim.distance)) : '0';
+    reticle.textContent = aim.record ? (aim.distance <= 8 ? '\u25ce' : '+') : '+';
+    if (basicFireHeld && !pressedKeys.has('dodge') && !state.action) handleAttackInput('light');
+  }
   const attackSpeedMultiplier = getEffectiveStat(1, 'attackSpeed', playerState.statModifiers);
-  const result = equipment.definition.step(state, dt, { attackSpeedMultiplier, spend: (amount) => spendStamina(playerState, amount) });
+  const reloadSource = equipment.definition.kind === 'ranged' ? repeaterAim() : null;
+  const result = equipment.definition.step(state, dt, { attackSpeedMultiplier, idealRange: Boolean(reloadSource?.record && reloadSource.distance <= 8), spend: (amount) => spendStamina(playerState, amount) });
   for (const event of result.events) {
+    if (event.type === 'empowered-reload') { absorbEmpoweredReload(reloadSource.end); continue; }
+    if (event.type === 'ranged-shot') { fireRepeaters(event); continue; }
+    if (event.type === 'buff-mine') { dropBuffMine(event.definition); continue; }
     // Continuous attacks are resolved along movement and again after enemy travel.
     if (event.type === 'attack-active') continue;
     if (event.type === 'special-launch') { launchProjectile(event.projectile); feedback.sound('reward'); }
@@ -918,18 +1085,21 @@ const updateAttackVolume = () => {
 };
 const handleAttackInput = (input) => {
   if (isRecovering(playerState) || playerState.dodgeInputBlock > 0 || !equipment || playerState.movementAction === 'dodge' || playerState.movementAction === 'climb' || (selectedArena !== 'range' && playerState.health <= 0)) return;
-  const result = equipment.definition.handleAttack(equipment.state, input, { attackYaw: getAttackYaw(), spend: (amount) => spendStamina(playerState, amount) });
+  const result = equipment.definition.handleAttack(equipment.state, input, { attackYaw: getAttackYaw(), autoReload: document.querySelector('#autoReload').checked, spend: (amount) => spendStamina(playerState, amount) });
+  if (result.type === 'unsheathed') basicFireHeld = false;
   if (result.type !== 'input-ignored') renderCombatHud();
 };
 weaponButton?.addEventListener('click', () => equipment ? window.unequipWeapon() : window.equipWeapon());
 renderer.domElement.addEventListener('mousedown', (event) => {
   if (arenaScreen.classList.contains('hidden') || settingsOpen) return;
-  if (event.button === 0) handleAttackInput('light');
+  if (event.button === 0) { basicFireHeld = true; handleAttackInput('light'); }
   if (event.button === 2) { event.preventDefault(); handleAttackInput('heavy'); }
 });
 renderer.domElement.addEventListener('contextmenu', (event) => event.preventDefault());
 
+window.addEventListener('mouseup', event => { if (event.button === 0) basicFireHeld = false; });
 const clearInput = () => {
+  basicFireHeld = false;
   heldKeys.clear();
   pressedKeys.clear();
   qHeldSince = null;
@@ -978,12 +1148,17 @@ const keyToAction = (event) => {
     equipment.definition.setSheathed(equipment.state, !equipment.state.sheathed);
     renderCombatHud();
   }
+  if (equipment?.definition.kind === 'ranged' && ['q', 'r'].includes(key)) {
+    event.preventDefault(); handleAttackInput(key === 'q' ? 'buff' : 'reload'); return;
+  }
   if (key === 'q') { qHeldSince = performance.now(); qConsumed = false; }
 };
 
 let targetRotationY = 0;
 const resetEncounter = () => {
   feedback.clear();
+  clearRangedEffects();
+  weaponStates.clear();
   trainingState = createTrainingState();
   updateTrainingTargetView(trainingView, trainingState);
   Object.assign(playerState, createPlayerState());
@@ -1026,10 +1201,14 @@ const setArenaMode = (mode) => {
   arenaModeBadge.textContent = selectedArena === 'island' ? 'CINDERWILD ISLE' : 'TRAINING RANGE';
   arenaCaption.innerHTML = selectedArena === 'island' ? 'TWO TERRITORIES<br />FOLLOW THE STONE PATHS' : 'ENCLOSED RANGE<br />OPEN APPROACH';
   for (const option of arenaOptions) option.checked = option.value === selectedArena;
-  controls.maxDistance = selectedArena !== 'range' ? 130 : 24;
+  controls.maxDistance = selectedArena !== 'range' ? 260 : 24;
   controls.minDistance = selectedArena !== 'range' ? 16 : 4;
   controls.target.set(0, 1.2, 0);
-  const previewDistance = selectedArena !== 'range' ? 88 : 18;
+  const previewDistance = selectedArena !== 'range' ? 176 : 18;
+  // Distant previews need more depth precision for the closely layered paths.
+  camera.near = arenaScreen.classList.contains('hidden') ? 2 : 0.1;
+  camera.far = selectedArena === 'island' ? 400 : 120;
+  camera.updateProjectionMatrix();
   environment.setArena(selectedArena);
   camera.position.set(previewDistance * 0.67, previewDistance * 0.53, previewDistance * 0.75);
   controls.update();
@@ -1050,13 +1229,26 @@ settingsArenaOptions.forEach((option) => option.addEventListener('change', () =>
 }));
 goToArenaButton.addEventListener('click', () => {
   if (pendingArena === selectedArena) return;
+  if (pendingArena === 'home') {
+    setSettingsOpen(false, false);
+    setScreen(false);
+    return;
+  }
   setArenaMode(pendingArena);
   setSettingsOpen(false);
 });
 setArenaMode(selectedArena);
+try {
+  const savedWeapon = localStorage.getItem(weaponStorageKey);
+  if (savedWeapon === '') window.unequipWeapon();
+  else if (Object.hasOwn(window.availableWeapons, savedWeapon)) window.equipWeapon(window.availableWeapons[savedWeapon]);
+} catch { /* Keep the default weapon if storage is unavailable. */ }
 const setScreen = (showArena) => {
   if (settingsMenu.open) settingsMenu.close();
   settingsOpen = false;
+  resumeCameraAfterEscape = false;
+  clearTimeout(pointerUnlockSettingsTimer);
+  pointerUnlockSettingsTimer = null;
   settingsToggle.setAttribute('aria-expanded', 'false');
   appShell.classList.remove('settings-open');
   feedback.clear();
@@ -1065,6 +1257,8 @@ const setScreen = (showArena) => {
   appShell.classList.toggle('in-range', showArena);
   controls.enabled = !showArena;
   controls.autoRotate = !showArena;
+  camera.near = showArena ? 0.1 : 2;
+  camera.updateProjectionMatrix();
   if (showArena) {
     player.visible = true;
     target.visible = selectedArena === 'range';
@@ -1193,6 +1387,7 @@ const animate = () => {
     let consumedActionPress = false;
     while (movementAccumulator >= movementStep) {
       stepStatModifiers(playerState.statModifiers, movementStep);
+      stepRangedEffects(movementStep);
       if (selectedArena === 'range') stepTrainingTarget(trainingState, movementStep);
       if (qHeldSince !== null && !qConsumed && performance.now() - qHeldSince >= 300 && equipment && playerState.health > 0 && !isRecovering(playerState) && playerState.dodgeInputBlock <= 0 && !['dodge', 'climb'].includes(playerState.movementAction)) {
         const result = equipment.definition.useTechnique?.(equipment.state, {
@@ -1223,11 +1418,12 @@ const animate = () => {
       stepPlayer(playerState, {
         moveX: moveX * weaponTick.movementScale,
         moveY: moveY * weaponTick.movementScale,
-        attackLocked: weaponTick.locked,
-        sprintHeld: heldKeys.has('shift'),
+        attackLocked: weaponTick.locked && !weaponTick.allowMove,
+        sprintHeld: heldKeys.has('shift') && !weaponTick.locked,
         sprintCostsStamina: Boolean(equipment && !equipment.state.sheathed),
         cameraYaw,
         aimYaw: attackYaw,
+        facingMode: equipment?.state?.sheathed ? 'travel' : undefined,
         facingYaw: equipment?.state?.action && Number.isFinite(equipment.state.attackYaw) ? equipment.state.attackYaw : undefined,
         jumpPressed: !consumedActionPress && !weaponTick.locked && pressedKeys.has('jump'),
         dodgePressed: !consumedActionPress && !weaponTick.locked && pressedKeys.has('dodge'),
@@ -1291,7 +1487,7 @@ const animate = () => {
 
     updateTrainingTargetView(trainingView, trainingState);
 
-    updateGameplayCamera();
+    updateGameplayCamera(delta);
   } else {
     controls.update();
   }

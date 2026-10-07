@@ -107,3 +107,21 @@
 .environment-reset{margin-top:18px}
 #shadowQuality{max-width:160px;padding:6px;border:1px solid #7e96a35c;border-radius:3px;background:#101820;color:var(--paper);font:10px var(--mono)}
 .shadow-quality-hint{margin:9px 0 0;color:var(--muted);font:10px/1.5 var(--mono)}
+
+#weaponSelect { display: block; width: 100%; padding: .7rem; margin: .5rem 0 1rem; background: #182c36; color: white; border: 1px solid #65bbca; }
+#repeaterReticle { position: absolute; z-index: 12; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #eef5f7; font: 28px monospace; pointer-events: none; text-shadow: 0 1px 3px black; }
+#repeaterReticle[data-tier="1"] { color: #ff5a51; }
+#repeaterReticle[data-tier="0.5"] { color: #ffd16b; }
+#repeaterReticle[data-tier="0"] { opacity: .45; }
+#repeaterHelp { font-size: 11px; line-height: 1.8; margin: 8px 0; }
+.weapon-resource span { white-space: nowrap; font-size: 10px; }
+
+.equipped-label { color: #eaffff; font: 11px monospace; margin-top: 8px; text-shadow: 0 1px 3px #000; }
+.weapon-hint { color: #d5e7eb; font: 10px monospace; max-width: 335px; line-height: 1.5; margin-top: 4px; text-shadow: 0 1px 3px #000; }
+
+/* Keep start-page equipment reachable on short and mobile viewports. */
+.home-screen .hero-copy{top:100px;bottom:64px;overflow-y:auto;overscroll-behavior:contain;padding-right:12px;scrollbar-width:thin}
+.hero-copy .weapon-selection{margin:18px 0 0;max-width:340px}
+.weapon-selection label{font:11px/1.5 var(--mono)}
+.weapon-selection p{margin:8px 0 0;color:var(--muted);font:10px/1.5 var(--mono)}
+@media(max-width:760px){.home-screen .hero-copy{top:96px;bottom:48px}.home-screen .scroll-cue{display:none}}

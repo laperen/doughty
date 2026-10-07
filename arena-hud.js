@@ -8,6 +8,11 @@ export function createArenaHud(container) {
     <div class="vital stamina"><output></output><div class="vital-track" role="meter" aria-label="Stamina" aria-valuemin="0"><i></i></div></div>
     <div class="weapon-resources"></div></div>`;
   container.append(root);
+  const weaponLabel = document.createElement('div');
+  weaponLabel.className = 'equipped-label';
+  const weaponHint = document.createElement('div');
+  weaponHint.className = 'weapon-hint';
+  root.querySelector('.player-vitals').append(weaponLabel, weaponHint);
   const resources = root.querySelector('.weapon-resources');
   let resourceLayout = '';
   const setMeter = (node, value, max) => {
@@ -18,6 +23,9 @@ export function createArenaHud(container) {
   };
   return {
     update(player, equipment) {
+      weaponLabel.textContent = equipment ? `${equipment.definition.name} / ${equipment.state.sheathed ? 'SHEATHED' : equipment.state.action?.type === 'reload' ? 'RELOADING' : 'DRAWN'}` : 'UNARMED';
+      weaponHint.textContent = equipment?.definition.hudHint ?? '';
+      root.querySelector('.hunter-emblem').style.display = equipment?.definition.kind === 'ranged' ? 'none' : '';
       for (const [name, value, max] of [['health', player.health, 100], ['stamina', player.stamina, 100]]) {
         const node = root.querySelector(`.vital.${name}`);
         node.querySelector('output').textContent = `${Math.ceil(value)} / ${max}`;
@@ -46,6 +54,8 @@ export function createArenaHud(container) {
       items.forEach((item, index) => {
         const node = resources.children[index];
         setMeter(node, item.value, item.max);
+        node.lastElementChild.textContent = item.text ?? item.glyph ?? '';
+        node.title = item.label + (item.text ? ': ' + item.text : '');
         node.classList.toggle('active', item.value > 0);
         node.setAttribute('aria-valuetext', item.description ?? `${item.value} / ${item.max}`);
       });

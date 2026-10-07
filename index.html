@@ -31,6 +31,12 @@
             <ol class="dictionary-definitions"><li>Brave, determined, and persistent in the face of difficulty.</li></ol>
             <p class="dictionary-synonyms"><span>synonyms:</span> <strong>Dauntless</strong></p>
           </div>
+        <div class="camera-settings weapon-selection" aria-labelledby="weaponSelectionTitle">
+          <div id="weaponSelectionTitle" class="settings-heading">WEAPON</div><label for="weaponSelect">Equipped weapon</label>
+          <select id="weaponSelect"><option value="striker-sword">Striker Sword</option><option value="repeaters">Repeaters</option><option value="">Unarmed</option></select>
+          <label><input id="autoReload" type="checkbox" checked> Repeaters: automatic reload</label>
+          <p>Automatic reload starts when firing with an empty magazine.</p>
+        </div>
             <div class="camera-settings arena-selection" role="group" aria-labelledby="arenaSelectTitle">
               <div class="settings-heading"><span class="settings-rule"></span><span id="arenaSelectTitle">ARENA</span></div>
               <label class="arena-option"><input type="radio" name="arena" value="range" checked><span><strong>Open Range</strong></span></label>
@@ -43,11 +49,12 @@
         <div class="home-index"><span id="selectedArenaName">Open Range</span></div>
       </section>
 
+      <div id="repeaterReticle" class="hidden" aria-label="Repeaters range indicator">+</div>
       <section id="arenaScreen" class="screen arena-screen hidden" aria-label="Arena controls">
         <div class="legacy-readouts" hidden>
         <div class="arena-heading"><p class="eyebrow"><span class="eyebrow-rule"></span> TEST ENVIRONMENT <span class="eyebrow-index">/ 01</span></p><h2>The range<span class="heading-period">.</span></h2></div>
         <div class="arena-badge"><span class="live-dot"></span><span id="arenaModeBadge">MOVEMENT TEST</span></div>
-        <div class="arena-hud-left"><div class="stamina-readout"><div class="stamina-heading"><span class="hud-label">STAMINA</span><span id="staminaValue" class="stamina-value">100 / 100</span></div><div id="staminaBar" class="stamina-bar" role="meter" aria-label="Stamina" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><div id="staminaFill" class="stamina-fill"></div></div></div><div class="hud-label">EQUIPPED WEAPON</div><div id="combatStatus" class="hud-value">SHEATHED - ATTACK TO DRAW</div><div class="mantra-readout"><span class="mantra-label">MANTRA</span><div id="combatMantraDots" class="mantra-dots" role="group" aria-label="Mantra slots"><span class="mantra-dot" data-mantra-slot="focused-assault" title="Focused Assault" aria-label="Focused Assault Mantra slot" aria-pressed="false"></span><span class="mantra-dot" data-mantra-slot="spirit-barrage" title="Spirit Barrage" aria-label="Spirit Barrage Mantra slot" aria-pressed="false"></span><span class="mantra-dot" data-mantra-slot="mighty-squall" title="Mighty Squall" aria-label="Mighty Squall Mantra slot" aria-pressed="false"></span></div></div><div id="combatResources" class="hud-detail">TEMPEST OFF - SURGE</div><div id="combatTargetStatus" class="hud-detail">TRAINING TARGET 1000 / 1000</div></div>
+        <div class="arena-hud-left"><div class="stamina-readout"><div class="stamina-heading"><span class="hud-label">STAMINA</span><span id="staminaValue" class="stamina-value">100 / 100</span></div><div id="staminaBar" class="stamina-bar" role="meter" aria-label="Stamina" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><div id="staminaFill" class="stamina-fill"></div></div></div><div class="hud-label">EQUIPPED WEAPON</div><div id="combatStatus" class="hud-value">SHEATHED - ATTACK TO DRAW</div><div class="mantra-readout"><span class="mantra-label">MANTRA</span><div id="combatMantraDots" class="mantra-dots" role="group" aria-label="Mantra slots"><span class="mantra-dot" data-mantra-slot="focused-assault" title="Focused Assault" aria-label="Focused Assault Mantra slot" aria-pressed="false"></span><span class="mantra-dot" data-mantra-slot="spirit-barrage" title="Spirit Barrage" aria-label="Spirit Barrage Mantra slot" aria-pressed="false"></span><span class="mantra-dot" data-mantra-slot="mighty-squall" title="Mighty Squall" aria-label="Mighty Squall Mantra slot" aria-pressed="false"></span></div></div><div id="repeaterHelp" class="hidden">HOLD LMB - FIRE / RMB - SCATTERSHOT<br>R - RELOAD / Q - HASTE MINE / X - SHEATHE</div><div id="combatResources" class="hud-detail">TEMPEST OFF - SURGE</div><div id="combatTargetStatus" class="hud-detail">TRAINING TARGET 1000 / 1000</div></div>
         <div class="arena-hud-right"><div class="hud-label">CONTROLS</div><div class="camera-value">STRIKER SWORD</div><div id="cameraHint" class="hud-detail">MOUSE LOOK - ALT FOR CURSOR - ESC SETTINGS</div><div class="hud-detail">WASD MOVE - SHIFT SPRINT - F JUMP - SPACE DODGE</div><div class="hud-detail">LMB LIGHT - RMB HEAVY - Q / HOLD Q ABILITY - X SHEATHE</div><div class="hud-detail">LLL FOCUSED - LHH SPIRIT - HHH MIGHTY</div></div>
 
         <div class="arena-caption"><span class="caption-index">01</span><span id="arenaCaption">ENCLOSED RANGE<br />OPEN APPROACH</span></div>
@@ -106,11 +113,12 @@
         <div id="feedbackSettings" class="camera-settings"><div class="settings-heading">FEEDBACK</div></div>
         <div id="arenaSettings" hidden>
             <div class="camera-settings arena-selection" role="group" aria-labelledby="settingsArenaSelectTitle">
-              <div class="settings-heading"><span class="settings-rule"></span><span id="settingsArenaSelectTitle">ARENA</span></div>
+              <div class="settings-heading"><span class="settings-rule"></span><span id="settingsArenaSelectTitle">LOCATION</span></div>
+              <label class="arena-option"><input type="radio" name="settings-arena" value="home"><span><strong>Start page</strong></span></label>
               <label class="arena-option"><input type="radio" name="settings-arena" value="range" checked><span><strong>Open Range</strong></span></label>
               <label class="arena-option"><input type="radio" name="settings-arena" value="island"><span><strong>Cinderwild Isle</strong></span></label>
             </div>
-          <button id="goToArenaButton" class="primary-button" disabled>Go to selected arena</button>
+          <button id="goToArenaButton" class="primary-button" disabled>Go to selected location</button>
           <button id="resetArenaButton" class="weapon-button">RESET ARENA</button>
         
         </div>

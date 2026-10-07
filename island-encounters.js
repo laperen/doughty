@@ -2,11 +2,12 @@ import { createBehemothState, stepBehemoth } from './behemoth.js';
 import { advanceTimedMode } from './behemoth-states.js';
 
 export const ISLAND = Object.freeze({
-  name: 'Cinderwild Isle', arrival: [0, 0.25, 39], roster: ['first-behemoth'], maxAlive: 1,
-  spawnDuration: 2.4, deathDuration: 3.2, replacementDelay: 5, awarenessRadius: 13.5,
+  name: 'Cinderwild Isle', layoutScale: 2, arrival: [0, 0.25, 78], roster: ['first-behemoth'], maxAlive: 1,
+  spawnDuration: 2.4, deathDuration: 3.2, replacementDelay: 5, awarenessRadius: 20.25,
+  patrolRadius: 8,
   arenas: [
-    { id: 'ash', name: 'Ash Hollow', center: [-24, -0.025, -9], radius: 20 },
-    { id: 'stone', name: 'Crown Basin', center: [24, -0.025, -32], radius: 20 },
+    { id: 'ash', name: 'Ash Hollow', center: [-48, -0.025, -18], radius: 40 },
+    { id: 'stone', name: 'Crown Basin', center: [48, -0.025, -64], radius: 40 },
   ],
 });
 const distance = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
@@ -43,6 +44,7 @@ export function stepIslandEncounter(encounter, players, dt) {
   const occupants = players.filter(p => inTerritory(arena, p.position, encounter.awareness === 'engaged' ? 1 : 0));
   if (encounter.awareness === 'engaged' && !occupants.length) {
     encounter.awareness = 'returning'; boss.mode = 'idle'; boss.move = null; boss.attackHit = false;
+    boss.runOutGoal = null; boss.returnCharge = false; boss.chargeDuration = null;
   }
   if (encounter.awareness !== 'engaged' && occupants.some(p => distance(p.position, boss.position) <= ISLAND.awarenessRadius)) encounter.awareness = 'engaged';
   if (encounter.awareness === 'engaged') {
@@ -61,7 +63,7 @@ export function stepIslandEncounter(encounter, players, dt) {
     const returning = encounter.awareness === 'returning';
     const resting = !returning && encounter.clock % 10 < 3;
     const angle = Math.floor(encounter.clock / 10) * 2.4;
-    const goal = returning ? arena.center : [arena.center[0] + Math.sin(angle) * 4, arena.center[1], arena.center[2] + Math.cos(angle) * 4];
+    const goal = returning ? arena.center : [arena.center[0] + Math.sin(angle) * ISLAND.patrolRadius, arena.center[1], arena.center[2] + Math.cos(angle) * ISLAND.patrolRadius];
     const d = distance(boss.position, goal);
     boss.mode = resting || d < 0.2 ? 'idle' : 'patrol';
     if (!resting && d > 0.2) {

@@ -39,7 +39,23 @@ export function createPlayerView() {
   const trailMaterial = new THREE.MeshBasicMaterial({ color: '#e7ffa1', transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false });
   const trail = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.5, 32, 1, 0, Math.PI * 0.75), trailMaterial);
   trail.name = 'Attack trail'; trail.rotation.x = -Math.PI / 2; trail.visible = false; root.add(trail);
-  return { root, bodyRig, armor, limbs, sword, trail, gait: 0 };
+  const pistols = [-1, 1].map(side => {
+    const gun = new THREE.Group(); gun.name = side < 0 ? 'Left repeater' : 'Right repeater';
+    mesh(gun, 'barrel', [.15, .17, .48], [0, 0, -.16], steel);
+    mesh(gun, 'grip', [.12, .23, .14], [0, -.12, .02], dark);
+    mesh(gun, 'chamber', [.18, .12, .16], [0, .08, -.08], armor);
+    const glowMaterial = new THREE.MeshBasicMaterial({ color: '#8ef5ef', side: THREE.BackSide,
+      transparent: true, opacity: .8, depthWrite: false, blending: THREE.AdditiveBlending });
+    const outline = new THREE.Group(); outline.name = 'Empowered repeater outline';
+    for (const piece of [...gun.children]) {
+      const shell = new THREE.Mesh(piece.geometry, glowMaterial);
+      shell.position.copy(piece.position); shell.scale.set(1.18, 1.18, 1.12);
+      outline.add(shell);
+    }
+    outline.visible = false; gun.add(outline); gun.userData.empoweredOutline = outline;
+    bodyRig.add(gun); return gun;
+  });
+  return { root, bodyRig, armor, limbs, sword, pistols, trail, gait: 0 };
 }
 
 export function updatePlayerView(view, player, equipment, dt) {
@@ -103,6 +119,25 @@ export function updatePlayerView(view, player, equipment, dt) {
       view.trail.scale.setScalar(Math.min(1.5, move.range / 1.7));
       view.trail.material.color.set(visual.trailColor ?? '#e7ffa1');
       view.trail.material.opacity = 0.2 + Math.sin(stroke * Math.PI) * 0.5;
+    }
+  }
+  for (const [index, gun] of view.pistols.entries()) {
+    gun.visible = visual?.weaponShape === 'pistols';
+    gun.userData.empoweredOutline.visible = gun.visible && state.empowered > 0;
+    const side = index === 0 ? -1 : 1;
+    gun.position.set(side * .36, state?.sheathed ? -.25 : .51, state?.sheathed ? 0 : -.55);
+    gun.rotation.set(state?.sheathed ? -Math.PI / 2 : 0, 0, 0);
+    if (gun.visible && !state.sheathed) {
+      leftArm.rotation.x = rightArm.rotation.x = Math.PI / 2;
+      if (state.action?.type === 'reload') {
+        gun.rotation.z = side * Math.sin(state.elapsed * Math.PI) * 1.3;
+        gun.position.y -= .15 * Math.sin(state.elapsed * Math.PI);
+        leftArm.rotation.x = rightArm.rotation.x = .7;
+      } else if (state.action?.type === 'heavy') {
+        gun.rotation.y = side * .3 * Math.sin(state.elapsed / 1.1 * Math.PI);
+      } else if (state.action?.type === 'light' && state.action.hand === index) {
+        gun.position.z += .1 * Math.max(0, 1 - state.elapsed / .15);
+      }
     }
   }
   if (player.movementAction === 'dodge') {

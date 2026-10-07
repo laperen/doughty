@@ -42,6 +42,7 @@ export function createBehemothView(scene) {
   const root = new THREE.Group();
   root.name = 'Behemoth prototype';
   const bodyRig = new THREE.Group();
+  bodyRig.scale.setScalar(BEHEMOTH.sizeScale);
   root.add(bodyRig);
   ellipsoid(bodyRig, 'barrel', [1.06, 0.74, 1.62], [0, 1.63, 0], fur);
   ellipsoid(bodyRig, 'chest', [1.08, 0.9, 0.85], [0, 1.68, -0.77], fur);
@@ -120,8 +121,10 @@ export function createBehemothView(scene) {
     attackZone.add(mesh);
   }
   const chargeVolume = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.025, 3.3), attackMaterial);
+  chargeVolume.scale.setScalar(BEHEMOTH.sizeScale);
   chargeVolume.name = 'charge';
   chargeVolume.position.set(0, 0.09, -1.25);
+  chargeVolume.position.z *= BEHEMOTH.sizeScale;
   attackZone.add(chargeVolume);
   root.add(attackZone);
   const tellZone = attackZone.clone();
@@ -146,6 +149,8 @@ export function createBehemothView(scene) {
 }
 
 const poseFor = (state) => {
+  if (state.mode === 'run-out') return { bodyY: 1.02, bodyX: -0.13, neckX: -0.32, headX: -0.25, tailX: -0.15, foreX: 0.42, hindX: -0.38 };
+  if (['run-out-turn', 'turn-back'].includes(state.mode)) return { bodyY: 0.9, bodyX: 0.08, neckX: 0.2, headX: -0.1, tailX: 0.3, foreX: -0.2, hindX: 0.2 };
   if (state.mode === 'defeated') return { bodyY: 0.78, bodyX: 0.23, neckX: 0.42, headX: 0.2, tailX: -0.35, foreX: 0.6, hindX: -0.55 };
   if (state.mode === 'reaction') {
     if (state.move === 'true-stagger') return { bodyY: 0.74, bodyX: -0.08, neckX: -0.42, headX: 0.1, tailX: -0.35, foreX: 0.35, hindX: -0.3 };
@@ -201,7 +206,7 @@ export function updateBehemothView(view, state, dt, visibleCollision = false) {
   view.bodyRig.rotation.z = THREE.MathUtils.lerp(view.bodyRig.rotation.z, roll, blend);
   const sweepTurn = state.move === 'sweep' ? state.mode === 'windup' ? -0.28 : state.mode === 'active' ? 0.45 : 0 : 0;
   view.bodyRig.rotation.y = THREE.MathUtils.lerp(view.bodyRig.rotation.y, sweepTurn, blend);
-  view.bodyRig.scale.y = THREE.MathUtils.lerp(view.bodyRig.scale.y, p.bodyY, blend);
+  view.bodyRig.scale.y = THREE.MathUtils.lerp(view.bodyRig.scale.y, p.bodyY * BEHEMOTH.sizeScale, blend);
   view.bodyRig.rotation.x = THREE.MathUtils.lerp(view.bodyRig.rotation.x, p.bodyX, blend);
   view.neck.rotation.x = THREE.MathUtils.lerp(view.neck.rotation.x, p.neckX, blend);
   view.head.rotation.x = THREE.MathUtils.lerp(view.head.rotation.x, p.headX, blend);
@@ -224,9 +229,9 @@ export function updateBehemothView(view, state, dt, visibleCollision = false) {
   view.hitboxes.tail.position.z = state.parts.tail.broken ? 0.15 : 0.8;
   for (const key of ['leftFore', 'rightFore']) view.bodyRig.userData[key].rotation.x = THREE.MathUtils.lerp(view.bodyRig.userData[key].rotation.x, p.foreX, blend);
   for (const key of ['leftHind', 'rightHind']) view.bodyRig.userData[key].rotation.x = THREE.MathUtils.lerp(view.bodyRig.userData[key].rotation.x, p.hindX, blend);
-  const moving = ['chase', 'circle', 'retreat', 'patrol'].includes(state.mode) || (state.mode === 'active' && state.move === 'charge');
+  const moving = ['chase', 'circle', 'retreat', 'patrol', 'run-out'].includes(state.mode) || (state.mode === 'active' && state.move === 'charge');
   if (moving) {
-    const gait = Math.sin(state.elapsed * (state.move === 'charge' ? 22 : 10)) * 0.45;
+    const gait = Math.sin(state.elapsed * (state.move === 'charge' || state.mode === 'run-out' ? 22 : 10)) * 0.45;
     view.bodyRig.userData.leftFore.rotation.x = gait;
     view.bodyRig.userData.rightFore.rotation.x = -gait;
     view.bodyRig.userData.leftHind.rotation.x = -gait;
@@ -240,6 +245,7 @@ export function updateBehemothView(view, state, dt, visibleCollision = false) {
   const interrupt = isInterruptible(state);
   view.headMarker.visible = interrupt;
   view.headMarker.position.set(0, 2.7 + Math.sin(state.elapsed * 22) * 0.08, -2.3);
+  view.headMarker.position.multiplyScalar(BEHEMOTH.sizeScale);
   view.headMarker.scale.setScalar(0.9 + Math.sin(state.elapsed * 18) * 0.12);
   view.staggerRing.visible = state.mode === 'reaction' && ['interrupt', 'true-stagger'].includes(state.move);
   view.staggerRing.position.set(0, 0.1, 0);
