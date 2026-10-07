@@ -23,7 +23,7 @@ export function createRepeaters({ chamber = SCATTERSHOT, grip = CAPTAIN_GRIP } =
       state.sheathed = value; state.lastEvent = value ? 'Weapon sheathed' : 'Repeaters drawn';
     },
     cancelAction(state) { state.action = null; state.elapsed = 0; },
-    handleAttack(state, input, { autoReload = false } = {}) {
+    handleAttack(state, input, { autoReload = false, idealRange = false, reloadOrigin = null } = {}) {
       if (!['light', 'heavy', 'reload', 'buff'].includes(input) || state.action) return { type: 'input-ignored' };
       if (state.sheathed) {
         if (!['light', 'heavy'].includes(input)) return { type: 'input-ignored' };
@@ -37,6 +37,10 @@ export function createRepeaters({ chamber = SCATTERSHOT, grip = CAPTAIN_GRIP } =
         || input === 'buff' && state.buffCooldown > 0) return { type: 'input-ignored' };
       const duration = input === 'light' ? .35 : input === 'reload' ? 1 : input === 'heavy' ? chamber.duration : grip.duration;
       state.action = { type: input, duration, fired: false, hand: state.hand };
+      if (input === 'reload') {
+        state.action.empoweredReload = idealRange;
+        state.action.reloadOrigin = reloadOrigin;
+      }
       state.elapsed = 0;
       if (input === 'light') { state.ammo--; state.hand = 1 - state.hand; }
       if (input === 'heavy') state.scatterCooldown = chamber.cooldown;
@@ -44,7 +48,7 @@ export function createRepeaters({ chamber = SCATTERSHOT, grip = CAPTAIN_GRIP } =
       state.lastEvent = { light: 'Alternating fire', reload: 'Reloading', heavy: chamber.label, buff: grip.label }[input];
       return { type: input };
     },
-    step(state, dt, { attackSpeedMultiplier = 1, idealRange = false } = {}) {
+    step(state, dt, { attackSpeedMultiplier = 1 } = {}) {
       const events = [];
       for (const key of ['empowered', 'scatterCooldown', 'buffCooldown']) state[key] = Math.max(0, state[key] - dt);
       const action = state.action;
@@ -58,16 +62,16 @@ export function createRepeaters({ chamber = SCATTERSHOT, grip = CAPTAIN_GRIP } =
             pellets: action.type === 'light' ? 1 : chamber.pellets,
             spread: action.type === 'light' ? 0 : chamber.spread,
             verticalSpread: chamber.verticalSpread, hand: action.hand });
-          if (action.type === 'reload' && idealRange) events.push({ type: 'empowered-reload' });
+          if (action.type === 'reload' && action.empoweredReload) events.push({ type: 'empowered-reload', origin: action.reloadOrigin });
           if (action.type === 'buff') events.push({ type: 'buff-mine', definition: grip });
         }
         if (state.elapsed + 1e-8 >= action.duration) {
           if (action.type === 'reload') {
             state.ammo = 12;
-            if (idealRange) {
+            if (action.empoweredReload) {
               state.empowered = REPEATER_TUNING.empoweredDuration;
             }
-            state.lastEvent = idealRange ? 'Empowered reload' : 'Reloaded';
+            state.lastEvent = action.empoweredReload ? 'Empowered reload' : 'Reloaded';
           }
           state.action = null;
         }

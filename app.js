@@ -10,7 +10,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Octree } from 'three/addons/math/Octree.js';
 import { Capsule } from 'three/addons/math/Capsule.js';
 import { ARENA_COLLIDERS, ARENA_SCALE, createPlayerState, resolveWeaponMovement, stepPlayer } from './player-movement.js';
-import { REPEATERS, repeaterFalloff } from './repeaters-weapon.js';
+import { REPEATERS, REPEATER_TUNING, repeaterFalloff } from './repeaters-weapon.js';
 import { STRIKER_SWORD } from './striker-weapon.js';
 import { sweptMeleeContact } from './swept-melee.js';
 import { spendStamina } from './stamina.js';
@@ -677,6 +677,19 @@ function repeaterAim(yawOffset = 0, pitchOffset = 0) {
   return { origin, end: hit?.point ?? origin.clone().addScaledVector(direction, 25),
     distance: hit?.distance ?? Infinity, record: hit && records.find(record => record.mesh === hit.object) };
 }
+function repeaterReloadSource() {
+  scene.updateMatrixWorld(true);
+  const origin = new THREE.Vector3(playerState.position[0], playerState.position[1] + 1.3, playerState.position[2]);
+  let nearest = null;
+  for (const record of projectileTargets) {
+    if (selectedArena === 'range' ? record.kind === 'first-behemoth'
+      : record.kind === 'training-dummy' || !encounterTouchable(behemothState)) continue;
+    const end = new THREE.Box3().setFromObject(record.mesh).clampPoint(origin, new THREE.Vector3());
+    const distance = origin.distanceTo(end);
+    if (distance <= REPEATER_TUNING.idealRange && (!nearest || distance < nearest.distance)) nearest = { end, distance };
+  }
+  return nearest;
+}
 function fireRepeaters(event) {
   for (let i = 0; i < event.pellets; i++) {
     const columns = event.pellets / 2;
@@ -922,10 +935,9 @@ const processWeaponStep = (dt) => {
     if (basicFireHeld && !pressedKeys.has('dodge') && !state.action) handleAttackInput('light');
   }
   const attackSpeedMultiplier = getEffectiveStat(1, 'attackSpeed', playerState.statModifiers);
-  const reloadSource = equipment.definition.kind === 'ranged' ? repeaterAim() : null;
-  const result = equipment.definition.step(state, dt, { attackSpeedMultiplier, idealRange: Boolean(reloadSource?.record && reloadSource.distance <= 8), spend: (amount) => spendStamina(playerState, amount) });
+  const result = equipment.definition.step(state, dt, { attackSpeedMultiplier, spend: (amount) => spendStamina(playerState, amount) });
   for (const event of result.events) {
-    if (event.type === 'empowered-reload') { absorbEmpoweredReload(reloadSource.end); continue; }
+    if (event.type === 'empowered-reload') { absorbEmpoweredReload(new THREE.Vector3().fromArray(event.origin)); continue; }
     if (event.type === 'ranged-shot') { fireRepeaters(event); continue; }
     if (event.type === 'buff-mine') { dropBuffMine(event.definition); continue; }
     // Continuous attacks are resolved along movement and again after enemy travel.
@@ -1085,7 +1097,10 @@ const updateAttackVolume = () => {
 };
 const handleAttackInput = (input) => {
   if (isRecovering(playerState) || playerState.dodgeInputBlock > 0 || !equipment || playerState.movementAction === 'dodge' || playerState.movementAction === 'climb' || (selectedArena !== 'range' && playerState.health <= 0)) return;
-  const result = equipment.definition.handleAttack(equipment.state, input, { attackYaw: getAttackYaw(), autoReload: document.querySelector('#autoReload').checked, spend: (amount) => spendStamina(playerState, amount) });
+  const reloadSource = equipment.definition.kind === 'ranged'
+    && (input === 'reload' || input === 'light' && equipment.state.ammo === 0) ? repeaterReloadSource() : null;
+  const result = equipment.definition.handleAttack(equipment.state, input, { attackYaw: getAttackYaw(), autoReload: document.querySelector('#autoReload').checked,
+    idealRange: Boolean(reloadSource), reloadOrigin: reloadSource?.end.toArray(), spend: (amount) => spendStamina(playerState, amount) });
   if (result.type === 'unsheathed') basicFireHeld = false;
   if (result.type !== 'input-ignored') renderCombatHud();
 };
