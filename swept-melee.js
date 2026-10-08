@@ -4,7 +4,7 @@
  */
 export function sweptMeleeContact(move, yaw, from, to, targetFrom, targetTo = targetFrom, radius = 0, height = 1.5) {
   const local = (origin, target) => {
-    const dx = target[0] - origin[0], dz = target[2] - origin[2];
+    const dx = target[0] - origin[0] + Math.sin(yaw) * (move.originOffset ?? 0), dz = target[2] - origin[2] + Math.cos(yaw) * (move.originOffset ?? 0);
     return [dx * Math.cos(yaw) - dz * Math.sin(yaw), target[1] - origin[1], -dx * Math.sin(yaw) - dz * Math.cos(yaw)];
   };
   const a = local(from, targetFrom), b = local(to, targetTo);

@@ -125,3 +125,6 @@
 .weapon-selection label{font:11px/1.5 var(--mono)}
 .weapon-selection p{margin:8px 0 0;color:var(--muted);font:10px/1.5 var(--mono)}
 @media(max-width:760px){.home-screen .hero-copy{top:96px;bottom:48px}.home-screen .scroll-cue{display:none}}
+
+.resource-status{grid-column:1 / -1;height:20px;transform:none;border-radius:3px}
+.resource-status span{transform:none;font-size:11px}

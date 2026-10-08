@@ -1,3 +1,4 @@
+import { CHAINBLADES_TUNING } from './chainblades-weapon.js';
 import { RECOVERY } from './player-recovery.js';
 import * as THREE from 'three';
 import { attackPose } from './combat-presentation.js';
@@ -55,7 +56,36 @@ export function createPlayerView() {
     outline.visible = false; gun.add(outline); gun.userData.empoweredOutline = outline;
     bodyRig.add(gun); return gun;
   });
-  return { root, bodyRig, armor, limbs, sword, pistols, trail, gait: 0 };
+  const chainblades = [-1, 1].map(side => {
+    const blade = new THREE.Group(); blade.name = side < 0 ? 'Left chain blade' : 'Right chain blade';
+    mesh(blade, 'Handle', [.09, .3, .09], [0, 0, 0], dark);
+    mesh(blade, 'Short blade', [.11, .55, .055], [0, .36, 0], steel);
+    const hook = mesh(blade, 'Hooked edge', [.28, .11, .055], [side * .09, .6, 0], steel);
+    hook.rotation.z = side * .35;
+    const links = new THREE.Group(); links.name = 'Chain links';
+    for (let i = 0; i < 10; i++) {
+      const link = new THREE.Mesh(new THREE.TorusGeometry(.045, .013, 4, 8), steel);
+      link.position.y = -.18 - i * .075; link.rotation.y = i % 2 ? Math.PI / 2 : 0; links.add(link);
+    }
+    blade.add(links); blade.userData.links = links;
+    bodyRig.add(blade); return blade;
+  });
+  // Reused tapered streaks extend behind the dash direction without scaling the hunter.
+  const dashTrail = new THREE.Group(); dashTrail.name = 'Chain Blades dash wake';
+  const dashMaterial = new THREE.MeshBasicMaterial({ color: '#75e5ff', transparent: true,
+    opacity: 0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending });
+  for (let i = 0; i < 6; i++) {
+    const side = i % 2 ? 1 : -1;
+    const height = .3 + Math.floor(i / 2) * .42;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute([
+      side * .32, height, .1, side * .48, height + .08, .3,
+      side * .58, height + .02, 1.4 + (i % 3) * .25,
+    ], 3));
+    dashTrail.add(new THREE.Mesh(geometry, dashMaterial));
+  }
+  dashTrail.visible = false; root.add(dashTrail);
+  return { root, bodyRig, armor, limbs, sword, pistols, chainblades, trail, dashTrail, dashMaterial, gait: 0 };
 }
 
 export function updatePlayerView(view, player, equipment, dt) {
@@ -86,6 +116,7 @@ export function updatePlayerView(view, player, equipment, dt) {
     rightArm.rotation.x -= 0.35; leftArm.rotation.x -= 0.25;
   }
   view.trail.visible = false;
+  view.dashTrail.visible = false;
   if (move && visual) {
     const pose = attackPose(move, state.elapsed);
     const heavy = move.presentation?.weight === 'heavy';
@@ -140,12 +171,75 @@ export function updatePlayerView(view, player, equipment, dt) {
       }
     }
   }
+  for (const [index, blade] of view.chainblades.entries()) {
+    blade.visible = visual?.weaponShape === 'chainblades';
+    if (!blade.visible) continue;
+    const side = index === 0 ? -1 : 1;
+    const spin = move?.presentation?.motion === 'spin';
+    const hand = index === 0 ? leftArm : rightArm;
+    const slam = state.action?.ability === 'air-slam';
+    const parent = spin || slam || state.sheathed ? rig : hand;
+    if (blade.parent !== parent) parent.add(blade);
+    if (slam) {
+      const cast = THREE.MathUtils.clamp((state.elapsed - CHAINBLADES_TUNING.slamWindup) / (CHAINBLADES_TUNING.slamImpact - CHAINBLADES_TUNING.slamWindup), 0, 1);
+      const retract = 1 - THREE.MathUtils.clamp((state.elapsed - .6) / .4, 0, 1);
+      blade.position.set(side * .4, .15 + Math.sin(cast * Math.PI) * 1.4, -.4 - 2.6 * cast * retract);
+    } else if (spin) blade.position.set(side * 1.7, .15, -.55);
+    else if (state.sheathed) blade.position.set(side * .28, -.2, .22);
+    else blade.position.set(0, -.51, -.05);
+    blade.rotation.set(state.sheathed ? 0 : -Math.PI / 2, 0, side * .3);
+    blade.userData.links.scale.y = slam ? Math.max(1, -blade.position.z / .75) : spin ? 2 : 1;
+    if (spin) rig.rotation.y = state.elapsed * Math.PI * 8;
+
+    if (state.airHeight > 0) { leftLeg.rotation.x = -.6; rightLeg.rotation.x = .4; }
+  }
+  if (visual?.weaponShape === 'chainblades' && move) {
+    const ability = state.action.ability;
+    const t = state.elapsed;
+    if (ability === 'push-off') {
+      const rise = THREE.MathUtils.clamp(t / CHAINBLADES_TUNING.pushDuration, 0, 1);
+      rig.rotation.set(.45 * Math.sin(rise * Math.PI), 0, 0);
+      leftArm.rotation.set(-1.2 + rise * .5, 0, -.65);
+      rightArm.rotation.set(-1.2 + rise * .5, 0, .65);
+      leftLeg.rotation.x = -.9; rightLeg.rotation.x = .35;
+      view.trail.visible = false;
+    } else if (ability === 'air-dash') {
+      const dive = Math.sin(THREE.MathUtils.clamp((t - .05) / .5, 0, 1) * Math.PI);
+      rig.rotation.set(-1.05 * dive, 0, 0);
+      leftArm.rotation.set(-1.8 * dive, 0, -.3); rightArm.rotation.set(-1.8 * dive, 0, .3);
+      leftLeg.rotation.x = .45 * dive; rightLeg.rotation.x = -.3 * dive;
+    } else if (ability === 'air-slam') {
+      const spin = THREE.MathUtils.clamp(t / CHAINBLADES_TUNING.slamWindup, 0, 1);
+      const land = THREE.MathUtils.clamp((t - CHAINBLADES_TUNING.slamLanding) / .1, 0, 1);
+      const recover = 1 - THREE.MathUtils.clamp((t - .6) / .4, 0, 1);
+      rig.rotation.set(-Math.PI * 2 * spin - .3 * land * recover, 0, 0);
+      rig.position.y -= .2 * land * recover;
+      leftArm.rotation.set(-2.4 * (1 - land) - .7 * land, 0, -.3);
+      rightArm.rotation.set(leftArm.rotation.x, 0, .3);
+      leftLeg.rotation.x = -.7 * recover; rightLeg.rotation.x = .4 * recover;
+      view.trail.position.set(0, .25, -(move.originOffset ?? 0));
+      view.trail.rotation.set(-Math.PI / 2, 0, 0);
+    } else if (move.presentation?.motion === 'chain-finisher') {
+      const pose = attackPose(move, t);
+      const strike = Math.sin(pose.strike * Math.PI) * (1 - pose.recovery);
+      rig.rotation.y = -.35 * pose.windup * (1 - pose.recovery);
+      leftArm.rotation.set(-1.2 + strike * 1.7, 0, -.25 - strike * .5);
+      rightArm.rotation.set(leftArm.rotation.x, 0, .25 + strike * .5);
+    }
+  }
+  view.root.position.y += state?.airHeight ?? 0;
   if (player.movementAction === 'dodge') {
     const duration = equipment?.definition?.movement?.dodge?.duration ?? 0.62 * (2 / 3);
     const t = THREE.MathUtils.clamp(1 - player.actionTime / duration, 0, 1);
     view.root.rotation.y = Math.atan2(-player.dodgeDirection[0], -player.dodgeDirection[1]);
-    rig.position.y = 0.64; rig.rotation.set(-t * Math.PI * 2, 0, 0);
-    rig.scale.setScalar(0.78); leftLeg.rotation.x = rightLeg.rotation.x = -0.8;
+    const dash = player.dodgeStyle === 'dash';
+    rig.position.y = dash ? .86 : .64;
+    rig.rotation.set(dash ? -.35 : -t * Math.PI * 2, 0, 0);
+    if (!dash) rig.scale.setScalar(.78);
+    view.dashTrail.visible = dash && player.health > 0 && !player.recovery;
+    view.dashMaterial.opacity = .7 * Math.sin(Math.PI * t);
+    view.dashTrail.scale.z = .6 + .6 * Math.sin(Math.PI * t);
+    leftLeg.rotation.x = rightLeg.rotation.x = -0.8;
     leftArm.rotation.x = rightArm.rotation.x = -1.8; view.trail.visible = false;
   } else if (player.movementAction === 'climb') {
     leftArm.rotation.x = rightArm.rotation.x = -2.6; leftLeg.rotation.x = -0.7;

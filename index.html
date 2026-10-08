@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0a0d13" />
-    <meta name="description" content="A 3D graybox arena for prototyping and testing game mechanics." />
+    <meta name="description" content="An AI implementation of Dauntless mechanics." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -33,9 +33,11 @@
           </div>
         <div class="camera-settings weapon-selection" aria-labelledby="weaponSelectionTitle">
           <div id="weaponSelectionTitle" class="settings-heading">WEAPON</div><label for="weaponSelect">Equipped weapon</label>
-          <select id="weaponSelect"><option value="striker-sword">Striker Sword</option><option value="repeaters">Repeaters</option><option value="">Unarmed</option></select>
-          <label><input id="autoReload" type="checkbox" checked> Repeaters: automatic reload</label>
-          <p>Automatic reload starts when firing with an empty magazine.</p>
+          <select id="weaponSelect"><option value="striker-sword">Striker Sword</option><option value="repeaters">Repeaters</option><option value="chainblades">Chain Blades</option><option value="">Unarmed</option></select>
+          <div id="repeatersSettings" hidden>
+            <label><input id="autoReload" type="checkbox" checked> Repeaters: automatic reload</label>
+            <p>Automatic reload starts when firing with an empty magazine.</p>
+          </div>
         </div>
             <div class="camera-settings arena-selection" role="group" aria-labelledby="arenaSelectTitle">
               <div class="settings-heading"><span class="settings-rule"></span><span id="arenaSelectTitle">ARENA</span></div>
@@ -49,7 +51,7 @@
         <div class="home-index"><span id="selectedArenaName">Open Range</span></div>
       </section>
 
-      <div id="repeaterReticle" class="hidden" aria-label="Repeaters range indicator">+</div>
+      <div id="repeaterReticle" hidden aria-label="Repeaters range indicator">+</div>
       <section id="arenaScreen" class="screen arena-screen hidden" aria-label="Arena controls">
         <div class="legacy-readouts" hidden>
         <div class="arena-heading"><p class="eyebrow"><span class="eyebrow-rule"></span> TEST ENVIRONMENT <span class="eyebrow-index">/ 01</span></p><h2>The range<span class="heading-period">.</span></h2></div>

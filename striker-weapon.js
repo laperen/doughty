@@ -14,6 +14,7 @@ export const SURGE_TRAVEL_PROFILE = Object.freeze({ travel: 6, active: 0.16, tra
 export const STRIKER_CRESCENT_SPECIAL = Object.freeze({
   id: 'crescent-projectile',
   label: 'Crescent',
+  kind: 'ranged',
   damage: 100,
   width: 4, // World units across the blade face.
   height: 0.2, // Thin vertical profile.
@@ -32,6 +33,7 @@ export const STRIKER_CRESCENT_SPECIAL = Object.freeze({
     const tangentLength = Math.hypot(...tangent) || 1;
     return {
       id: this.id,
+      kind: this.kind,
       damage: this.damage,
       width: this.width,
       height: this.height,

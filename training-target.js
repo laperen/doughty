@@ -2,14 +2,15 @@
 export const TRAINING_TARGET = Object.freeze({ radius: 1.2, height: 2.1, idleTimeout: 5 });
 
 export function createTrainingState() {
-  return { core: 0, part: 0, stagger: 0, hits: 0, lastHit: 0, elapsed: 0, idle: 0, active: false, recoil: 0 };
+  return { core: 0, part: 0, stagger: 0, wound: 0, hits: 0, lastHit: 0, elapsed: 0, idle: 0, active: false, recoil: 0 };
 }
 
-export function hitTrainingTarget(state, { damage = 0, stagger = 0, periodic = false } = {}) {
+export function hitTrainingTarget(state, { damage = 0, stagger = 0, wound = 0, periodic = false } = {}) {
   if (damage <= 0 && stagger <= 0) return;
   state.core += Math.max(0, damage);
   state.part += Math.max(0, damage);
   state.stagger += Math.max(0, stagger);
+  state.wound += Math.max(0, wound);
   state.lastHit = Math.max(0, damage);
   state.hits += 1;
   state.idle = 0;

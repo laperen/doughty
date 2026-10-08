@@ -1,3 +1,4 @@
+import { createWoundMeter, resolveWound, stepWounds } from './wounds.js';
 import { createTimedMode, activatePendingMode, advanceTimedMode } from './behemoth-states.js';
 
 const SIZE_SCALE = 1.2;
@@ -20,7 +21,7 @@ export const BEHEMOTH = Object.freeze({
     ['leftFore', 'Left front leg', 200], ['rightFore', 'Right front leg', 200],
     ['leftHind', 'Left hind leg', 200], ['rightHind', 'Right hind leg', 200],
     ['horn', 'Horn', 220],
-  ].map(([id, label, health]) => [id, Object.freeze({ label, health })]))),
+  ].map(([id, label, health]) => [id, Object.freeze({ label, health, woundable: id !== 'horn', woundHealth: 120 })]))),
   sizeScale: SIZE_SCALE,
   bodyRadius: 1.15 * SIZE_SCALE,
   bodyHeight: 2.2 * SIZE_SCALE,
@@ -57,7 +58,7 @@ export function createBehemothState() {
     elapsed: 0, pause: 0.65, health: BEHEMOTH.maxHealth,
     stagger: 0, staggerThreshold: BEHEMOTH.maxStagger, trueStaggerCount: 0,
     states: { enrage: createTimedMode(), aetherCharge: createTimedMode() },
-    parts: Object.fromEntries(Object.keys(BEHEMOTH.parts).map(id => [id, { damage: 0, broken: false }])),
+    parts: Object.fromEntries(Object.keys(BEHEMOTH.parts).map(id => [id, { damage: 0, broken: false, ...createWoundMeter(BEHEMOTH.parts[id]) }])),
     chargeCount: 0, closeCount: 0, attackCount: 0, lastMove: null,
     lastRunOutAttackCount: 0, runOutGoal: null, returnCharge: false, chargeDuration: null,
     repositionedAfterAttack: false, lastRetreatAfterCloseCount: -1,
@@ -138,8 +139,9 @@ function startRunOut(state, playerPosition, bounds) {
 }
 
 /** Breaks are recorded independently of the winning reaction, including on lethal hits. */
-export function hitBehemoth(state, { damage = 0, partDamage = damage, stagger = 0, part = 'body', interrupt = false } = {}) {
+export function hitBehemoth(state, { damage = 0, partDamage = damage, stagger = 0, wound = 0, attackerModifiers, part = 'body', interrupt = false } = {}) {
   if (state.mode === 'defeated') return { outcome: 'ignored' };
+  const woundResult = resolveWound(state.parts[part], BEHEMOTH.parts[part], wound, attackerModifiers);
   const trueStagger = state.mode === 'reaction' && state.move === 'true-stagger';
   const meter = state.parts[part];
   const previousDamage = meter?.damage ?? 0;
@@ -153,7 +155,7 @@ export function hitBehemoth(state, { damage = 0, partDamage = damage, stagger = 
   }
   const result = outcome => {
     if (state.mode !== 'defeated') activateEnrage(state);
-    return { outcome, brokenPart, part, partDamage: meter ? meter.damage - previousDamage : 0 };
+    return { ...woundResult, outcome, brokenPart, part, partDamage: meter ? meter.damage - previousDamage : 0 };
   };
   const coreDamage = Math.min(state.health, Math.max(0, damage));
   const enrage = state.states.enrage;
@@ -193,6 +195,7 @@ export function hitBehemoth(state, { damage = 0, partDamage = damage, stagger = 
 
 /** Fixed-step AI. Attack events are resolved by the caller against the player. */
 export function stepBehemoth(state, playerPosition, dt, bounds = 68, { targetKnockedDown = false, canTargetKnockedDownPlayers = state.canTargetKnockedDownPlayers } = {}) {
+  stepWounds(state.parts, dt);
   const events = [];
   if (state.mode === 'defeated') return events;
   for (const mode of Object.values(state.states)) advanceTimedMode(mode, dt);

@@ -1,3 +1,4 @@
+import { getStatModifierRemaining } from './stat-modifiers.js';
 /** Shared arena presentation. Weapon definitions own their resource descriptors. */
 export function createArenaHud(container) {
   const root = document.createElement('div');
@@ -35,7 +36,10 @@ export function createArenaHud(container) {
       root.classList.toggle('sheathed', Boolean(equipment?.state.sheathed));
       root.classList.toggle('unarmed', !equipment);
       root.classList.toggle('down', player.health <= 0);
-      const items = equipment?.definition.getHudResources?.(equipment.state, player) ?? [];
+      resources.style.gridTemplateColumns = `repeat(${equipment?.definition.resourceColumns ?? 3}, 1fr)`;
+      const items = [...(equipment?.definition.getHudResources?.(equipment.state, player) ?? [])];
+      const woundHaste = getStatModifierRemaining(player.statModifiers, 'wound-haste');
+      if (woundHaste > 0) items.push({ id: 'wound-haste', label: 'Wound haste +15%', kind: 'status', glyph: '+15%', value: woundHaste, max: 20, text: `+15% / ${Math.ceil(woundHaste)}s` });
       const layout = JSON.stringify(items.map(({ id, label, kind, glyph }) => ({ id, label, kind, glyph })));
       if (layout !== resourceLayout) {
         resourceLayout = layout;

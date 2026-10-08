@@ -77,10 +77,11 @@ export function createCombatFeedback(scene, container) {
       p.velocity.set((Math.random() - 0.5) * 5, 1 + Math.random() * 3, (Math.random() - 0.5) * 5);
     }
   };
-  const impact = (position, damage, { outcome = 'hit', part = 'body', periodic = false, brokenPart = null } = {}) => {
+  const impact = (position, damage, { outcome = 'hit', part = 'body', periodic = false, brokenPart = null, wounded = false } = {}) => {
     if (outcome === 'ignored') return;
     const style = damageFeedback(outcome, part, periodic);
     if (brokenPart && outcome !== 'part-break') style.label = [style.label, damageFeedback('part-break', brokenPart).label].filter(Boolean).join(' / ');
+    if (wounded) { style.label = [style.label, 'WOUNDED'].filter(Boolean).join(' / '); style.color = '#fa597d'; }
     const label = labels[labelCursor++ % labels.length];
     label.position.set(...position); label.life = label.duration = periodic ? 0.7 : 0.95;
     label.drift = (labelCursor % 3 - 1) * 23;

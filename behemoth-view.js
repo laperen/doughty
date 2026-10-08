@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createEnrageEffect, updateEnrageEffect } from './behemoth-enrage-view.js';
 import { BEHEMOTH, isInterruptible } from './behemoth.js';
 
 const material = (color, emissive = '#000000') => new THREE.MeshStandardMaterial({ color, emissive, roughness: 0.72, metalness: 0.06, flatShading: true });
@@ -110,7 +111,7 @@ export function createBehemothView(scene) {
   root.add(staggerCrown);
   const attackZone = new THREE.Group();
   const attackMaterial = new THREE.MeshBasicMaterial({ color: '#ffcf75', transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide });
-  for (const move of ['claw', 'sweep', 'enrageBurst']) {
+  for (const move of ['claw', 'sweep']) {
     const definition = BEHEMOTH.moves[move];
     const arc = THREE.MathUtils.degToRad(definition.arc);
     const geometry = new THREE.CircleGeometry(definition.reach, 36, Math.PI / 2 - arc / 2, arc);
@@ -132,10 +133,8 @@ export function createBehemothView(scene) {
   const tellMaterial = new THREE.MeshBasicMaterial({ color: '#ffba65', transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false });
   for (const child of tellZone.children) child.material = tellMaterial;
   root.add(tellZone);
-  const burstMaterial = new THREE.MeshBasicMaterial({ color: '#ff334d', transparent: true, opacity: 0.22, depthWrite: false, wireframe: true });
-  const burstSphere = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12), burstMaterial);
-  burstSphere.visible = false;
-  root.add(burstSphere);
+  const enrageEffect = createEnrageEffect(root, BEHEMOTH.moves.enrageBurst.reach);
+  const burstSphere = enrageEffect.burst;
   const headOutline = outlines[0];
   headMarker.rotation.x = 0;
   headMarker.rotation.y = 0;
@@ -145,7 +144,7 @@ export function createBehemothView(scene) {
   root.add(arrivalMotes);
   root.userData.arrivalMotes = arrivalMotes;
   scene.add(root);
-  return { burstSphere, hitboxes, outlines, partMeshes, horn, root, bodyRig, neck, head, tail, headHitbox, headOutline, headMarker, staggerRing, staggerCrown, breakRing, attackZone, tellZone, tellMaterial };
+  return { enrageEffect, burstSphere, hitboxes, outlines, partMeshes, horn, root, bodyRig, neck, head, tail, headHitbox, headOutline, headMarker, staggerRing, staggerCrown, breakRing, attackZone, tellZone, tellMaterial };
 }
 
 const poseFor = (state) => {
@@ -256,11 +255,7 @@ export function updateBehemothView(view, state, dt, visibleCollision = false) {
   view.staggerCrown.position.y = 2.75 + Math.sin(state.elapsed * 6) * 0.08;
   view.breakRing.visible = state.mode === 'reaction' && state.move === 'part-break';
   view.breakRing.position.set(0, 0.11, 0);
-  view.burstSphere.visible = state.move === 'enrageBurst' && state.mode === 'active';
-  if (view.burstSphere.visible) {
-    view.burstSphere.scale.setScalar(BEHEMOTH.moves.enrageBurst.reach);
-    view.burstSphere.material.opacity = 0.3 * (1 - state.elapsed / BEHEMOTH.moves.enrageBurst.active);
-  }
+  updateEnrageEffect(view.enrageEffect, state, BEHEMOTH.moves[state.move]);
   view.tellMaterial.color.set(state.move === 'enrageBurst' ? '#ff334d' : '#ffba65');
   view.attackZone.visible = visibleCollision && state.mode === 'active';
   for (const child of view.attackZone.children) child.visible = child.name === state.move;
