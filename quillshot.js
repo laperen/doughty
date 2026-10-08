@@ -60,8 +60,10 @@ function start(s, move, target) {
   s.activeDuration = move === 'bombardment' && s.states.enrage.active ? 6 : QUILLSHOT.moves[move].active;
   s.nextVolley = 0; s.volleyCount = 0; s.sideReleased = false;
   if (move === 'sideDrop') {
-    s.side = random(s) < 0.5 ? -1 : 1;
-    s.sideTarget = [...(s.queuedMeleeTarget ?? target ?? s.position)];
+    random(s); // Preserve the move-selection RNG sequence used before flank aiming.
+    s.sideTarget = [...(target ?? s.position)];
+    // Choose the nearer flank so the committed turn completes during the tell.
+    s.side = delta(s.yaw, yawTo(s.position, s.sideTarget)) >= 0 ? 1 : -1;
   }
   s.queuedMeleeTarget = null;
 }
@@ -107,7 +109,7 @@ function volley(s, players) {
   }
 }
 function sideVolley(s) {
-  // Back points opposite the grounded flank. Each 60-degree half uses its front/rear pair.
+  // Fire toward the falling flank. Each 60-degree half uses its front/rear pair.
   for (let i = 0; i <= 12; i++) {
     const offset = (-60 + i * 10) * Math.PI / 180;
     const angle = s.yaw + s.side * Math.PI / 2 + offset;
@@ -165,7 +167,7 @@ export function stepQuillshot(s, playerPosition, dt, bounds = 68, options = {}) 
   if (s.mode === 'reaction') { if (s.elapsed >= s.pause) { s.mode = 'idle'; s.pause = 0.4; } return []; }
   if (s.mode === 'windup') {
     if (s.move === 'sideDrop' && s.sideTarget) {
-      const desired = yawTo(s.position, s.sideTarget) + s.side * Math.PI / 2;
+      const desired = yawTo(s.position, s.sideTarget) - s.side * Math.PI / 2;
       s.yaw += Math.max(-dt * 2.5, Math.min(dt * 2.5, delta(s.yaw, desired)));
     } else turn(s, playerPosition, dt);
     if (s.elapsed >= move.tell) {
@@ -216,6 +218,6 @@ export function quillshotAttackTouchesPlayer(s, p) {
   const m = QUILLSHOT.moves[s.move];
   if (s.mode !== 'active' || s.attackHit || !m?.damage || Math.abs(p[1] - s.position[1]) > 2.5 * QUILLSHOT.sizeScale) return false;
   if (s.move === 'sideDrop' && s.elapsed > 0.2) return false;
-  const yaw = s.move === 'sideDrop' ? s.yaw - s.side * Math.PI / 2 : s.yaw;
+  const yaw = s.move === 'sideDrop' ? s.yaw + s.side * Math.PI / 2 : s.yaw;
   return dist(s.position, p) < m.reach * QUILLSHOT.sizeScale + 0.36 && Math.cos(delta(yaw, yawTo(s.position, p))) >= Math.cos(m.arc * Math.PI / 360);
 }
