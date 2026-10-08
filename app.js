@@ -1,3 +1,4 @@
+import { behemothPushOut } from './behemoth-collision.js';
 import { CHAINBLADES } from './chainblades-weapon.js';
 import { createEnvironment } from './environment.js';
 import { createSunShadows } from './sun-shadows.js';
@@ -93,8 +94,8 @@ try {
 } catch {
   // Keep the default FOV when browser storage is unavailable.
 }
-fovValue.value = `${selectedFov}°`;
-fovValue.textContent = `${selectedFov}°`;
+fovValue.value = `${selectedFov}Â°`;
+fovValue.textContent = `${selectedFov}Â°`;
 
 let renderer;
 try {
@@ -428,15 +429,11 @@ const movementCollisionWorld = {
           moved = true;
         }
         if (!phaseEnemies && selectedArena !== 'range' && encounterTouchable(behemothState)) {
-          const dx = capsule.start.x - behemothState.position[0];
-          const dz = capsule.start.z - behemothState.position[2];
-          const distance = Math.hypot(dx, dz);
-          const minimum = radius + BEHEMOTH.bodyRadius;
-          if (distance < minimum && capsule.start.y < BEHEMOTH.bodyHeight) {
-            const nx = distance > 0.001 ? dx / distance : 1;
-            const nz = distance > 0.001 ? dz / distance : 0;
-            capsule.translate(new THREE.Vector3(nx * (minimum - distance + skin), 0, nz * (minimum - distance + skin)));
-            contacts.push([nx, 0, nz]);
+          const push = behemothPushOut(behemothState, [capsule.start.x, capsule.start.y - radius, capsule.start.z], radius, height);
+          if (push) {
+            const length = Math.hypot(...push);
+            capsule.translate(new THREE.Vector3(push[0] * (1 + skin / length), 0, push[1] * (1 + skin / length)));
+            contacts.push([push[0] / length, 0, push[1] / length]);
             corrected = true;
             moved = true;
           }
@@ -471,9 +468,8 @@ const movementCollisionWorld = {
       .find((hit) => hit && hit.depth > 1e-4 && hit.normal.y < 0.65);
     // A capsule resting on a floor or platform is expected to touch it. Treat
     // only penetration into a wall/ceiling as a blocked movement candidate.
-    const bossDistance = Math.hypot(capsule.start.x - behemothState.position[0], capsule.start.z - behemothState.position[2]);
     return Boolean(contact) || dummyBlocked || (selectedArena !== 'range' && encounterTouchable(behemothState)
-      && capsule.start.y < BEHEMOTH.bodyHeight && bossDistance < radius + BEHEMOTH.bodyRadius);
+      && Boolean(behemothPushOut(behemothState, position, radius, height)));
   },
   raycast(origin, direction, distance) {
     movementRaycaster.set(new THREE.Vector3(...origin), new THREE.Vector3(...direction).normalize());
@@ -818,14 +814,14 @@ const renderCombatHud = () => {
     islandStatus.textContent = `${BEHEMOTH.name ?? 'Embermane'} / CINDERWILD ISLE\n${destination.name} / ${distance} m\n${activity}`;
   }
   const state = equipment?.state;
-  combatStatus.textContent = !state ? 'NO WEAPON EQUIPPED' : state.sheathed ? 'SHEATHED · ATTACK TO DRAW' : (state.lastEvent ?? equipment.definition.name).toUpperCase();
+  combatStatus.textContent = !state ? 'NO WEAPON EQUIPPED' : state.sheathed ? 'SHEATHED Â· ATTACK TO DRAW' : (state.lastEvent ?? equipment.definition.name).toUpperCase();
   for (const dot of combatMantraDots?.children ?? []) {
     const filled = Boolean(state?.mantras?.some((slot) => slot.source === dot.dataset.mantraSlot));
     dot.classList.toggle('filled', filled);
     dot.setAttribute('aria-pressed', String(filled));
   }
   const tempestRemaining = getStatModifierRemaining(playerState.statModifiers, 'tempest-form');
-  combatResources.textContent = !state ? 'TEMPEST OFF · SURGE —' : `TEMPEST ${tempestRemaining > 0 ? `${tempestRemaining.toFixed(1)}S` : 'OFF'} · SURGE ${state.surgeReady ? `${(state.surgeAvailabilityRemaining ?? 0).toFixed(1)}S` : '—'}`;
+  combatResources.textContent = !state ? 'TEMPEST OFF Â· SURGE â€”' : `TEMPEST ${tempestRemaining > 0 ? `${tempestRemaining.toFixed(1)}S` : 'OFF'} Â· SURGE ${state.surgeReady ? `${(state.surgeAvailabilityRemaining ?? 0).toFixed(1)}S` : 'â€”'}`;
   if (ranged) combatResources.textContent = `AMMO ${state.ammo}/12 | ${state.action?.type === 'reload' ? 'RELOADING' : 'R RELOAD'} | EMPOWERED ${state.empowered.toFixed(1)}s`;
   if (equipment?.definition === CHAINBLADES) combatResources.textContent = `CHARGE ${state.charge}/100 | RESOURCES ${state.resources}/4`;
   if (!equipment) combatResources.textContent = '';
@@ -846,10 +842,10 @@ const renderCombatHud = () => {
     const stateLabel = behemothState.mode === 'defeated' ? 'BEHEMOTH DEFEATED'
       : playerState.health <= 0 ? 'HUNTER DOWN'
       : behemothState.mode === 'reaction' ? behemothState.move.replaceAll('-', ' ').toUpperCase()
-      : isInterruptible(behemothState) ? 'HEAD OPEN — INTERRUPT NOW'
+      : isInterruptible(behemothState) ? 'HEAD OPEN â€” INTERRUPT NOW'
       : behemothState.mode === 'run-out-turn' ? 'PREPARING TO RUN OUT'
       : behemothState.mode === 'run-out' ? 'RUNNING TO THE PERIMETER'
-      : behemothState.mode === 'turn-back' ? 'TURNING — CHARGE INCOMING'
+      : behemothState.mode === 'turn-back' ? 'TURNING â€” CHARGE INCOMING'
       : behemothState.mode === 'windup' ? `${behemothState.move.toUpperCase()} WINDUP`
       : behemothState.mode === 'observe' ? 'WATCHING THE HUNTER'
       : behemothState.mode === 'circle' ? 'CIRCLING'
@@ -979,12 +975,12 @@ const processWeaponStep = (dt) => {
       if (selectedArena !== 'range') damageBehemoth(event.move.damage, { part: bossPart, stagger: event.move.stagger, wound: event.move.wound, interrupt: event.interrupt });
       else damageTrainingTarget(event.move.damage, { stagger: event.move.stagger, wound: event.move.wound });
       const confirmedEvent = event;
-      if (equipment.definition.onHit?.(state, confirmedEvent) && event.ability === 'karma-breaker') state.lastEvent = 'Karma Breaker · damage over time';
+      if (equipment.definition.onHit?.(state, confirmedEvent) && event.ability === 'karma-breaker') state.lastEvent = 'Karma Breaker Â· damage over time';
     } else if (event.type === 'karma-tick') {
       if (selectedArena !== 'range') damageBehemoth(event.damage, { stagger: event.stagger, periodic: true });
       else damageTrainingTarget(event.damage, { stagger: event.stagger, periodic: true });
     }
-    else if (event.type === 'combo-complete') state.lastEvent = `${event.combo.name} · ${event.combo.mantra} mantra`;
+    else if (event.type === 'combo-complete') state.lastEvent = `${event.combo.name} Â· ${event.combo.mantra} mantra`;
   }
   renderCombatHud();
   return result;
@@ -1365,8 +1361,8 @@ const setScreen = (showArena) => {
 enterButton.addEventListener('click', () => setScreen(true));
 fovSlider.addEventListener('input', () => {
   selectedFov = Number(fovSlider.value);
-  fovValue.value = `${selectedFov}°`;
-  fovValue.textContent = `${selectedFov}°`;
+  fovValue.value = `${selectedFov}Â°`;
+  fovValue.textContent = `${selectedFov}Â°`;
   try {
     localStorage.setItem(fovStorageKey, String(selectedFov));
   } catch {
@@ -1536,6 +1532,9 @@ const animate = () => {
       stepEncounter(movementStep, (bossFrom) => resolveContinuousContacts(
         weaponTick.events, playerState.position, playerState.position, bossFrom,
       ));
+      if (selectedArena !== 'range' && equipment?.state?.action?.move?.phaseEnemies !== true) {
+        playerState.position = movementCollisionWorld.moveCapsule(playerState.position, [0, 0, 0], 0.36, 1.72).position;
+      }
       behemothView.root.position.set(...behemothState.position);
       behemothView.root.rotation.y = behemothState.yaw;
       behemothView.root.updateMatrixWorld(true);
