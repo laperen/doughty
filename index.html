@@ -31,19 +31,7 @@
             <ol class="dictionary-definitions"><li>Brave, determined, and persistent in the face of difficulty.</li></ol>
             <p class="dictionary-synonyms"><span>synonyms:</span> <strong>Dauntless</strong></p>
           </div>
-        <div class="camera-settings weapon-selection" aria-labelledby="weaponSelectionTitle">
-          <div id="weaponSelectionTitle" class="settings-heading">WEAPON</div><label for="weaponSelect">Equipped weapon</label>
-          <select id="weaponSelect"><option value="striker-sword">Striker Sword</option><option value="repeaters">Repeaters</option><option value="chainblades">Chain Blades</option><option value="">Unarmed</option></select>
-          <div id="repeatersSettings" hidden>
-            <label><input id="autoReload" type="checkbox" checked> Repeaters: automatic reload</label>
-            <p>Automatic reload starts when firing with an empty magazine.</p>
-          </div>
-        </div>
-            <div class="camera-settings arena-selection" role="group" aria-labelledby="arenaSelectTitle">
-              <div class="settings-heading"><span class="settings-rule"></span><span id="arenaSelectTitle">ARENA</span></div>
-              <label class="arena-option"><input type="radio" name="arena" value="range" checked><span><strong>Open Range</strong></span></label>
-              <label class="arena-option"><input type="radio" name="arena" value="island"><span><strong>Cinderwild Isle</strong></span></label>
-            </div>
+        <div id="homeLanguageSelection" class="camera-settings"></div>
           <button id="enterButton" class="primary-button">Enter arena <span class="button-icon">&#8599;</span></button>
         </div>
         <div class="hero-side-note"><span class="side-note-line"></span><span>SPIN THE SCENE<br />TO TAKE A LOOK</span></div>
@@ -65,7 +53,12 @@
       </section>
 
       <dialog id="settingsMenu" class="settings-menu" aria-labelledby="settingsTitle">
-        <div class="settings-menu-heading"><h2 id="settingsTitle">Settings</h2><button id="settingsClose" class="menu-button">Close</button></div>
+        <div class="settings-menu-heading"><h2 id="settingsTitle">Menu</h2><button id="settingsClose" class="menu-button">Close</button></div>
+        <div class="menu-tabs" role="tablist" aria-label="Menu categories">
+          <button id="gameplayTab" class="menu-tab" type="button" role="tab" aria-controls="gameplayPanel" aria-selected="true">Gameplay</button>
+          <button id="preferencesTab" class="menu-tab" type="button" role="tab" aria-controls="preferencesPanel" aria-selected="false" tabindex="-1">Settings</button>
+        </div>
+        <div id="preferencesPanel" role="tabpanel" aria-labelledby="preferencesTab" hidden>
             <div class="camera-settings" aria-labelledby="cameraSettingsTitle">
               <div class="settings-heading"><span class="settings-rule"></span><span id="cameraSettingsTitle">CAMERA SETTINGS</span></div>
               <label class="fov-control" for="fovSlider"><span class="fov-label">FOV</span><output id="fovValue" for="fovSlider">70&#176;</output></label>
@@ -113,16 +106,29 @@
           </div>
         </details>
         <div id="feedbackSettings" class="camera-settings"><div class="settings-heading">FEEDBACK</div></div>
+        </div>
+        <div id="gameplayPanel" role="tabpanel" aria-labelledby="gameplayTab">
+        <div id="gameplayWeaponSettings" hidden>
+          <div class="camera-settings weapon-selection" aria-labelledby="weaponSelectionTitle">
+            <div id="weaponSelectionTitle" class="settings-heading">WEAPON</div><label for="weaponSelect">Equipped weapon</label>
+            <select id="weaponSelect"><option value="striker-sword">Striker Sword</option><option value="repeaters">Repeaters</option><option value="chainblades">Chain Blades</option><option value="">Unarmed</option></select>
+            <div id="repeatersSettings" hidden>
+              <label><input id="autoReload" type="checkbox" checked> Repeaters: automatic reload</label>
+              <p>Automatic reload starts when firing with an empty magazine.</p>
+            </div>
+          </div>
+        </div>
         <div id="arenaSettings" hidden>
             <div class="camera-settings arena-selection" role="group" aria-labelledby="settingsArenaSelectTitle">
-              <div class="settings-heading"><span class="settings-rule"></span><span id="settingsArenaSelectTitle">LOCATION</span></div>
-              <label class="arena-option"><input type="radio" name="settings-arena" value="home"><span><strong>Start page</strong></span></label>
+              <div class="settings-heading"><span class="settings-rule"></span><span id="settingsArenaSelectTitle">MAP SELECTION</span></div>
               <label class="arena-option"><input type="radio" name="settings-arena" value="range" checked><span><strong>Open Range</strong></span></label>
               <label class="arena-option"><input type="radio" name="settings-arena" value="island"><span><strong>Cinderwild Isle</strong></span></label>
             </div>
           <button id="goToArenaButton" class="primary-button" disabled>Go to selected location</button>
+          <button id="returnToSettlementButton" class="primary-button">Return to Settlement</button>
           <button id="resetArenaButton" class="weapon-button">RESET ARENA</button>
         
+        </div>
         </div>
       </dialog>
       <div id="loading" class="loading"><span class="loading-mark"></span><span>SETTING THE STAGE</span></div>

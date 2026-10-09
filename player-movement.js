@@ -14,6 +14,7 @@ export const MOVEMENT_CONFIG = Object.freeze({
   facingTurnSpeed: 12,
   jumpSpeed: 7.35,
   gravity: 20,
+  maxSlopeAngle: 50,
   playerRadius: 0.36,
   playerHeight: 1.72,
   maxClimbHeight: 1.35,
@@ -57,6 +58,20 @@ export const ARENA_COLLIDERS = Object.freeze(LOCAL_ARENA_COLLIDERS.map((box) => 
 
 const FLOOR = Object.freeze({ minX: -10 * ARENA_SCALE, maxX: 10 * ARENA_SCALE, minZ: -10 * ARENA_SCALE, maxZ: 10 * ARENA_SCALE, y: -0.025 });
 const MAX_STEP = 1 / 60;
+
+/** Inclusive angle from horizontal, using an upward surface normal. */
+export function isWalkableSlope(normal, config = MOVEMENT_CONFIG) {
+  if (!normal) return true; // Legacy box worlds have flat tops.
+  const magnitude = Math.hypot(...normal);
+  return magnitude > 0 && normal[1] / magnitude >= Math.cos((config.maxSlopeAngle ?? MOVEMENT_CONFIG.maxSlopeAngle) * Math.PI / 180) - 1e-10;
+}
+
+/** Clear walkable ground penetration without a downhill horizontal push. */
+export function slopeContactCorrection(normal, depth, skin = 0.001, config = MOVEMENT_CONFIG) {
+  return isWalkableSlope(normal, config)
+    ? [0, (depth + skin) / normal[1], 0]
+    : normal.map((component) => component * (depth + skin));
+}
 
 export function createPlayerState(position = [0, FLOOR.y, 1.5]) {
   return {
@@ -130,7 +145,7 @@ function moveWithWorld(state, dx, dz, config, world) {
   if (world?.moveCapsule) {
     const result = world.moveCapsule(state.position, [dx, 0, dz], config.playerRadius, config.playerHeight);
     state.position = result.position;
-    const wallContact = result.contacts?.find((normal) => Math.abs(normal[1]) < 0.65);
+    const wallContact = result.contacts?.find((normal) => !isWalkableSlope(normal, config));
     return wallContact ? { normal: wallContact } : null;
   }
   if (!world?.overlapsCapsule) {
@@ -165,7 +180,7 @@ function findClimbTarget(world, state, direction, config) {
   if (!wall || wall.climbable === false || wall.normal?.[1] > 0.45) return null;
   const topOrigin = [wall.point[0] + horizontal[0] * (config.playerRadius + 0.08), state.position[1] + config.maxClimbHeight + 0.08, wall.point[2] + horizontal[2] * (config.playerRadius + 0.08)];
   const down = world.raycast(topOrigin, [0, -1, 0], config.maxClimbHeight + 0.16);
-  if (!down || down.climbable === false || down.normal?.[1] < 0.65) return null;
+  if (!down || down.climbable === false || !isWalkableSlope(down.normal, config)) return null;
   const rise = down.point[1] - state.position[1];
   if (rise < 0.18 || rise > config.maxClimbHeight) return null;
   const destination = [topOrigin[0], down.point[1] + 0.015, topOrigin[2]];
@@ -193,6 +208,7 @@ export function stepPlayer(state, input, delta, {
   colliders = ARENA_COLLIDERS,
   collisionWorld = null,
   floorBounds = FLOOR,
+  fallResetPosition = null,
   weapon = null,
   staminaState = state,
 } = {}) {
@@ -207,7 +223,7 @@ export function stepPlayer(state, input, delta, {
       // Reuse collision/landing integration with all player actions suppressed.
       state.recovery = null;
       stepPlayer(state, { moveX: 0, moveY: 0, cameraYaw: input.cameraYaw ?? 0 }, remaining,
-        { config, colliders, collisionWorld, floorBounds, weapon, staminaState });
+        { config, colliders, collisionWorld, floorBounds, fallResetPosition, weapon, staminaState });
       state.recovery = recovery;
       recovery.elapsed += remaining;
       state.movementAction = 'knockdown';
@@ -377,7 +393,7 @@ export function stepPlayer(state, input, delta, {
         previousY >= platform.top - 0.02 && state.position[1] <= platform.top
         && state.position[0] + config.playerRadius > platform.minX && state.position[0] - config.playerRadius < platform.maxX
         && state.position[2] + config.playerRadius > platform.minZ && state.position[2] - config.playerRadius < platform.maxZ) : null;
-      if (landedPlatform) {
+      if (landedPlatform && isWalkableSlope(landedPlatform.normal, config)) {
         state.position[1] = collisionWorld?.raycast ? landedPlatform.point[1] : landedPlatform.top;
         state.velocity[1] = 0;
         state.grounded = true;
@@ -400,7 +416,7 @@ export function stepPlayer(state, input, delta, {
       }
     } else if (collisionWorld?.raycast) {
       const support = collisionWorld.raycast([state.position[0], state.position[1] + 0.035, state.position[2]], [0, -1, 0], 0.12);
-      if (!support || support.normal?.[1] < 0.65 || Math.abs(support.point[1] - state.position[1]) > 0.08) {
+      if (!support || !isWalkableSlope(support.normal, config) || Math.abs(support.point[1] - state.position[1]) > 0.08) {
         state.grounded = false;
         state.velocity[1] = 0;
       } else {
@@ -425,7 +441,8 @@ export function stepPlayer(state, input, delta, {
   }
 
   if (state.position[1] < config.fallResetY) {
-    state.position = [...state.lastGroundedPosition];
+    state.position = [...(fallResetPosition ?? state.lastGroundedPosition)];
+    state.lastGroundedPosition = [...state.position];
     state.velocity = [0, 0, 0];
     state.groundVelocity = [0, 0];
     state.grounded = true;

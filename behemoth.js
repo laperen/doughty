@@ -1,3 +1,4 @@
+import { applyPartDamage, applyCoreDamage, clearBehemothModes, advanceStaggerThreshold } from './behemoth-damage.js';
 import { createWoundMeter, resolveWound, stepWounds } from './wounds.js';
 import { createTimedMode, activatePendingMode, advanceTimedMode } from './behemoth-states.js';
 
@@ -143,32 +144,16 @@ export function hitBehemoth(state, { damage = 0, partDamage = damage, stagger = 
   if (state.mode === 'defeated') return { outcome: 'ignored' };
   const woundResult = resolveWound(state.parts[part], BEHEMOTH.parts[part], wound, attackerModifiers);
   const trueStagger = state.mode === 'reaction' && state.move === 'true-stagger';
-  const meter = state.parts[part];
-  const previousDamage = meter?.damage ?? 0;
-  let brokenPart = null;
-  if (meter && !meter.broken) {
-    meter.damage = Math.min(BEHEMOTH.parts[part].health, meter.damage + Math.max(0, partDamage));
-    if (meter.damage >= BEHEMOTH.parts[part].health) {
-      meter.broken = true;
-      brokenPart = part;
-    }
-  }
+  const { brokenPart, partDamage: appliedPartDamage } = applyPartDamage(state, BEHEMOTH, part, partDamage);
   const result = outcome => {
     if (state.mode !== 'defeated') activateEnrage(state);
-    return { ...woundResult, outcome, brokenPart, part, partDamage: meter ? meter.damage - previousDamage : 0 };
+    return { ...woundResult, outcome, brokenPart, part, partDamage: appliedPartDamage };
   };
-  const coreDamage = Math.min(state.health, Math.max(0, damage));
-  const enrage = state.states.enrage;
-  // Fresh damage builds each inactive cycle; active-phase damage is not banked.
-  if (!enrage.active && !enrage.pending) {
-    enrage.buildup += coreDamage;
-    enrage.pending = enrage.buildup >= BEHEMOTH.maxHealth * BEHEMOTH.states.enrage.damageFraction;
-  }
-  state.health = Math.max(0, state.health - Math.max(0, damage));
+  applyCoreDamage(state, BEHEMOTH, damage);
   state.flash = 0.16;
   if (state.health === 0) {
     state.mode = 'defeated'; state.move = null; state.elapsed = 0; state.lastOutcome = 'defeated';
-    for (const mode of Object.values(state.states)) { mode.active = false; mode.pending = false; mode.remaining = 0; }
+    clearBehemothModes(state);
     return result('defeated');
   }
   if (!trueStagger) {
@@ -176,9 +161,7 @@ export function hitBehemoth(state, { damage = 0, partDamage = damage, stagger = 
   }
   // True stagger, interrupt, and part break each own a separate reaction.
   if (state.stagger >= state.staggerThreshold) {
-    state.stagger = 0;
-    state.trueStaggerCount += 1;
-    state.staggerThreshold = BEHEMOTH.maxStagger * BEHEMOTH.staggerThresholdMultiplier ** state.trueStaggerCount;
+    advanceStaggerThreshold(state, BEHEMOTH.maxStagger, BEHEMOTH.staggerThresholdMultiplier);
     react(state, 'true-stagger', BEHEMOTH.staggerDuration);
     return result('true-stagger');
   }

@@ -1,0 +1,2068 @@
+{
+  "format": "storynodes-runtime",
+  "formatVersion": 1,
+  "project": {
+    "id": "39f52b5a-e913-41c9-a1b8-007880f94963",
+    "scheduleBindingModelVersion": 1,
+    "text": {
+      "39f52b5a-e913-41c9-a1b8-007880f94963": {
+        "value": "Doughty"
+      },
+      "4ee4b3dc-8b24-494f-9424-9ee567517082": {
+        "value": "Time"
+      },
+      "f1f6da40-1e37-49d6-a8f6-f4d4baa1dcc1": {
+        "value": "Core Stats"
+      },
+      "118e8624-167f-4af1-92ab-d6eead7f50a5": {
+        "value": "Active"
+      },
+      "03c2334d-05a6-4a9d-bc9f-8f1726324449": {
+        "value": "Gregorian"
+      },
+      "1d5b4669-d0f7-4a8f-9383-44a9c95d02fb": {
+        "value": "Year"
+      },
+      "86608a8a-a1cc-472b-bb81-07f393b5c63a": {
+        "value": "Week"
+      },
+      "7b3bbb34-06b9-4631-aebe-64fbc2e6b09d": {
+        "value": "Month"
+      },
+      "66a700cb-c162-4922-863d-fcc3c3ca46b2": {
+        "value": "Day"
+      },
+      "8fd278b9-832a-427e-b079-0da5dd8b2d92": {
+        "value": "January"
+      },
+      "d81ea09b-4da8-4617-b435-0747692b303c": {
+        "value": "February"
+      },
+      "60d1258b-9d1c-4b93-9b7a-047349b3f3f6": {
+        "value": "March"
+      },
+      "a78aa0a4-ec6b-47c8-a327-96831a56a488": {
+        "value": "April"
+      },
+      "f12cb86e-b8df-424a-b76e-118dae034e68": {
+        "value": "May"
+      },
+      "f8c165f7-23f3-4332-9849-2f8284fbcab3": {
+        "value": "June"
+      },
+      "48783ee4-8d34-4d5c-83e8-7a111aa7d412": {
+        "value": "July"
+      },
+      "81e15055-df38-49e3-9c85-0c1e4ca36139": {
+        "value": "August"
+      },
+      "4d90dce1-ffc7-4c84-a626-87ffd160043a": {
+        "value": "September"
+      },
+      "2b2af635-c343-4d22-a050-c61a7a78d5e7": {
+        "value": "October"
+      },
+      "90feecb5-fe2c-46db-a18c-33cb261848d2": {
+        "value": "November"
+      },
+      "839f3491-89bc-44b8-bc37-5445fe246999": {
+        "value": "December"
+      },
+      "8108b8ee-1f70-4958-b2bc-4b9a4bd42fd9": {
+        "value": "Sunday"
+      },
+      "56b6200c-0035-4578-9af2-38980bae9ab0": {
+        "value": "Monday"
+      },
+      "e8ec1d93-05a2-475b-9e3e-05f780e68d15": {
+        "value": "Tuesday"
+      },
+      "ac2a2a63-1c26-4340-8ca5-4ae3be333e1a": {
+        "value": "Wednesday"
+      },
+      "20d099ad-2317-4164-97b7-6f7c5edf2569": {
+        "value": "Thursday"
+      },
+      "852c5967-9228-432d-90af-210f8223b942": {
+        "value": "Friday"
+      },
+      "e36bb88e-f9c0-4c88-b31b-317c81441196": {
+        "value": "Saturday"
+      },
+      "c6a10ecd-f1f0-45b3-814d-eae384205ee8": {
+        "value": "Morning"
+      },
+      "80061176-dec6-4be7-a6d0-a95f30005ed4": {
+        "value": "Afternoon"
+      },
+      "492c040b-9a9a-4a60-9624-d61cf3bdb76a": {
+        "value": "Night"
+      },
+      "d7a92efc-c62b-4467-bb6d-2bd5512ed46e": {
+        "value": "Old Emberwatch"
+      },
+      "412a0cf5-2746-40e7-bfcf-8adb5e422469": {
+        "value": "Open Range"
+      },
+      "71d642cf-1562-4a25-b467-acd81e6e74a6": {
+        "value": "Cinderwild Isle"
+      },
+      "031d58e5-97bb-41e9-ac2d-fbf8db8a0d76": {
+        "value": "Ash Hollow"
+      },
+      "0c2733d0-ca49-49bc-be4b-2db515ccabe4": {
+        "value": "Crown Basin"
+      },
+      "2927a604-ec45-45e2-a0e8-4014a6774a2a": {
+        "value": "Striker Sword"
+      },
+      "600ea7ea-5045-4803-b118-1f4ab72c76bf": {
+        "value": "Repeaters"
+      },
+      "a1f3b460-5c1f-4150-8565-bcf8cf91b0e4": {
+        "value": "Chain Blades"
+      },
+      "88f5b91e-e1ca-4d3d-8b0d-8ecf452c13f4": {
+        "value": "Focused Assault"
+      },
+      "5d3498d7-4eef-4010-a57a-8aa72b04695c": {
+        "value": "Spirit Barrage"
+      },
+      "0218e254-ff60-49e6-af85-9b8f17ac65bd": {
+        "value": "Mighty Squall"
+      },
+      "acff47ce-e952-4dbd-a803-2f908e5c7eff": {
+        "value": "Tempest Form"
+      },
+      "5a5b71ed-4a64-4714-89fc-8f1b422c57ae": {
+        "value": "Karma Breaker"
+      },
+      "2acb57bf-2ab9-4afc-8718-34d6cb9e6f43": {
+        "value": "Crescent"
+      },
+      "cc1431bc-c33d-44e3-b216-61f2be6e7747": {
+        "value": "Surge"
+      },
+      "ea04372d-c786-441b-889d-40b9d806704c": {
+        "value": "Focus"
+      },
+      "e879496b-3ac0-43fe-ac61-82c4e75023dc": {
+        "value": "Spirit"
+      },
+      "51716922-90e4-4ba4-b498-bb9090618fc4": {
+        "value": "Might"
+      },
+      "75fbd219-eee6-40b1-b0a8-7a28784190b4": {
+        "value": "Embermane"
+      },
+      "397fc8c3-7f8a-47d4-950e-c1de79589dd3": {
+        "value": "Quillshot"
+      },
+      "2a56a7c5-aa13-48a0-aa38-4947d28c2539": {
+        "value": "CINDERWILD ISLE"
+      },
+      "3f05e223-264d-49c2-a36b-601e80aec5ce": {
+        "value": "STRIKER SWORD"
+      },
+      "d50f6f26-8c83-46ae-91f8-a2476b8e8766": {
+        "value": "TEMPEST"
+      },
+      "d3d914ca-0658-4ca5-bbc0-9df2331fc75f": {
+        "value": "SURGE"
+      },
+      "5aed909b-906d-4f55-a01b-1a112e2528bb": {
+        "value": "An AI implementation of Dauntless mechanics."
+      },
+      "ac1fc535-d6d3-48bc-8362-83640368aea2": {
+        "value": "Interactive 3D preview of the mechanics test arena"
+      },
+      "a5cc2ab0-997f-4fca-bcd3-14a3435ea5cb": {
+        "value": "Settings"
+      },
+      "eb83448b-7af5-4193-a3d3-2968657500e0": {
+        "value": "/ˈdaʊti/"
+      },
+      "8ce05537-39f8-4afb-b45a-2a799a638648": {
+        "value": "Definition of doughty"
+      },
+      "7923c4e5-0fbe-4d50-9192-13758257e21f": {
+        "value": "adjective"
+      },
+      "66c5a0b0-11e3-4957-a1b7-a2f1b6e8d7ce": {
+        "value": "Brave, determined, and persistent in the face of difficulty."
+      },
+      "f1515bd1-9fc6-47ce-b576-63fa4a13708d": {
+        "value": "synonyms:"
+      },
+      "d7f5992f-1b39-42ff-b718-d8a1cb321aa0": {
+        "value": "Dauntless"
+      },
+      "7c541204-3f18-4392-8ac1-5212eb93e908": {
+        "value": "WEAPON"
+      },
+      "c05674a9-be37-4999-a0ae-7e6358b14f67": {
+        "value": "Equipped weapon"
+      },
+      "f5462e8f-7143-40d9-9f08-8adde6b8658c": {
+        "value": "Unarmed"
+      },
+      "245ed94d-ad1b-4926-b221-0fe6f6fc4b27": {
+        "value": "{{name:600ea7ea-5045-4803-b118-1f4ab72c76bf}}: automatic reload"
+      },
+      "d3eb8641-0365-4653-bd5f-10cacb87a42f": {
+        "value": "Automatic reload starts when firing with an empty magazine."
+      },
+      "deb0dfcd-ddfa-4350-b5ad-09d968badf6c": {
+        "value": "ARENA"
+      },
+      "b0b2916e-dbaf-4465-9a68-a1cea8db9f69": {
+        "value": "Start Game"
+      },
+      "63180d2a-6908-464a-90f2-1685feb9d3a5": {
+        "value": "SPIN THE SCENE"
+      },
+      "c80dff08-84e4-4455-8426-cacf51e61e03": {
+        "value": "TO TAKE A LOOK"
+      },
+      "e73d1d50-a80c-4748-97d6-6148b27e134e": {
+        "value": "DRAG TO ORBIT"
+      },
+      "3f057c4d-7df5-4eac-9d13-70f59209f13c": {
+        "value": "{{name:600ea7ea-5045-4803-b118-1f4ab72c76bf}} range indicator"
+      },
+      "b51b06b5-0b7f-4737-b203-0312a3c45b93": {
+        "value": "Arena controls"
+      },
+      "e7cd664b-4672-48f6-bf18-35f9253250bd": {
+        "value": "TEST ENVIRONMENT"
+      },
+      "835ce2c8-b2b3-46bd-8c1a-b591c577af87": {
+        "value": "The range"
+      },
+      "924ed924-8a73-4758-9669-1e3338b8db2b": {
+        "value": "MOVEMENT TEST"
+      },
+      "38688582-9626-4f1e-932f-d255aa5eb0cc": {
+        "value": "STAMINA"
+      },
+      "4f0567a3-d092-4198-bfa2-f62867668372": {
+        "value": "Stamina"
+      },
+      "04f81466-af07-4f0b-81ae-f6d2e9d01958": {
+        "value": "EQUIPPED WEAPON"
+      },
+      "7fa41489-2a1e-48fe-8088-21dedd71e891": {
+        "value": "SHEATHED - ATTACK TO DRAW"
+      },
+      "150c7a4d-fe74-4b33-b5f4-b78cff0cdf87": {
+        "value": "MANTRA"
+      },
+      "8ff650ce-baf7-448b-9213-5fcf92dd7ca6": {
+        "value": "Mantra slots"
+      },
+      "95ec5368-3c16-40b6-9a3b-431c7ae9faf3": {
+        "value": "{{name:88f5b91e-e1ca-4d3d-8b0d-8ecf452c13f4}} Mantra slot"
+      },
+      "3e90c77b-45ff-4c16-baa4-24afc686986e": {
+        "value": "{{name:5d3498d7-4eef-4010-a57a-8aa72b04695c}} Mantra slot"
+      },
+      "e8b61ba0-a69c-4c71-9eeb-19d683a40f47": {
+        "value": "{{name:0218e254-ff60-49e6-af85-9b8f17ac65bd}} Mantra slot"
+      },
+      "b0a9a89c-b0b1-43df-86d5-4b1129661125": {
+        "value": "HOLD LMB - FIRE / RMB - SCATTERSHOT"
+      },
+      "c2224ba0-f8b6-4e30-b7f9-aec4dbc32ab7": {
+        "value": "R - RELOAD / Q - HASTE MINE / X - SHEATHE"
+      },
+      "97459d72-0a92-414a-8eff-b3b727f557be": {
+        "value": "{{name:d50f6f26-8c83-46ae-91f8-a2476b8e8766}} OFF - {{name:d3d914ca-0658-4ca5-bbc0-9df2331fc75f}}"
+      },
+      "8ffe1617-81e4-4505-93ea-c701b000bb80": {
+        "value": "TRAINING TARGET 1000 / 1000"
+      },
+      "2dc09d9f-9f9e-4c72-b1f5-ec7875669552": {
+        "value": "CONTROLS"
+      },
+      "2a716a22-ac12-4b64-a837-e46d25e3a341": {
+        "value": "MOUSE LOOK - ALT FOR CURSOR - ESC SETTINGS"
+      },
+      "0517829c-e889-44b8-9cab-966e54b69fb2": {
+        "value": "WASD MOVE - SHIFT SPRINT - F JUMP - SPACE DODGE"
+      },
+      "7e8a5e58-590b-4427-a771-727eee3ef9bb": {
+        "value": "LMB LIGHT - RMB HEAVY - Q / HOLD Q ABILITY - X SHEATHE"
+      },
+      "13a4e37b-26f1-4c23-b5d2-8cd2b494d0bd": {
+        "value": "LLL FOCUSED - LHH SPIRIT - HHH MIGHTY"
+      },
+      "2331e88b-a20f-40ce-a4db-1a3706115d86": {
+        "value": "ENCLOSED RANGE"
+      },
+      "56a144e5-3743-452c-b5ec-1cef903334c2": {
+        "value": "OPEN APPROACH"
+      },
+      "4ddc59b6-1d0c-495c-86e9-7386729f12e7": {
+        "value": "Menu"
+      },
+      "f8b94cbc-9a82-41b7-adb0-a1ab152c9b4b": {
+        "value": "Close"
+      },
+      "3a8d9774-cd72-4e4b-b1a8-2833d50f42b5": {
+        "value": "Menu categories"
+      },
+      "cadb6944-49f8-4bee-a8ae-82ebacfd4e67": {
+        "value": "Gameplay"
+      },
+      "cbae8465-4eaf-4d43-a5d0-e263485c3651": {
+        "value": "Settings"
+      },
+      "203aec7f-8024-4d85-a56a-260c3b27aaf4": {
+        "value": "CAMERA SETTINGS"
+      },
+      "f077d6ce-4306-49b1-b152-d48559db0dda": {
+        "value": "FOV"
+      },
+      "7716eeb4-87a7-4e06-892c-4e9207eaf0d3": {
+        "value": "Field of view"
+      },
+      "e5cac6e5-5cd6-4def-bd62-e0f2fb90e5eb": {
+        "value": "VISUALS"
+      },
+      "2cb5d683-0de0-482f-9ff0-6b31a839854c": {
+        "value": "Shadow quality"
+      },
+      "cfecf898-33fe-40ac-9def-883028d3fed5": {
+        "value": "0 — Off"
+      },
+      "e1bab95c-df9b-4dd9-a7cc-c70520dd0b3a": {
+        "value": "512 — Low"
+      },
+      "e7100e4f-56c3-47fa-a467-a63b950437f4": {
+        "value": "1024 — Medium"
+      },
+      "901c80a4-2f1c-49bb-a615-29b4727e2d33": {
+        "value": "2048 — High"
+      },
+      "61add370-fb25-4fc0-b152-f958462b9e10": {
+        "value": "Applies immediately. Higher quality costs more performance."
+      },
+      "2ca9f086-b228-4e14-8956-9432f69f7a08": {
+        "value": "Visible collision"
+      },
+      "c0dbb19c-7304-44bb-a1bc-ec6cb6db2ee4": {
+        "value": "Show collision volumes"
+      },
+      "db46a9f4-f0f2-486b-aec1-43fd0ae572b5": {
+        "value": "ENVIRONMENT"
+      },
+      "38836514-f51f-4060-b6a6-7ddd0748fa31": {
+        "value": "Upper sky"
+      },
+      "68f15ad3-5b85-4f12-a862-e550c067e3ca": {
+        "value": "Horizon and haze"
+      },
+      "0e4e618d-0e78-4395-a865-753aad159a48": {
+        "value": "Sun direction"
+      },
+      "341c82a4-afd7-4270-8751-3c3888da596d": {
+        "value": "Sun brightness"
+      },
+      "3c0a8418-088b-4c8a-bc2f-571e362c614d": {
+        "value": "Ambient brightness"
+      },
+      "a613f818-0a9c-4ca0-9d8f-aa9a4d8c6296": {
+        "value": "Cloud coverage"
+      },
+      "7110f23b-f3ea-4e01-bb30-0fe16dcc8f0f": {
+        "value": "Wind speed"
+      },
+      "18637ff9-114c-409e-a05b-ace596433936": {
+        "value": "Wind direction"
+      },
+      "b753a1ec-c54b-443b-be94-c3fdfaceeab8": {
+        "value": "Travel toward: 0? north ? 90? east ? 180? south ? 270? west"
+      },
+      "ea22a440-fc5e-489f-9c52-cb6a2812429d": {
+        "value": "Fog strength"
+      },
+      "d3b283c2-9a78-4e7a-b505-bdd6b093b84c": {
+        "value": "Reset environment"
+      },
+      "954b24b3-437e-492b-ba0e-cf0a53d7fccb": {
+        "value": "FEEDBACK"
+      },
+      "f404a3c2-f515-42ca-8631-2dd41ddfaf63": {
+        "value": "MAP SELECTION"
+      },
+      "8131045a-ef87-4682-ab47-fbf2da79adfe": {
+        "value": "Go to selected location"
+      },
+      "9f19b5d3-d462-4a20-b243-949b042f3e4a": {
+        "value": "Return to Settlement"
+      },
+      "099333ef-9801-4edc-b2d7-18d0a17bd7cc": {
+        "value": "RESET ARENA"
+      },
+      "82075edb-ac6e-4b59-a9bb-d5bd739c3ffd": {
+        "value": "SETTING THE STAGE"
+      },
+      "d2051ab6-97fe-493e-ab61-09aab58e1520": {
+        "value": "3D preview requires WebGL and a connection to load Three.js."
+      },
+      "f53cb860-03c1-4653-9c57-d1daab4f01fb": {
+        "value": "Arena travel"
+      },
+      "aff2af5b-f1de-4637-8c94-5dd8f1f9bd35": {
+        "value": "Settlement guide"
+      },
+      "26a0d6f5-997b-4a94-9f10-fc6e119fc997": {
+        "value": "Settlement guide interaction"
+      },
+      "fa76e5d7-838f-4798-8965-b5cfd9bd7360": {
+        "value": "Settlement guide greeting"
+      },
+      "c7aaf354-c904-4cdd-9ec7-f948ff794f01": {
+        "value": "Welcome to {{name:d7a92efc-c62b-4467-bb6d-2bd5512ed46e}}. The market lanes climb around the old inn to the watchtower courtyard. Cross the western stream to explore the bridge quarter, visit the smithy behind the travel board, or meet the weapon masters on either side of the arrival square."
+      },
+      "8d979699-b072-4963-a5f6-ef457f418efa": {
+        "value": "Weapon smith"
+      },
+      "a37cf105-2db6-4a6b-a528-0a0b48bc75ce": {
+        "value": "Weapon smith interaction"
+      },
+      "22b8bcdd-98b5-4e36-b5a4-0833dd2644f7": {
+        "value": "Weapon smith greeting"
+      },
+      "eaf45cc2-4c63-45a9-a8b3-c8efd47d1523": {
+        "value": "The smith will craft and upgrade weapons using the parts you accumulate in the hunting grounds. Crafting is not available in this mockup."
+      },
+      "cde12e45-e65f-4625-bfe1-070ab2f6920e": {
+        "value": "Armorer"
+      },
+      "06ced90e-faee-4030-a3d8-f91d97557844": {
+        "value": "Armorer interaction"
+      },
+      "1faeb5ad-1e78-49b4-978e-d026c7b415ed": {
+        "value": "Armorer greeting"
+      },
+      "a2d4aefa-1831-4913-8b0d-75e70b310dd3": {
+        "value": "The armorer will turn your gathered parts into armor and upgrades. Armor progression is not available in this mockup."
+      },
+      "763037bb-358e-4f3b-804f-0850281a4ecd": {
+        "value": "Potion maker"
+      },
+      "9152e3de-4c9c-4aee-bf66-9832862bc2f2": {
+        "value": "Potion maker interaction"
+      },
+      "ca7db522-22d3-4282-b701-b6032e7d8e8c": {
+        "value": "Potion maker greeting"
+      },
+      "7979e781-c28b-4080-a611-c5599ea859c3": {
+        "value": "Herbs, bottles and remedies are prepared here for hunters and arriving survivors. Potion crafting is not available in this mockup."
+      },
+      "122cdecf-c587-4e26-a585-3bd00085977d": {
+        "value": "{{name:2927a604-ec45-45e2-a0e8-4014a6774a2a}} master"
+      },
+      "63d0febb-7d01-4dc7-ae8a-7039d2e630d3": {
+        "value": "Striker Sword master interaction"
+      },
+      "6b4e949b-60f1-48bd-a6de-b97bc389e2aa": {
+        "value": "Striker Sword master greeting"
+      },
+      "fc5c9386-ea08-4d15-8fa8-d7e0203e9269": {
+        "value": "Practice {{name:88f5b91e-e1ca-4d3d-8b0d-8ecf452c13f4}} (LLL), {{name:5d3498d7-4eef-4010-a57a-8aa72b04695c}} (LHH), and {{name:0218e254-ff60-49e6-af85-9b8f17ac65bd}} (HHH) in {{name:412a0cf5-2746-40e7-bfcf-8adb5e422469}}. Each completed combo earns its own Mantra."
+      },
+      "bb27f66b-3f66-4cfd-81f5-398c68092df9": {
+        "value": "{{name:600ea7ea-5045-4803-b118-1f4ab72c76bf}} master"
+      },
+      "73ec16c5-478f-429c-8a0e-60156232fa2c": {
+        "value": "Repeaters master interaction"
+      },
+      "6a645de8-a45a-42ae-b9e3-adf2bc4fdf5c": {
+        "value": "Repeaters master greeting"
+      },
+      "bd0d52b0-13f2-41a4-915c-bd16b307953e": {
+        "value": "{{name:600ea7ea-5045-4803-b118-1f4ab72c76bf}} reward close positioning: reload near your target for empowered shots. {{name:412a0cf5-2746-40e7-bfcf-8adb5e422469}} is available for practice."
+      },
+      "de8e34e5-d91b-4f1b-8026-f8d4edf9d6d2": {
+        "value": "{{name:a1f3b460-5c1f-4150-8565-bcf8cf91b0e4}} master"
+      },
+      "a4789a9c-19f7-496b-ad7a-7127fdd44746": {
+        "value": "Chain Blades master interaction"
+      },
+      "13602413-0a14-4e30-a7f6-09acd2d05bec": {
+        "value": "Chain Blades master greeting"
+      },
+      "e8b82a35-bf5d-4f6c-892f-bcc3a1e22ae1": {
+        "value": "Use heavy strikes to wound, hits to build resources, and Q to push off before an airborne return or slam. Practice in {{name:412a0cf5-2746-40e7-bfcf-8adb5e422469}}."
+      },
+      "5c88d8ad-5cf6-41a3-8c6c-df2f5cffcb6b": {
+        "value": "Reserved training station"
+      },
+      "07c62e00-39e7-4557-b4da-7e865fb5b2e7": {
+        "value": "Reserved training station interaction"
+      },
+      "82f900eb-ea1a-45a8-903c-3c7f0fc25d5e": {
+        "value": "Reserved training station greeting"
+      },
+      "8c27c149-0770-4516-a758-cfdbc895f210": {
+        "value": "A station reserved for a future weapon master. Three weapons currently have masters in {{name:d7a92efc-c62b-4467-bb6d-2bd5512ed46e}}."
+      },
+      "5eb89e82-b717-4a1e-a000-e41f17f15be9": {
+        "value": "Arriving survivor"
+      },
+      "57249d8a-60f5-4874-98eb-157339f1d24a": {
+        "value": "Arriving survivor interaction"
+      },
+      "78bb44e9-f20c-4252-b40b-598c8db5c79b": {
+        "value": "Arriving survivor greeting"
+      },
+      "b9e1f2cb-ebec-4170-aa3f-9b15ad9e769a": {
+        "value": "A Behemoth destroyed our settlement. We brought what we could carry. Refugees will arrive on and off with requests for help; quests are not available in this mockup."
+      },
+      "120c7c82-56a9-4c1e-a86a-cef13e97ef04": {
+        "value": "Hunting grounds / training"
+      },
+      "712d398d-1fff-4fbd-9dc1-0bf9551596f8": {
+        "value": "Hunting grounds / training interaction"
+      },
+      "6558d63e-b797-4a06-ba69-9cb7c155e47e": {
+        "value": "Hunting grounds / training greeting"
+      },
+      "93d9b9a5-8930-4121-8bbe-78a2948e6a74": {
+        "value": "Choose {{name:71d642cf-1562-4a25-b467-acd81e6e74a6}} to enter the hunting grounds, or {{name:412a0cf5-2746-40e7-bfcf-8adb5e422469}} to train. Hunting grounds support continuing encounters until you choose to return."
+      },
+      "bb3bdf89-00d9-4b87-914b-f3401d881047": {
+        "value": "OpenTravelSettings"
+      },
+      "5b737e09-c15f-4851-8a39-0ebee7d1755d": {
+        "value": "Island encounter"
+      },
+      "dc22b57d-6727-4ece-adc8-580636b76321": {
+        "value": "Close"
+      },
+      "b1e1a914-e3c1-468a-b0ab-4814da03dee0": {
+        "value": "Hunting Board"
+      },
+      "9a8599f6-8770-4300-a6c3-8798d26b0bcf": {
+        "value": "Sound"
+      },
+      "03e28b97-f824-4a6f-964e-6b1c285bce18": {
+        "value": "Camera shake"
+      },
+      "75520fe5-77fe-4825-a9ff-4d6450d680bc": {
+        "value": "ALT HELD / FREE CURSOR"
+      },
+      "59d3b179-c663-4eec-9536-27f5c11235ca": {
+        "value": "MOUSE LOOK / ALT FOR CURSOR / ESC SETTINGS"
+      },
+      "7b256c42-fc61-4594-b8ed-bc0b4742e09e": {
+        "value": "CLICK TO RESUME CAMERA"
+      },
+      "46d040f3-3239-41d3-ba5c-c53476264ea2": {
+        "value": "EQUIP {{name:3f05e223-264d-49c2-a36b-601e80aec5ce}}"
+      },
+      "8d51d472-af4a-4274-86a9-9a22dd916f1a": {
+        "value": "Defeated / a new hunt is forming"
+      },
+      "1b7a30f5-15c5-4d92-bc86-8a6b58b9bee5": {
+        "value": "Behemoth arriving"
+      },
+      "61be357e-b987-49e5-983a-e7e699494e89": {
+        "value": "Behemoth alerted"
+      },
+      "5c31802f-b506-4f59-9fff-ab784c704b8b": {
+        "value": "Returning to its territory"
+      },
+      "d4e1f887-0c8b-4280-a837-c02834120a91": {
+        "value": "Behemoth roaming / approach to engage"
+      },
+      "77494c10-6fcb-4b53-9e61-8ab504c71b3c": {
+        "value": "NO WEAPON EQUIPPED"
+      },
+      "e722b5d1-42f0-4261-ac3c-486ed57fc906": {
+        "value": "SHEATHED · ATTACK TO DRAW"
+      },
+      "b43fb9c9-191f-4039-9c59-92cecb166a61": {
+        "value": "{{name:d50f6f26-8c83-46ae-91f8-a2476b8e8766}} OFF · {{name:d3d914ca-0658-4ca5-bbc0-9df2331fc75f}} —"
+      },
+      "d3d9a3ed-b47e-4ba7-9aad-2e683ef5ec0e": {
+        "value": "R RELOAD"
+      },
+      "094f50d3-4d4a-4c57-b4af-b3da3fc94be0": {
+        "value": "WOUND SPENT / "
+      },
+      "43e68c00-2a44-4b9e-bcc7-e3a45636978c": {
+        "value": "ENRAGE PENDING"
+      },
+      "ccacf1b2-475c-4088-b1be-4d5ce11fd0aa": {
+        "value": "BEHEMOTH DEFEATED"
+      },
+      "80fdbfd6-f923-412c-9efa-9c11a8831852": {
+        "value": "HUNTER DOWN"
+      },
+      "8437a2a9-e321-41df-9b55-24fa9f617484": {
+        "value": "HEAD OPEN — INTERRUPT NOW"
+      },
+      "f850ab76-65e7-4ea3-95f0-5aa9831c354f": {
+        "value": "PREPARING TO RUN OUT"
+      },
+      "fffeaaa1-881f-4fa6-8802-8f9e630bdbc1": {
+        "value": "RUNNING TO THE PERIMETER"
+      },
+      "8d613968-6e96-40a9-9efa-df84dad92b63": {
+        "value": "TURNING — CHARGE INCOMING"
+      },
+      "5285bb56-f28a-43b3-a57d-48a720fd5099": {
+        "value": "WATCHING THE HUNTER"
+      },
+      "da2d19a1-157c-4727-97a1-b59de2b0c005": {
+        "value": "CREATING SPACE"
+      },
+      "3e6a4f8a-b79b-4163-b1ed-068c76240c40": {
+        "value": "FIRST BEHEMOTH"
+      },
+      "189a4c15-c80d-461c-a8d1-af4b4559213a": {
+        "value": "{{name:5a5b71ed-4a64-4714-89fc-8f1b422c57ae}} · damage over time"
+      },
+      "5595dd49-1772-4a4b-963f-eed8389f591c": {
+        "value": "TRAINING RANGE"
+      },
+      "d0efbd01-b7a2-484d-8830-866539c42494": {
+        "value": "SURVIVORS AND SHELTER"
+      },
+      "5a726f24-21eb-4fc7-aac6-3274d66da511": {
+        "value": "E TO TALK"
+      },
+      "c524bdb6-2ad6-4669-a6c8-71a6a523402d": {
+        "value": "TWO TERRITORIES"
+      },
+      "eb0853ce-404b-4cc6-bf65-a56cf3239938": {
+        "value": "FOLLOW THE STONE PATHS"
+      },
+      "d286842b-b069-4df0-ba7e-0dd92559cca4": {
+        "value": "ENCLOSED RANGE"
+      },
+      "39270541-eded-4672-a172-a50d144bfc48": {
+        "value": "OPEN APPROACH"
+      },
+      "570e53bf-85e8-4837-b967-1bf0998b8ee0": {
+        "value": "Player status"
+      },
+      "b0fab288-53e0-43b2-a2de-2c69d1032f34": {
+        "value": "Wound haste +15%"
+      },
+      "3f838d6d-26ff-4398-9908-e171cdbab95c": {
+        "value": "Tail"
+      },
+      "b2d216f2-478e-4953-9501-e06d026eab23": {
+        "value": "Head"
+      },
+      "136c4dfc-5467-4ae2-849d-2262329a0797": {
+        "value": "Left front leg"
+      },
+      "ec432b6e-5be3-4d09-b22b-50e85aaf09bd": {
+        "value": "Right front leg"
+      },
+      "bf674ccb-df02-4053-bca1-6a4600eb19ed": {
+        "value": "Left hind leg"
+      },
+      "9f231661-0479-47c1-bda9-e3af4a86fff7": {
+        "value": "Right hind leg"
+      },
+      "866fe775-1f5e-46ae-b381-ba132ccbf6dd": {
+        "value": "Horn"
+      },
+      "f9376201-7358-4e7d-8011-b1eb6e97acea": {
+        "value": "Chain spin"
+      },
+      "6f6a5b58-65f9-459c-a893-8c6ecf9c1315": {
+        "value": "Chain finisher"
+      },
+      "ccc268b9-c1ed-4a28-b402-66cc196424c2": {
+        "value": "Weapon sheathed"
+      },
+      "7c9990fc-8cbd-47de-88bb-17d95fa61e95": {
+        "value": "Unsheathed - attack again to strike"
+      },
+      "5bef6e33-f5b2-4812-9f9c-327000dda5cf": {
+        "value": "Aerial dash"
+      },
+      "cf6e7f3f-fb50-48fa-97b4-768565e697c8": {
+        "value": "Aerial slam"
+      },
+      "2a8c2057-ce70-4b5e-a9a9-f31984ad63e5": {
+        "value": "L"
+      },
+      "6bc75a49-162b-484a-a649-3760bd8085c9": {
+        "value": "H"
+      },
+      "60992999-99fd-4c9f-be6c-c9ae89b96e5e": {
+        "value": "L"
+      },
+      "a946c56a-5368-41d8-b4a1-29625542c9d3": {
+        "value": "Chain pull"
+      },
+      "0fed2dd8-de1d-4f67-9a99-fea478c52860": {
+        "value": "H"
+      },
+      "7d38652b-0033-4b6c-9d8e-5ed8cc841891": {
+        "value": "Chain pull"
+      },
+      "53e2bf92-26be-4e35-8513-f36fd8b47ac3": {
+        "value": "Push off - L dash / H slam"
+      },
+      "8f9f09f1-934c-4f04-8268-0f0c81cdd7f5": {
+        "value": "Landing"
+      },
+      "0e6c42f7-ed8d-42ae-994c-5ac37a57820c": {
+        "value": "L twin cuts / H wound or pull / LLHL spin / Q push-off / airborne L dash, H slam"
+      },
+      "de1133c9-7c13-4079-933c-56df16e10bed": {
+        "value": "Chain charge"
+      },
+      "b588d68a-f576-4efb-90e6-2965e48bfd37": {
+        "value": "CB"
+      },
+      "99f634ac-5c82-4882-a3e8-fffb745147bc": {
+        "value": "BEHEMOTH DEFEATED"
+      },
+      "7fafbc33-2ad7-4d74-af61-9a4cf5323515": {
+        "value": "Welcome to {{name:d7a92efc-c62b-4467-bb6d-2bd5512ed46e}}. The market lanes climb around the old inn to the watchtower courtyard. Cross the western stream to explore the bridge quarter, visit the smithy behind the travel board, or meet the weapon masters on either side of the arrival square."
+      },
+      "8c9b5c98-4e05-4db5-9b35-a460aec93337": {
+        "value": "Head"
+      },
+      "59044d75-0a48-450b-8aea-6b65cff6f688": {
+        "value": "Tail"
+      },
+      "8c42ed9e-ecd9-4bae-a1d7-ded3b3c85979": {
+        "value": "Left front leg"
+      },
+      "418e680a-7542-431e-898e-3dd7141d386b": {
+        "value": "Right front leg"
+      },
+      "c4bbbb1c-b47f-492b-93b8-e97fee65a22e": {
+        "value": "Left hind leg"
+      },
+      "dabe5105-ce91-48f4-a593-8ecba8f04d28": {
+        "value": "Right hind leg"
+      },
+      "f2c5b772-c4cc-4dab-95e6-a95a681ce4e7": {
+        "value": "Left tusk"
+      },
+      "7daeb7bd-d208-4ab1-b352-e87eba297e61": {
+        "value": "Right tusk"
+      },
+      "bcd02d3e-d051-42ec-b6ac-af61457e5e47": {
+        "value": "Front left quills"
+      },
+      "4377d013-ee4b-49dd-9c49-0c7d5a41c583": {
+        "value": "Front right quills"
+      },
+      "9706a2ef-bcce-478f-9aa8-22bd2cfbbb2c": {
+        "value": "Rear left quills"
+      },
+      "2173b554-a80b-4633-98c2-f7decd22b454": {
+        "value": "Rear right quills"
+      },
+      "c8329fc1-c1e3-41a1-8047-f6e45045b2c2": {
+        "value": "Haste mine"
+      },
+      "e3d95be2-6808-4494-b6ee-9fd5457c4c70": {
+        "value": "Hold LMB: fire | RMB: scattershot | R: reload | Q: haste mine | X: sheath"
+      },
+      "34a4394d-90b6-4e8a-ba91-f0bf97926ceb": {
+        "value": "Weapon sheathed"
+      },
+      "48b2e0fa-8851-4dea-a13e-fa57f5a3707b": {
+        "value": "Weapon sheathed"
+      },
+      "fec5001f-1a4d-4b61-8c50-d0fc57105510": {
+        "value": "{{name:600ea7ea-5045-4803-b118-1f4ab72c76bf}} drawn"
+      },
+      "b3e8cf24-7176-42c7-9806-807fbc7b84ce": {
+        "value": "Alternating fire"
+      },
+      "d7025afa-6095-4c4e-8d0e-68e97b0298ac": {
+        "value": "Reloading"
+      },
+      "baa2921f-0add-4c92-aa7c-12a9975de6e8": {
+        "value": "Empowered reload"
+      },
+      "7cff69e4-d4e7-4ebc-86eb-676cfce2c1dc": {
+        "value": "Reloaded"
+      },
+      "4052b920-f204-4222-965b-5f8ada573511": {
+        "value": "Ammo / R reload"
+      },
+      "5566ce64-d2f9-4501-bb67-dae34c4de627": {
+        "value": "R"
+      },
+      "19da93f3-1380-4fe5-ac26-c8ddaca66951": {
+        "value": "RMB READY"
+      },
+      "a57cbb33-9fec-4bcc-b8a5-1dea3fb0f3d4": {
+        "value": "Q"
+      },
+      "215e5cdd-eecc-45ce-a1bb-9e12d4596728": {
+        "value": "Q READY"
+      },
+      "bd7b81f7-441d-45db-aac0-82d4174a415b": {
+        "value": "Empowered +70%"
+      },
+      "a1661439-90a2-486e-8ba5-34e026bcb1a7": {
+        "value": "E"
+      },
+      "d2d59edc-79ae-449c-ad64-c0f0c16030d8": {
+        "value": "Attack speed +15%"
+      },
+      "2df5dc59-7c13-4adf-953d-a22266beccb3": {
+        "value": "Light opener"
+      },
+      "072f1600-37a5-4f0d-a9d8-8931655674c3": {
+        "value": "Quick strike"
+      },
+      "4f48f705-cf35-4229-bfc2-564f188bca1b": {
+        "value": "Focused finisher"
+      },
+      "c059dd22-27ed-4786-a94c-6d0025c31d8d": {
+        "value": "{{name:e879496b-3ac0-43fe-ac61-82c4e75023dc}} heavy finisher"
+      },
+      "b9ebc30c-c5bd-44a3-bffe-dcac84692a49": {
+        "value": "Heavy opener"
+      },
+      "8d756ebe-36fa-48e6-8661-5ffa54bf4580": {
+        "value": "Heavy follow-up"
+      },
+      "9fd14678-6473-4df0-b56b-3632f73f4b50": {
+        "value": "Mighty finisher"
+      },
+      "591aabb0-c7a1-4c9c-b5ce-a20023b01c61": {
+        "value": "{{name:2927a604-ec45-45e2-a0e8-4014a6774a2a}} (Prototype)"
+      },
+      "18a9a531-dfe6-4177-9911-8b23206ce00c": {
+        "value": "I"
+      },
+      "79648c6d-c531-4c4b-9219-f7d16eb8ec50": {
+        "value": "Empty"
+      },
+      "63fde884-a970-41b5-9dd4-27adf55de606": {
+        "value": "Q"
+      },
+      "de729516-3405-4fbc-a711-1c8ac16c45f9": {
+        "value": "Weapon sheathed"
+      },
+      "aff9532b-4fd6-4c3c-ba36-56414771e644": {
+        "value": "Unsheathed - attack again to strike"
+      },
+      "46013a05-a4fb-4fcb-a46f-91a1850ff4ff": {
+        "value": "{{name:2acb57bf-2ab9-4afc-8718-34d6cb9e6f43}} wind-up"
+      },
+      "0cb8f9d3-ba8f-4aa0-90e2-01f3901cccad": {
+        "value": "{{name:5a5b71ed-4a64-4714-89fc-8f1b422c57ae}} — forward strike"
+      },
+      "566544e9-3f7b-4708-a58e-d441e45fade5": {
+        "value": "{{name:acff47ce-e952-4dbd-a803-2f908e5c7eff}} Cast"
+      },
+      "d7ea8083-90e4-45e9-a46c-63e4f6943ccc": {
+        "value": "{{name:acff47ce-e952-4dbd-a803-2f908e5c7eff}} — attack speed +20%"
+      },
+      "046a6c10-4a46-41f8-a930-8d96efbcc1ac": {
+        "value": "Weapon sheathed"
+      },
+      "2e0a9324-5767-4331-9886-e2034151f3c8": {
+        "value": "Weapon ready"
+      },
+      "161e01f8-012c-4254-9a3d-738e54651c4e": {
+        "value": "Mantra slot expired"
+      },
+      "5033d696-e6ac-4b70-a099-5ddc1d409378": {
+        "value": "{{name:cc1431bc-c33d-44e3-b216-61f2be6e7747}} availability expired"
+      },
+      "13509719-0a4c-47fb-8287-0d7f51739546": {
+        "value": "{{name:5a5b71ed-4a64-4714-89fc-8f1b422c57ae}} applied damage over time"
+      },
+      "39f2ed64-61ec-4496-b1d5-9d4a9a87073a": {
+        "value": "Text parameter: amount"
+      },
+      "1db806ed-4e35-4eb2-b2dc-fc7adfa00645": {
+        "value": "Text parameter: maximum"
+      },
+      "805c3762-4817-4357-809e-428ce3b1757f": {
+        "value": "Text parameter: seconds"
+      },
+      "894b9a23-37c9-4f8b-a8dd-5ac4d2d2cad1": {
+        "value": "Text parameter: index"
+      },
+      "c35e4551-0658-4de8-8b09-320c066c031d": {
+        "value": "Text parameter: number2"
+      },
+      "cf0e6287-264d-4cdd-b87c-8915891b1080": {
+        "value": "Text parameter: number3"
+      },
+      "6f88360c-16a7-4562-b9c2-4cc5dc4acb7f": {
+        "value": "Text parameter: number4"
+      },
+      "8071a4b2-cc0a-419e-b88f-6f600ed87739": {
+        "value": "Text parameter: number5"
+      },
+      "542249be-f99b-4661-a123-e064e3d21327": {
+        "value": "Text parameter: number6"
+      },
+      "c6f5066e-2e7a-4df2-9445-6e38e8025951": {
+        "value": "Text parameter: number7"
+      },
+      "8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff": {
+        "value": "Striker Sword"
+      },
+      "5edf7200-df99-4ca8-bcf8-f3f902598854": {
+        "value": "SHEATHED"
+      },
+      "e2abe92c-17a7-43b3-94d1-eac084887c2d": {
+        "value": "Open Range"
+      },
+      "00aed5a6-195f-4d9f-ab40-e755c22d6b6a": {
+        "value": "Ready"
+      },
+      "91f41ebf-afb5-4b11-9da5-12ee18e439c9": {
+        "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}°"
+      },
+      "5b15ac6a-001d-4eed-8dfc-89dd014dac2c": {
+        "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}°"
+      },
+      "68eb8b45-4350-48e6-b9ab-3719415c2e2b": {
+        "value": "E - {{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}}"
+      },
+      "5cb9bae0-f6a6-4021-856d-e95abcdedaf4": {
+        "value": "UNEQUIP {{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}}"
+      },
+      "03d94f7f-67b3-49f3-ac4d-cac518656891": {
+        "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}} / 100"
+      },
+      "af27e789-52da-402c-954f-de95b68037bf": {
+        "value": "{{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}} / {{name:2a56a7c5-aa13-48a0-aa38-4947d28c2539}}\n{{name:5edf7200-df99-4ca8-bcf8-f3f902598854}} / {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}} m\n{{name:e2abe92c-17a7-43b3-94d1-eac084887c2d}}"
+      },
+      "6983b740-0ec8-470b-880f-64346c204074": {
+        "value": "{{name:d50f6f26-8c83-46ae-91f8-a2476b8e8766}} {{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}} · {{name:d3d914ca-0658-4ca5-bbc0-9df2331fc75f}} {{name:5edf7200-df99-4ca8-bcf8-f3f902598854}}"
+      },
+      "6a1d451d-1685-466a-8acc-43e8886b90d3": {
+        "value": "{{value:805c3762-4817-4357-809e-428ce3b1757f}}S"
+      },
+      "e9e803cc-eaa0-41f3-9e3a-7d02933b8f88": {
+        "value": "{{value:805c3762-4817-4357-809e-428ce3b1757f}}S"
+      },
+      "b445bd0b-6a29-408e-b813-fff6ad59adcf": {
+        "value": "AMMO {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}/12 | {{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}} | EMPOWERED {{value:805c3762-4817-4357-809e-428ce3b1757f}}s"
+      },
+      "4495319f-62bc-439c-ac02-015a0b0d6d97": {
+        "value": "CHARGE {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}/100 | RESOURCES {{value:c35e4551-0658-4de8-8b09-320c066c031d}}/4"
+      },
+      "d57968a8-b98e-405d-bbf6-501887779b95": {
+        "value": " | WOUND HASTE +15% {{value:805c3762-4817-4357-809e-428ce3b1757f}}s"
+      },
+      "ba81edb9-2f04-4934-8765-784febc36f4b": {
+        "value": "TRAINING DUMMY / INDESTRUCTIBLE\nCORE {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}} / PART {{value:c35e4551-0658-4de8-8b09-320c066c031d}} / STAGGER {{value:cf0e6287-264d-4cdd-b87c-8915891b1080}} / WOUND {{value:6f88360c-16a7-4562-b9c2-4cc5dc4acb7f}}\nDPS {{value:8071a4b2-cc0a-419e-b88f-6f600ed87739}} / LAST {{value:542249be-f99b-4661-a123-e064e3d21327}} / HITS {{value:c6f5066e-2e7a-4df2-9445-6e38e8025951}}"
+      },
+      "19e7b64a-eb71-4b45-ae5d-39f59f147877": {
+        "value": "{{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}} {{name:5edf7200-df99-4ca8-bcf8-f3f902598854}}{{name:e2abe92c-17a7-43b3-94d1-eac084887c2d}}"
+      },
+      "45c9d0a5-fb63-4ece-8c44-e9ee160a0465": {
+        "value": "WOUNDED {{value:805c3762-4817-4357-809e-428ce3b1757f}}s / "
+      },
+      "5c980d31-d561-48c2-8e04-bccb7d609880": {
+        "value": "WOUND HP {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}} / "
+      },
+      "0b5fd378-8153-49bd-9353-e0aa5c5d1bc0": {
+        "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}} / {{value:1db806ed-4e35-4eb2-b2dc-fc7adfa00645}}"
+      },
+      "0e6e05c8-9055-4de8-a2ce-41a7215b6710": {
+        "value": "ENRAGED {{value:805c3762-4817-4357-809e-428ce3b1757f}}s"
+      },
+      "8bf92849-9ee1-4705-b2d7-99c01fdbcc9c": {
+        "value": "ENRAGE {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}} / {{value:c35e4551-0658-4de8-8b09-320c066c031d}}"
+      },
+      "d07ad3f9-3b44-435d-bf14-e6021c9a6151": {
+        "value": "{{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}} WINDUP"
+      },
+      "9cfd5918-3aec-478f-85c9-8001e020366d": {
+        "value": "STAGGER {{value:c35e4551-0658-4de8-8b09-320c066c031d}} / {{value:cf0e6287-264d-4cdd-b87c-8915891b1080}}"
+      },
+      "9fffa5d4-e5e3-4651-9c7c-73eaf9f148f1": {
+        "value": "HUNTER {{value:8071a4b2-cc0a-419e-b88f-6f600ed87739}} / 100"
+      },
+      "37177933-76dc-41cd-b8e4-b7ac5c94597c": {
+        "value": "{{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}} · {{name:5edf7200-df99-4ca8-bcf8-f3f902598854}} mantra"
+      },
+      "2b805b44-e983-4563-a97f-397e2156da10": {
+        "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}°"
+      },
+      "a3bd5bc3-01b4-458f-8db2-175b006a9d6b": {
+        "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}°"
+      },
+      "04a47c83-2717-4c78-8b0c-786b9341f111": {
+        "value": "Health"
+      },
+      "eea2c889-89a7-4c8f-9794-3053ded98bb2": {
+        "value": "Stamina"
+      },
+      "df72a844-bb72-4dfb-9e43-6ad18484f961": {
+        "value": "{{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}} / {{name:5edf7200-df99-4ca8-bcf8-f3f902598854}}"
+      },
+      "f1b94680-6ad6-4c5b-bea4-806854c0ada4": {
+        "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}} / {{value:1db806ed-4e35-4eb2-b2dc-fc7adfa00645}}"
+      },
+      "1d216224-1a55-40ec-bbb2-03691a574ab4": {
+        "value": "+15% / {{value:805c3762-4817-4357-809e-428ce3b1757f}}s"
+      },
+      "3d76873b-b72b-4a66-887f-4df06af47e59": {
+        "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}} / {{value:c35e4551-0658-4de8-8b09-320c066c031d}}"
+      },
+      "84f11c34-100b-4729-ae39-3e5303f4da24": {
+        "value": "Twin cut {{value:894b9a23-37c9-4f8b-a8dd-5ac4d2d2cad1}}"
+      },
+      "600c68e4-686e-48ec-8d7d-9398161b5a67": {
+        "value": "Wounding cut {{value:894b9a23-37c9-4f8b-a8dd-5ac4d2d2cad1}}"
+      },
+      "3f291471-8e7f-4f21-88dc-14a9c076a0f7": {
+        "value": "Resource {{value:894b9a23-37c9-4f8b-a8dd-5ac4d2d2cad1}}"
+      },
+      "d287cba4-7fdf-49ee-bf1e-b1ef88271feb": {
+        "value": "{{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}} BROKEN"
+      },
+      "51bc6397-ff9a-4243-bc47-bde01937aa06": {
+        "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}°"
+      },
+      "fbd8f53a-aae8-41c7-8ebb-71130c9b8836": {
+        "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}/12"
+      },
+      "315754d8-aedd-43c5-b077-8f861d0411ce": {
+        "value": "RMB {{value:805c3762-4817-4357-809e-428ce3b1757f}}"
+      },
+      "eb5b5c95-698d-4e58-a4e3-2475269597f6": {
+        "value": "Q {{value:805c3762-4817-4357-809e-428ce3b1757f}}"
+      },
+      "1eb8696a-bb67-46b9-b440-10304b6256e4": {
+        "value": "EMPOWERED {{value:805c3762-4817-4357-809e-428ce3b1757f}}s"
+      },
+      "1d35f666-3008-4456-8346-65743b006069": {
+        "value": "{{value:805c3762-4817-4357-809e-428ce3b1757f}} seconds remaining"
+      },
+      "b35375e8-518f-4c3b-9c4f-7a8245529757": {
+        "value": "{{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}} Mantra {{name:5edf7200-df99-4ca8-bcf8-f3f902598854}}"
+      },
+      "896062e6-53f5-4dfc-831c-804c7e60063f": {
+        "value": "{{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}} charging"
+      },
+      "58f181ba-780d-4f82-a064-8cc2933cb32d": {
+        "value": "{{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}} launched"
+      },
+      "d0342b53-d175-4b3f-8007-726c57900acb": {
+        "value": "{{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}} finisher missed - no Mantra"
+      },
+      "40ca9083-70cd-4af9-b810-f3656ad266de": {
+        "value": "ROAMING"
+      },
+      "11da1842-57c9-4116-b8dc-07a6a4940a1e": {
+        "value": "ENGAGED"
+      },
+      "ba2b3742-8fb3-403e-8669-dad1c79bdec7": {
+        "value": "RETURNING"
+      },
+      "a3748aba-794f-4076-8a4a-00235dec3385": {
+        "value": "SPAWNING"
+      },
+      "396e3004-e53a-4ed7-ba23-6f3c5bc781f9": {
+        "value": "ALIVE"
+      },
+      "7bb5f5ef-57f0-4c64-8d98-a3234781f710": {
+        "value": "DEFEATED"
+      },
+      "5e6eba4c-ddc8-4d08-be26-d465db6cdc5a": {
+        "value": "TRUE STAGGER"
+      },
+      "5204eb81-d9f4-4661-af72-b1dc2ecd16f5": {
+        "value": "INTERRUPT"
+      },
+      "c2e4ab0b-0d10-45f2-aee6-b614aa9dd727": {
+        "value": "PART BREAK"
+      },
+      "25db1bdf-92da-400d-b064-79e27b84f13f": {
+        "value": "CHARGE"
+      },
+      "1179a2eb-9258-4c3e-9f68-6a0df789bfe9": {
+        "value": "SWIPE"
+      },
+      "82110feb-2d3e-4a0d-ada0-029920060d50": {
+        "value": "ENRAGEBURST"
+      },
+      "4de407c8-57f6-4274-81a8-98e1a3f76862": {
+        "value": "BOMBARDMENT"
+      },
+      "dd5fb1c6-2aab-4702-94e2-76df128952e8": {
+        "value": "INTERMITTENT"
+      },
+      "00f5a1df-f517-4836-b855-3f5f15973193": {
+        "value": "SIDEDROP"
+      },
+      "67bdad14-bc30-4356-ae4b-8230d08f4278": {
+        "value": "SLAM"
+      },
+      "eaad2a81-a722-4950-889e-54d4cca2d951": {
+        "value": "refreshed"
+      },
+      "68af3806-78f4-40af-8580-98176acf420f": {
+        "value": "gained"
+      },
+      "3e553b13-86c4-4272-ac74-5551c13123fd": {
+        "value": "CLAW"
+      },
+      "0e1999f1-77d2-4291-90e1-deacaa8e970d": {
+        "value": "SWEEP"
+      },
+      "559b1f12-cf2f-4084-978d-af8620c58c79": {
+        "value": "ENRAGE"
+      },
+      "919928ea-ee8b-4295-b6e2-3cb99e760bcc": {
+        "value": "Continue"
+      },
+      "8136ec3c-ac2d-4b98-ae37-de50bd8cac60": {
+        "value": "Language"
+      },
+      "fce1e430-e01b-4f4b-bf9b-b32e74e89753": {
+        "value": "English (source)"
+      }
+    },
+    "stats": {
+      "4ee4b3dc-8b24-494f-9424-9ee567517082": {
+        "value": 0
+      },
+      "39f2ed64-61ec-4496-b1d5-9d4a9a87073a": {
+        "value": 42
+      },
+      "1db806ed-4e35-4eb2-b2dc-fc7adfa00645": {
+        "value": 100
+      },
+      "805c3762-4817-4357-809e-428ce3b1757f": {
+        "value": 1.5
+      },
+      "894b9a23-37c9-4f8b-a8dd-5ac4d2d2cad1": {
+        "value": 1
+      },
+      "c35e4551-0658-4de8-8b09-320c066c031d": {
+        "value": 10
+      },
+      "cf0e6287-264d-4cdd-b87c-8915891b1080": {
+        "value": 20
+      },
+      "6f88360c-16a7-4562-b9c2-4cc5dc4acb7f": {
+        "value": 30
+      },
+      "8071a4b2-cc0a-419e-b88f-6f600ed87739": {
+        "value": 40
+      },
+      "542249be-f99b-4661-a123-e064e3d21327": {
+        "value": 50
+      },
+      "c6f5066e-2e7a-4df2-9445-6e38e8025951": {
+        "value": 60
+      }
+    },
+    "time": "4ee4b3dc-8b24-494f-9424-9ee567517082",
+    "activities": {
+      "f1f6da40-1e37-49d6-a8f6-f4d4baa1dcc1": {
+        "pseudoStats": [
+          "118e8624-167f-4af1-92ab-d6eead7f50a5"
+        ],
+        "scheduleBindings": []
+      }
+    },
+    "corestats": {
+      "118e8624-167f-4af1-92ab-d6eead7f50a5": 1
+    },
+    "calendars": {
+      "03c2334d-05a6-4a9d-bc9f-8f1726324449": {
+        "terms": [
+          "7b3bbb34-06b9-4631-aebe-64fbc2e6b09d",
+          "66a700cb-c162-4922-863d-fcc3c3ca46b2"
+        ],
+        "unitTerm": "66a700cb-c162-4922-863d-fcc3c3ca46b2",
+        "maincycle": "1d5b4669-d0f7-4a8f-9383-44a9c95d02fb",
+        "maincycleProxyStat": {
+          "value": 1980,
+          "key": "a2f05b62-39d7-4393-b4b8-fac9560b0e83"
+        },
+        "presentationcycle": "86608a8a-a1cc-472b-bb81-07f393b5c63a"
+      }
+    },
+    "cycles": {
+      "1d5b4669-d0f7-4a8f-9383-44a9c95d02fb": {
+        "cycleType": 1,
+        "cycleLength": 0,
+        "level": 1,
+        "override": [],
+        "cyclesTerm": "7b3bbb34-06b9-4631-aebe-64fbc2e6b09d",
+        "cyclesProxyStat": {
+          "value": 3,
+          "key": "6728b2d9-a05a-4c34-bfc5-c7858b4c99f8"
+        },
+        "cycles": [
+          "8fd278b9-832a-427e-b079-0da5dd8b2d92",
+          "d81ea09b-4da8-4617-b435-0747692b303c",
+          "60d1258b-9d1c-4b93-9b7a-047349b3f3f6",
+          "a78aa0a4-ec6b-47c8-a327-96831a56a488",
+          "f12cb86e-b8df-424a-b76e-118dae034e68",
+          "f8c165f7-23f3-4332-9849-2f8284fbcab3",
+          "48783ee4-8d34-4d5c-83e8-7a111aa7d412",
+          "81e15055-df38-49e3-9c85-0c1e4ca36139",
+          "4d90dce1-ffc7-4c84-a626-87ffd160043a",
+          "2b2af635-c343-4d22-a050-c61a7a78d5e7",
+          "90feecb5-fe2c-46db-a18c-33cb261848d2",
+          "839f3491-89bc-44b8-bc37-5445fe246999"
+        ]
+      },
+      "86608a8a-a1cc-472b-bb81-07f393b5c63a": {
+        "cycleType": 1,
+        "cycleLength": 0,
+        "level": -1,
+        "override": [],
+        "cyclesTerm": "66a700cb-c162-4922-863d-fcc3c3ca46b2",
+        "cyclesProxyStat": {
+          "value": 2,
+          "key": "8ad898d7-4bd8-4c2d-8865-7f8e14c8ac2b"
+        },
+        "cycles": [
+          "8108b8ee-1f70-4958-b2bc-4b9a4bd42fd9",
+          "56b6200c-0035-4578-9af2-38980bae9ab0",
+          "e8ec1d93-05a2-475b-9e3e-05f780e68d15",
+          "ac2a2a63-1c26-4340-8ca5-4ae3be333e1a",
+          "20d099ad-2317-4164-97b7-6f7c5edf2569",
+          "852c5967-9228-432d-90af-210f8223b942",
+          "e36bb88e-f9c0-4c88-b31b-317c81441196"
+        ]
+      },
+      "8fd278b9-832a-427e-b079-0da5dd8b2d92": {
+        "cycleType": 0,
+        "cycleLength": 31,
+        "level": 2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "828e5550-4c96-499d-a1b5-5f7eb998bfb8"
+        },
+        "cycles": []
+      },
+      "d81ea09b-4da8-4617-b435-0747692b303c": {
+        "cycleType": 0,
+        "cycleLength": 28,
+        "level": 2,
+        "override": [
+          {
+            "condition": "({{value:a2f05b62-39d7-4393-b4b8-fac9560b0e83}} % 4 === 0 && {{value:a2f05b62-39d7-4393-b4b8-fac9560b0e83}} % 100 !== 0) || ({{value:a2f05b62-39d7-4393-b4b8-fac9560b0e83}} % 400 === 0)",
+            "value": 29
+          }
+        ],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "af54cf1a-18a2-4a7c-8db4-ede069608ec8"
+        },
+        "cycles": []
+      },
+      "60d1258b-9d1c-4b93-9b7a-047349b3f3f6": {
+        "cycleType": 0,
+        "cycleLength": 31,
+        "level": 2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "cbd81708-0f37-4b02-8842-bb789be5fa54"
+        },
+        "cycles": []
+      },
+      "a78aa0a4-ec6b-47c8-a327-96831a56a488": {
+        "cycleType": 0,
+        "cycleLength": 30,
+        "level": 2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 22,
+          "key": "2cd9b0e3-a97f-4b72-b41d-546d6bfcf867"
+        },
+        "cycles": []
+      },
+      "f12cb86e-b8df-424a-b76e-118dae034e68": {
+        "cycleType": 0,
+        "cycleLength": 31,
+        "level": 2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "d5ca326f-1e3c-4f06-babb-520b20e2e5d7"
+        },
+        "cycles": []
+      },
+      "f8c165f7-23f3-4332-9849-2f8284fbcab3": {
+        "cycleType": 0,
+        "cycleLength": 30,
+        "level": 2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "4ea2dbfa-e94b-4afb-9a18-b6db7dd0c196"
+        },
+        "cycles": []
+      },
+      "48783ee4-8d34-4d5c-83e8-7a111aa7d412": {
+        "cycleType": 0,
+        "cycleLength": 31,
+        "level": 2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "18db59c2-2118-4af4-9588-59042288d070"
+        },
+        "cycles": []
+      },
+      "81e15055-df38-49e3-9c85-0c1e4ca36139": {
+        "cycleType": 0,
+        "cycleLength": 31,
+        "level": 2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "070c4098-8980-4a6a-a57c-d55bcc6637e8"
+        },
+        "cycles": []
+      },
+      "4d90dce1-ffc7-4c84-a626-87ffd160043a": {
+        "cycleType": 0,
+        "cycleLength": 30,
+        "level": 2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "a1ac6310-f8f6-4579-8076-c91c7660b06d"
+        },
+        "cycles": []
+      },
+      "2b2af635-c343-4d22-a050-c61a7a78d5e7": {
+        "cycleType": 0,
+        "cycleLength": 31,
+        "level": 2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "8837b999-9749-4419-b0bf-15fb6521923a"
+        },
+        "cycles": []
+      },
+      "90feecb5-fe2c-46db-a18c-33cb261848d2": {
+        "cycleType": 0,
+        "cycleLength": 30,
+        "level": 2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "1b588840-796a-472f-b5c3-571db9b49193"
+        },
+        "cycles": []
+      },
+      "839f3491-89bc-44b8-bc37-5445fe246999": {
+        "cycleType": 0,
+        "cycleLength": 31,
+        "level": 2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "2cc4fcbc-ab7f-43a3-ab3b-c39d5ac7fda9"
+        },
+        "cycles": []
+      },
+      "8108b8ee-1f70-4958-b2bc-4b9a4bd42fd9": {
+        "cycleType": 0,
+        "cycleLength": 1,
+        "level": -2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "65f79af0-9604-452b-b94d-d4763cdf9cd9"
+        },
+        "cycles": []
+      },
+      "56b6200c-0035-4578-9af2-38980bae9ab0": {
+        "cycleType": 0,
+        "cycleLength": 1,
+        "level": -2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "aac6dc1f-3174-4909-8305-9fd19d54a469"
+        },
+        "cycles": []
+      },
+      "e8ec1d93-05a2-475b-9e3e-05f780e68d15": {
+        "cycleType": 0,
+        "cycleLength": 1,
+        "level": -2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "a4e7b643-b523-41f5-9ead-99aaad40ffba"
+        },
+        "cycles": []
+      },
+      "ac2a2a63-1c26-4340-8ca5-4ae3be333e1a": {
+        "cycleType": 0,
+        "cycleLength": 1,
+        "level": -2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "694575fb-42ae-4e87-9023-3ee73a5daeb1"
+        },
+        "cycles": []
+      },
+      "20d099ad-2317-4164-97b7-6f7c5edf2569": {
+        "cycleType": 0,
+        "cycleLength": 1,
+        "level": -2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "43cd95a5-2514-4e59-ad41-094b95568671"
+        },
+        "cycles": []
+      },
+      "852c5967-9228-432d-90af-210f8223b942": {
+        "cycleType": 0,
+        "cycleLength": 1,
+        "level": -2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "ea55a14e-7c51-429a-b0cd-af115fd19d3b"
+        },
+        "cycles": []
+      },
+      "e36bb88e-f9c0-4c88-b31b-317c81441196": {
+        "cycleType": 0,
+        "cycleLength": 1,
+        "level": -2,
+        "override": [],
+        "cyclesTerm": "",
+        "cyclesProxyStat": {
+          "value": 0,
+          "key": "89a1a061-ee62-4f98-a0e9-6a4ab5935118"
+        },
+        "cycles": []
+      }
+    },
+    "startdate": {
+      "calendar": "03c2334d-05a6-4a9d-bc9f-8f1726324449"
+    },
+    "timeSegments": [
+      "c6a10ecd-f1f0-45b3-814d-eae384205ee8",
+      "80061176-dec6-4be7-a6d0-a95f30005ed4",
+      "492c040b-9a9a-4a60-9624-d61cf3bdb76a"
+    ],
+    "relationshipStats": {},
+    "nameCategories": [],
+    "characterVariations": [],
+    "characters": {
+      "aff2af5b-f1de-4637-8c94-5dd8f1f9bd35": {
+        "names": {},
+        "proxyStats": {
+          "118e8624-167f-4af1-92ab-d6eead7f50a5": {
+            "value": 1,
+            "key": "97860840-a45e-47a3-bb05-4864ba09b797"
+          }
+        },
+        "relationships": {
+          "8d979699-b072-4963-a5f6-ef457f418efa": {},
+          "cde12e45-e65f-4625-bfe1-070ab2f6920e": {},
+          "763037bb-358e-4f3b-804f-0850281a4ecd": {},
+          "122cdecf-c587-4e26-a585-3bd00085977d": {},
+          "bb27f66b-3f66-4cfd-81f5-398c68092df9": {},
+          "de8e34e5-d91b-4f1b-8026-f8d4edf9d6d2": {},
+          "5c88d8ad-5cf6-41a3-8c6c-df2f5cffcb6b": {},
+          "5eb89e82-b717-4a1e-a000-e41f17f15be9": {}
+        },
+        "scheduleBindings": {
+          "regular": [],
+          "autoDialogue": [],
+          "autoAction": []
+        },
+        "variations": {}
+      },
+      "8d979699-b072-4963-a5f6-ef457f418efa": {
+        "names": {},
+        "proxyStats": {
+          "118e8624-167f-4af1-92ab-d6eead7f50a5": {
+            "value": 1,
+            "key": "6acda48b-9d66-418d-b9db-68ffbc52a240"
+          }
+        },
+        "relationships": {
+          "aff2af5b-f1de-4637-8c94-5dd8f1f9bd35": {},
+          "cde12e45-e65f-4625-bfe1-070ab2f6920e": {},
+          "763037bb-358e-4f3b-804f-0850281a4ecd": {},
+          "122cdecf-c587-4e26-a585-3bd00085977d": {},
+          "bb27f66b-3f66-4cfd-81f5-398c68092df9": {},
+          "de8e34e5-d91b-4f1b-8026-f8d4edf9d6d2": {},
+          "5c88d8ad-5cf6-41a3-8c6c-df2f5cffcb6b": {},
+          "5eb89e82-b717-4a1e-a000-e41f17f15be9": {}
+        },
+        "scheduleBindings": {
+          "regular": [],
+          "autoDialogue": [],
+          "autoAction": []
+        },
+        "variations": {}
+      },
+      "cde12e45-e65f-4625-bfe1-070ab2f6920e": {
+        "names": {},
+        "proxyStats": {
+          "118e8624-167f-4af1-92ab-d6eead7f50a5": {
+            "value": 1,
+            "key": "4ea4a7d5-1d3d-412e-8d35-11224462d46a"
+          }
+        },
+        "relationships": {
+          "aff2af5b-f1de-4637-8c94-5dd8f1f9bd35": {},
+          "8d979699-b072-4963-a5f6-ef457f418efa": {},
+          "763037bb-358e-4f3b-804f-0850281a4ecd": {},
+          "122cdecf-c587-4e26-a585-3bd00085977d": {},
+          "bb27f66b-3f66-4cfd-81f5-398c68092df9": {},
+          "de8e34e5-d91b-4f1b-8026-f8d4edf9d6d2": {},
+          "5c88d8ad-5cf6-41a3-8c6c-df2f5cffcb6b": {},
+          "5eb89e82-b717-4a1e-a000-e41f17f15be9": {}
+        },
+        "scheduleBindings": {
+          "regular": [],
+          "autoDialogue": [],
+          "autoAction": []
+        },
+        "variations": {}
+      },
+      "763037bb-358e-4f3b-804f-0850281a4ecd": {
+        "names": {},
+        "proxyStats": {
+          "118e8624-167f-4af1-92ab-d6eead7f50a5": {
+            "value": 1,
+            "key": "baea10ab-d14f-415c-8964-bf0b547650fc"
+          }
+        },
+        "relationships": {
+          "aff2af5b-f1de-4637-8c94-5dd8f1f9bd35": {},
+          "8d979699-b072-4963-a5f6-ef457f418efa": {},
+          "cde12e45-e65f-4625-bfe1-070ab2f6920e": {},
+          "122cdecf-c587-4e26-a585-3bd00085977d": {},
+          "bb27f66b-3f66-4cfd-81f5-398c68092df9": {},
+          "de8e34e5-d91b-4f1b-8026-f8d4edf9d6d2": {},
+          "5c88d8ad-5cf6-41a3-8c6c-df2f5cffcb6b": {},
+          "5eb89e82-b717-4a1e-a000-e41f17f15be9": {}
+        },
+        "scheduleBindings": {
+          "regular": [],
+          "autoDialogue": [],
+          "autoAction": []
+        },
+        "variations": {}
+      },
+      "122cdecf-c587-4e26-a585-3bd00085977d": {
+        "names": {},
+        "proxyStats": {
+          "118e8624-167f-4af1-92ab-d6eead7f50a5": {
+            "value": 1,
+            "key": "407a6316-6f20-4513-bd25-ef0b1963a22e"
+          }
+        },
+        "relationships": {
+          "aff2af5b-f1de-4637-8c94-5dd8f1f9bd35": {},
+          "8d979699-b072-4963-a5f6-ef457f418efa": {},
+          "cde12e45-e65f-4625-bfe1-070ab2f6920e": {},
+          "763037bb-358e-4f3b-804f-0850281a4ecd": {},
+          "bb27f66b-3f66-4cfd-81f5-398c68092df9": {},
+          "de8e34e5-d91b-4f1b-8026-f8d4edf9d6d2": {},
+          "5c88d8ad-5cf6-41a3-8c6c-df2f5cffcb6b": {},
+          "5eb89e82-b717-4a1e-a000-e41f17f15be9": {}
+        },
+        "scheduleBindings": {
+          "regular": [],
+          "autoDialogue": [],
+          "autoAction": []
+        },
+        "variations": {}
+      },
+      "bb27f66b-3f66-4cfd-81f5-398c68092df9": {
+        "names": {},
+        "proxyStats": {
+          "118e8624-167f-4af1-92ab-d6eead7f50a5": {
+            "value": 1,
+            "key": "42d8e2c9-c824-41b1-9ad1-b4ab01a07587"
+          }
+        },
+        "relationships": {
+          "aff2af5b-f1de-4637-8c94-5dd8f1f9bd35": {},
+          "8d979699-b072-4963-a5f6-ef457f418efa": {},
+          "cde12e45-e65f-4625-bfe1-070ab2f6920e": {},
+          "763037bb-358e-4f3b-804f-0850281a4ecd": {},
+          "122cdecf-c587-4e26-a585-3bd00085977d": {},
+          "de8e34e5-d91b-4f1b-8026-f8d4edf9d6d2": {},
+          "5c88d8ad-5cf6-41a3-8c6c-df2f5cffcb6b": {},
+          "5eb89e82-b717-4a1e-a000-e41f17f15be9": {}
+        },
+        "scheduleBindings": {
+          "regular": [],
+          "autoDialogue": [],
+          "autoAction": []
+        },
+        "variations": {}
+      },
+      "de8e34e5-d91b-4f1b-8026-f8d4edf9d6d2": {
+        "names": {},
+        "proxyStats": {
+          "118e8624-167f-4af1-92ab-d6eead7f50a5": {
+            "value": 1,
+            "key": "e01f2d7f-6db8-47d2-afc4-07552629b400"
+          }
+        },
+        "relationships": {
+          "aff2af5b-f1de-4637-8c94-5dd8f1f9bd35": {},
+          "8d979699-b072-4963-a5f6-ef457f418efa": {},
+          "cde12e45-e65f-4625-bfe1-070ab2f6920e": {},
+          "763037bb-358e-4f3b-804f-0850281a4ecd": {},
+          "122cdecf-c587-4e26-a585-3bd00085977d": {},
+          "bb27f66b-3f66-4cfd-81f5-398c68092df9": {},
+          "5c88d8ad-5cf6-41a3-8c6c-df2f5cffcb6b": {},
+          "5eb89e82-b717-4a1e-a000-e41f17f15be9": {}
+        },
+        "scheduleBindings": {
+          "regular": [],
+          "autoDialogue": [],
+          "autoAction": []
+        },
+        "variations": {}
+      },
+      "5c88d8ad-5cf6-41a3-8c6c-df2f5cffcb6b": {
+        "names": {},
+        "proxyStats": {
+          "118e8624-167f-4af1-92ab-d6eead7f50a5": {
+            "value": 1,
+            "key": "3f6dde37-8cdf-409b-90e8-98f78310a87d"
+          }
+        },
+        "relationships": {
+          "aff2af5b-f1de-4637-8c94-5dd8f1f9bd35": {},
+          "8d979699-b072-4963-a5f6-ef457f418efa": {},
+          "cde12e45-e65f-4625-bfe1-070ab2f6920e": {},
+          "763037bb-358e-4f3b-804f-0850281a4ecd": {},
+          "122cdecf-c587-4e26-a585-3bd00085977d": {},
+          "bb27f66b-3f66-4cfd-81f5-398c68092df9": {},
+          "de8e34e5-d91b-4f1b-8026-f8d4edf9d6d2": {},
+          "5eb89e82-b717-4a1e-a000-e41f17f15be9": {}
+        },
+        "scheduleBindings": {
+          "regular": [],
+          "autoDialogue": [],
+          "autoAction": []
+        },
+        "variations": {}
+      },
+      "5eb89e82-b717-4a1e-a000-e41f17f15be9": {
+        "names": {},
+        "proxyStats": {
+          "118e8624-167f-4af1-92ab-d6eead7f50a5": {
+            "value": 1,
+            "key": "783f946d-6cff-4f47-9be4-094967fec58d"
+          }
+        },
+        "relationships": {
+          "aff2af5b-f1de-4637-8c94-5dd8f1f9bd35": {},
+          "8d979699-b072-4963-a5f6-ef457f418efa": {},
+          "cde12e45-e65f-4625-bfe1-070ab2f6920e": {},
+          "763037bb-358e-4f3b-804f-0850281a4ecd": {},
+          "122cdecf-c587-4e26-a585-3bd00085977d": {},
+          "bb27f66b-3f66-4cfd-81f5-398c68092df9": {},
+          "de8e34e5-d91b-4f1b-8026-f8d4edf9d6d2": {},
+          "5c88d8ad-5cf6-41a3-8c6c-df2f5cffcb6b": {}
+        },
+        "scheduleBindings": {
+          "regular": [],
+          "autoDialogue": [],
+          "autoAction": []
+        },
+        "variations": {}
+      }
+    },
+    "nodes": {
+      "26a0d6f5-997b-4a94-9f10-fc6e119fc997": {
+        "type": "start",
+        "outputs": [
+          {
+            "target": "fa76e5d7-838f-4798-8965-b5cfd9bd7360",
+            "condition": ""
+          }
+        ],
+        "participants": [
+          {
+            "role": "NPC",
+            "type": "specific",
+            "characterKey": "aff2af5b-f1de-4637-8c94-5dd8f1f9bd35"
+          }
+        ]
+      },
+      "fa76e5d7-838f-4798-8965-b5cfd9bd7360": {
+        "type": "dialogue",
+        "outputs": [],
+        "lines": [
+          {
+            "participantIndex": 0,
+            "text": "c7aaf354-c904-4cdd-9ec7-f948ff794f01",
+            "present": [
+              {
+                "participantIndex": 0,
+                "variations": {}
+              }
+            ]
+          }
+        ]
+      },
+      "a37cf105-2db6-4a6b-a528-0a0b48bc75ce": {
+        "type": "start",
+        "outputs": [
+          {
+            "target": "22b8bcdd-98b5-4e36-b5a4-0833dd2644f7",
+            "condition": ""
+          }
+        ],
+        "participants": [
+          {
+            "role": "NPC",
+            "type": "specific",
+            "characterKey": "8d979699-b072-4963-a5f6-ef457f418efa"
+          }
+        ]
+      },
+      "22b8bcdd-98b5-4e36-b5a4-0833dd2644f7": {
+        "type": "dialogue",
+        "outputs": [],
+        "lines": [
+          {
+            "participantIndex": 0,
+            "text": "eaf45cc2-4c63-45a9-a8b3-c8efd47d1523",
+            "present": [
+              {
+                "participantIndex": 0,
+                "variations": {}
+              }
+            ]
+          }
+        ]
+      },
+      "06ced90e-faee-4030-a3d8-f91d97557844": {
+        "type": "start",
+        "outputs": [
+          {
+            "target": "1faeb5ad-1e78-49b4-978e-d026c7b415ed",
+            "condition": ""
+          }
+        ],
+        "participants": [
+          {
+            "role": "NPC",
+            "type": "specific",
+            "characterKey": "cde12e45-e65f-4625-bfe1-070ab2f6920e"
+          }
+        ]
+      },
+      "1faeb5ad-1e78-49b4-978e-d026c7b415ed": {
+        "type": "dialogue",
+        "outputs": [],
+        "lines": [
+          {
+            "participantIndex": 0,
+            "text": "a2d4aefa-1831-4913-8b0d-75e70b310dd3",
+            "present": [
+              {
+                "participantIndex": 0,
+                "variations": {}
+              }
+            ]
+          }
+        ]
+      },
+      "9152e3de-4c9c-4aee-bf66-9832862bc2f2": {
+        "type": "start",
+        "outputs": [
+          {
+            "target": "ca7db522-22d3-4282-b701-b6032e7d8e8c",
+            "condition": ""
+          }
+        ],
+        "participants": [
+          {
+            "role": "NPC",
+            "type": "specific",
+            "characterKey": "763037bb-358e-4f3b-804f-0850281a4ecd"
+          }
+        ]
+      },
+      "ca7db522-22d3-4282-b701-b6032e7d8e8c": {
+        "type": "dialogue",
+        "outputs": [],
+        "lines": [
+          {
+            "participantIndex": 0,
+            "text": "7979e781-c28b-4080-a611-c5599ea859c3",
+            "present": [
+              {
+                "participantIndex": 0,
+                "variations": {}
+              }
+            ]
+          }
+        ]
+      },
+      "63d0febb-7d01-4dc7-ae8a-7039d2e630d3": {
+        "type": "start",
+        "outputs": [
+          {
+            "target": "6b4e949b-60f1-48bd-a6de-b97bc389e2aa",
+            "condition": ""
+          }
+        ],
+        "participants": [
+          {
+            "role": "NPC",
+            "type": "specific",
+            "characterKey": "122cdecf-c587-4e26-a585-3bd00085977d"
+          }
+        ]
+      },
+      "6b4e949b-60f1-48bd-a6de-b97bc389e2aa": {
+        "type": "dialogue",
+        "outputs": [],
+        "lines": [
+          {
+            "participantIndex": 0,
+            "text": "fc5c9386-ea08-4d15-8fa8-d7e0203e9269",
+            "present": [
+              {
+                "participantIndex": 0,
+                "variations": {}
+              }
+            ]
+          }
+        ]
+      },
+      "73ec16c5-478f-429c-8a0e-60156232fa2c": {
+        "type": "start",
+        "outputs": [
+          {
+            "target": "6a645de8-a45a-42ae-b9e3-adf2bc4fdf5c",
+            "condition": ""
+          }
+        ],
+        "participants": [
+          {
+            "role": "NPC",
+            "type": "specific",
+            "characterKey": "bb27f66b-3f66-4cfd-81f5-398c68092df9"
+          }
+        ]
+      },
+      "6a645de8-a45a-42ae-b9e3-adf2bc4fdf5c": {
+        "type": "dialogue",
+        "outputs": [],
+        "lines": [
+          {
+            "participantIndex": 0,
+            "text": "bd0d52b0-13f2-41a4-915c-bd16b307953e",
+            "present": [
+              {
+                "participantIndex": 0,
+                "variations": {}
+              }
+            ]
+          }
+        ]
+      },
+      "a4789a9c-19f7-496b-ad7a-7127fdd44746": {
+        "type": "start",
+        "outputs": [
+          {
+            "target": "13602413-0a14-4e30-a7f6-09acd2d05bec",
+            "condition": ""
+          }
+        ],
+        "participants": [
+          {
+            "role": "NPC",
+            "type": "specific",
+            "characterKey": "de8e34e5-d91b-4f1b-8026-f8d4edf9d6d2"
+          }
+        ]
+      },
+      "13602413-0a14-4e30-a7f6-09acd2d05bec": {
+        "type": "dialogue",
+        "outputs": [],
+        "lines": [
+          {
+            "participantIndex": 0,
+            "text": "e8b82a35-bf5d-4f6c-892f-bcc3a1e22ae1",
+            "present": [
+              {
+                "participantIndex": 0,
+                "variations": {}
+              }
+            ]
+          }
+        ]
+      },
+      "07c62e00-39e7-4557-b4da-7e865fb5b2e7": {
+        "type": "start",
+        "outputs": [
+          {
+            "target": "82f900eb-ea1a-45a8-903c-3c7f0fc25d5e",
+            "condition": ""
+          }
+        ],
+        "participants": [
+          {
+            "role": "NPC",
+            "type": "specific",
+            "characterKey": "5c88d8ad-5cf6-41a3-8c6c-df2f5cffcb6b"
+          }
+        ]
+      },
+      "82f900eb-ea1a-45a8-903c-3c7f0fc25d5e": {
+        "type": "dialogue",
+        "outputs": [],
+        "lines": [
+          {
+            "participantIndex": 0,
+            "text": "8c27c149-0770-4516-a758-cfdbc895f210",
+            "present": [
+              {
+                "participantIndex": 0,
+                "variations": {}
+              }
+            ]
+          }
+        ]
+      },
+      "57249d8a-60f5-4874-98eb-157339f1d24a": {
+        "type": "start",
+        "outputs": [
+          {
+            "target": "78bb44e9-f20c-4252-b40b-598c8db5c79b",
+            "condition": ""
+          }
+        ],
+        "participants": [
+          {
+            "role": "NPC",
+            "type": "specific",
+            "characterKey": "5eb89e82-b717-4a1e-a000-e41f17f15be9"
+          }
+        ]
+      },
+      "78bb44e9-f20c-4252-b40b-598c8db5c79b": {
+        "type": "dialogue",
+        "outputs": [],
+        "lines": [
+          {
+            "participantIndex": 0,
+            "text": "b9e1f2cb-ebec-4170-aa3f-9b15ad9e769a",
+            "present": [
+              {
+                "participantIndex": 0,
+                "variations": {}
+              }
+            ]
+          }
+        ]
+      },
+      "712d398d-1fff-4fbd-9dc1-0bf9551596f8": {
+        "type": "start",
+        "outputs": [
+          {
+            "target": "6558d63e-b797-4a06-ba69-9cb7c155e47e",
+            "condition": ""
+          }
+        ],
+        "participants": []
+      },
+      "6558d63e-b797-4a06-ba69-9cb7c155e47e": {
+        "type": "dialogue",
+        "outputs": [
+          {
+            "target": "bb3bdf89-00d9-4b87-914b-f3401d881047",
+            "condition": ""
+          }
+        ],
+        "lines": [
+          {
+            "participantIndex": null,
+            "text": "93d9b9a5-8930-4121-8bbe-78a2948e6a74",
+            "present": []
+          }
+        ]
+      },
+      "bb3bdf89-00d9-4b87-914b-f3401d881047": {
+        "type": "command",
+        "outputs": [],
+        "command": "OpenTravelSettings"
+      }
+    },
+    "nodeTypes": {
+      "start": [
+        "26a0d6f5-997b-4a94-9f10-fc6e119fc997",
+        "a37cf105-2db6-4a6b-a528-0a0b48bc75ce",
+        "06ced90e-faee-4030-a3d8-f91d97557844",
+        "9152e3de-4c9c-4aee-bf66-9832862bc2f2",
+        "63d0febb-7d01-4dc7-ae8a-7039d2e630d3",
+        "73ec16c5-478f-429c-8a0e-60156232fa2c",
+        "a4789a9c-19f7-496b-ad7a-7127fdd44746",
+        "07c62e00-39e7-4557-b4da-7e865fb5b2e7",
+        "57249d8a-60f5-4874-98eb-157339f1d24a",
+        "712d398d-1fff-4fbd-9dc1-0bf9551596f8"
+      ],
+      "dialogue": [
+        "fa76e5d7-838f-4798-8965-b5cfd9bd7360",
+        "22b8bcdd-98b5-4e36-b5a4-0833dd2644f7",
+        "1faeb5ad-1e78-49b4-978e-d026c7b415ed",
+        "ca7db522-22d3-4282-b701-b6032e7d8e8c",
+        "6b4e949b-60f1-48bd-a6de-b97bc389e2aa",
+        "6a645de8-a45a-42ae-b9e3-adf2bc4fdf5c",
+        "13602413-0a14-4e30-a7f6-09acd2d05bec",
+        "82f900eb-ea1a-45a8-903c-3c7f0fc25d5e",
+        "78bb44e9-f20c-4252-b40b-598c8db5c79b",
+        "6558d63e-b797-4a06-ba69-9cb7c155e47e"
+      ],
+      "command": [
+        "bb3bdf89-00d9-4b87-914b-f3401d881047"
+      ]
+    }
+  }
+}

@@ -1,3 +1,4 @@
+import { applyPartDamage, applyCoreDamage, clearBehemothModes, advanceStaggerThreshold } from './behemoth-damage.js';
 import { createWoundMeter, resolveWound, stepWounds } from './wounds.js';
 import { BEHEMOTH } from './behemoth.js';
 import { createTimedMode, activatePendingMode, advanceTimedMode } from './behemoth-states.js';
@@ -75,30 +76,25 @@ function react(s, move, seconds) { s.mode = 'reaction'; s.move = move; s.elapsed
 export function hitQuillshot(s, { damage = 0, partDamage = damage, stagger = 0, wound = 0, attackerModifiers, part = 'body', interrupt = false } = {}) {
   if (s.mode === 'defeated') return { outcome: 'ignored' };
   const woundResult = resolveWound(s.parts[part], QUILLSHOT.parts[part], wound, attackerModifiers);
-  const m = s.parts[part], before = m?.damage ?? 0;
-  let brokenPart = null;
-  if (m && !m.broken) {
-    m.damage = Math.min(QUILLSHOT.parts[part].health, m.damage + Math.max(0, partDamage));
-    if (m.damage >= QUILLSHOT.parts[part].health) { m.broken = true; brokenPart = part; }
-  }
-  const core = Math.min(s.health, Math.max(0, damage)), rage = s.states.enrage;
-  if (!rage.active && !rage.pending) { rage.buildup += core; rage.pending = rage.buildup >= QUILLSHOT.maxHealth * QUILLSHOT.states.enrage.damageFraction; }
-  s.health -= core; s.flash = 0.15;
+  const { brokenPart, partDamage: appliedPartDamage } = applyPartDamage(s, QUILLSHOT, part, partDamage);
+  // Back quills have independent durability; striking them does not damage core health.
+  if (!QUILLSHOT.parts[part]?.quills) applyCoreDamage(s, QUILLSHOT, damage);
+  s.flash = 0.15;
   let outcome = 'hit';
   const down = s.mode === 'reaction' && s.move === 'true-stagger';
   if (!down) s.stagger += Math.max(0, stagger) * (BEHEMOTH.staggerMultipliers[part] ?? 0);
   if (s.health <= 0) {
     s.mode = 'defeated'; s.move = null; s.projectiles.length = 0; s.impactEvents.length = 0;
-    for (const mode of Object.values(s.states)) { mode.active = false; mode.pending = false; mode.remaining = 0; }
+    clearBehemothModes(s);
     outcome = 'defeated';
   } else if (s.stagger >= s.staggerThreshold) {
-    s.stagger = 0; s.trueStaggerCount++; s.staggerThreshold = QUILLSHOT.maxStagger * 1.5 ** s.trueStaggerCount;
+    advanceStaggerThreshold(s, QUILLSHOT.maxStagger, 1.5);
     react(s, 'true-stagger', 10); outcome = 'true-stagger';
   } else if (brokenPart && !QUARTERS.includes(part) && !down) { react(s, 'part-break', 5); outcome = 'part-break'; }
   else if (part === 'head' && interrupt && isQuillshotInterruptible(s)) { react(s, 'interrupt', 5); outcome = 'interrupt'; }
   else if (brokenPart) outcome = QUARTERS.includes(part) ? 'quill-break' : 'hit';
   if (s.mode !== 'defeated') enrage(s);
-  return { ...woundResult, outcome, brokenPart, part, partDamage: m ? m.damage - before : 0 };
+  return { ...woundResult, outcome, brokenPart, part, partDamage: appliedPartDamage };
 }
 function volley(s, players) {
   for (const p of players) {

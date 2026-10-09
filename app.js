@@ -1,3 +1,6 @@
+import { loadMapAsset } from './map-loader.js';
+import { createNarrative } from './narrative.js';
+import { OLD_TOWN, createOldTownView } from './old-town-view.js';
 import { behemothPushOut } from './behemoth-collision.js';
 import { CHAINBLADES } from './chainblades-weapon.js';
 import { createEnvironment } from './environment.js';
@@ -11,19 +14,40 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Octree } from 'three/addons/math/Octree.js';
 import { Capsule } from 'three/addons/math/Capsule.js';
-import { ARENA_COLLIDERS, ARENA_SCALE, createPlayerState, resolveWeaponMovement, stepPlayer } from './player-movement.js';
+import { ARENA_COLLIDERS, ARENA_SCALE, createPlayerState, isWalkableSlope, slopeContactCorrection, resolveWeaponMovement, stepPlayer } from './player-movement.js';
 import { REPEATERS, REPEATER_TUNING, repeaterFalloff } from './repeaters-weapon.js';
 import { STRIKER_SWORD } from './striker-weapon.js';
 import { sweptMeleeContact } from './swept-melee.js';
 import { spendStamina } from './stamina.js';
 import { addTimedStatModifier, getEffectiveStat, getStatModifierRemaining, stepStatModifiers } from './stat-modifiers.js';
-import { definitionFor, behemothAttackTouchesPlayer, createBehemothState, hitBehemoth, isInterruptible, stepBehemoth } from './encounter-combat.js';
+import { definitionFor, behemothAttackTouchesPlayer, createBehemothState, hitBehemoth, isInterruptible } from './encounter-combat.js';
 import { createBehemothView, updateBehemothView } from './encounter-view.js';
 import { quillImpactTouches } from './quillshot.js';
 import { createPlayerView, updatePlayerView } from './player-view.js';
 import { createCombatFeedback } from './combat-feedback.js';
 import { TRAINING_TARGET, createTrainingState, hitTrainingTarget, stepTrainingTarget, trainingDps } from './training-target.js';
 import { createTrainingTargetView, updateTrainingTargetView } from './training-target-view.js';
+
+let narrative = null;
+let dialogueActionHandled = false;
+try {
+  narrative = await createNarrative({ commands: {
+    OpenHuntingBoard() {
+      dialogueActionHandled = true;
+      settlementTravelControls.hidden = false;
+    },
+    OpenTravelSettings() {
+      dialogueActionHandled = true;
+      settlementPanel.hidden = true;
+      altCursorHeld = false;
+      setSettingsOpen(true);
+      arenaSettings.hidden = false;
+      document.querySelector('#settingsArenaSelectTitle').scrollIntoView({ block: 'center' });
+    },
+  } });
+} catch (error) {
+  console.warn('Narrative assets could not be loaded; using the existing English UI.', error);
+}
 
 const root = document.querySelector('#scene');
 const appShell = document.querySelector('.app-shell');
@@ -43,6 +67,7 @@ const resetArenaButton = document.querySelector('#resetArenaButton');
 const selectedArenaName = document.querySelector('#selectedArenaName');
 const settingsToggle = document.querySelector('#settingsToggle');
 let settingsOpen = false;
+let mapTransitionActive = false;
 let pointerUnlockSettingsTimer = null;
 let lastSettingsEscape = -Infinity;
 let cameraPointerLocked = false;
@@ -53,7 +78,6 @@ const fovSlider = document.querySelector('#fovSlider');
 const fovValue = document.querySelector('#fovValue');
 const arenaModeBadge = document.querySelector('#arenaModeBadge');
 const arenaCaption = document.querySelector('#arenaCaption');
-const arenaOptions = [...document.querySelectorAll('input[name="arena"]')];
 const settingsArenaOptions = [...document.querySelectorAll('input[name="settings-arena"]')];
 const goToArenaButton = document.querySelector('#goToArenaButton');
 const collisionVisibilityToggle = document.querySelector('#collisionVisibilityToggle');
@@ -76,14 +100,14 @@ let selectedArena = 'range';
 try {
   const savedArena = localStorage.getItem(arenaStorageKey);
   if (savedArena === 'combat') selectedArena = 'island';
-  else if (['range', 'island'].includes(savedArena)) selectedArena = savedArena;
+  else if (['range', 'island', 'old-town'].includes(savedArena)) selectedArena = savedArena;
 } catch { /* Use the current range when storage is unavailable. */ }
 let pendingArena = selectedArena;
 const syncArenaSelection = () => {
   for (const option of settingsArenaOptions) option.checked = option.value === pendingArena;
   goToArenaButton.disabled = pendingArena === selectedArena;
+  document.querySelector('#returnToSettlementButton').disabled = selectedArena === 'old-town';
 };
-for (const option of arenaOptions) option.checked = option.value === selectedArena;
 let selectedFov = Number(fovSlider.value);
 try {
   const savedFov = Number(localStorage.getItem(fovStorageKey));
@@ -146,9 +170,177 @@ const sunShadows = createSunShadows(renderer, scene, keyLight, environment.state
 const arena = new THREE.Group();
 arena.scale.set(ARENA_SCALE, 1, ARENA_SCALE);
 scene.add(arena);
-const islandView = createIslandView();
+const islandView = new THREE.Group(); islandView.visible = false;
 scene.add(islandView);
+const oldTownView = { root: new THREE.Group(), stations: [] }; oldTownView.root.visible = false;
+scene.add(oldTownView.root);
+const mapLoads = new Map();
+const preparedMapCollision = new Map();
+const ensureMapLoaded = (mode) => {
+  if (mode === 'range') return Promise.resolve();
+  if (!mapLoads.has(mode)) mapLoads.set(mode, (async () => {
+    const view = await loadMapAsset(mode, mode === 'old-town' ? createOldTownView : createIslandView);
+    const destination = mode === 'old-town' ? oldTownView.root : islandView;
+    destination.add(...[...view.root.children]);
+    destination.name = view.root.name;
+    destination.position.copy(view.root.position);
+    destination.quaternion.copy(view.root.quaternion);
+    destination.scale.copy(view.root.scale);
+    if (view.collisionTree) preparedMapCollision.set(mode, view.collisionTree);
+    if (mode === 'old-town') oldTownView.stations = view.stations;
+  })());
+  return mapLoads.get(mode);
+};
+const isTown = () => selectedArena === 'old-town';
+const currentTown = () => OLD_TOWN;
+const currentTownView = () => oldTownView;
 let islandEncounter = createIslandEncounter();
+const settlementPrompt = document.createElement('div');
+settlementPrompt.className = 'settlement-prompt'; settlementPrompt.hidden = true;
+arenaScreen.append(settlementPrompt);
+const settlementPanel = document.createElement('section');
+settlementPanel.className = 'settlement-panel'; settlementPanel.hidden = true;
+settlementPanel.innerHTML = '<h2></h2><p></p><button type="button" class="menu-button">Close</button>';
+settlementPanel.querySelector('h2').dataset.narrativeDirect = '';
+settlementPanel.querySelector('p').dataset.narrativeDirect = '';
+const dialogueControls = document.createElement('div');
+dialogueControls.className = 'dialogue-controls';
+dialogueControls.dataset.narrativeDirect = '';
+settlementPanel.append(dialogueControls);
+let dialogueRevision = 0;
+let dialogueResult = null;
+let dialogueStation = null;
+arenaScreen.append(settlementPanel);
+const settlementTravelControls = document.createElement('div');
+settlementTravelControls.hidden = true;
+settlementTravelControls.innerHTML = `<div class="camera-settings arena-selection" role="group" aria-labelledby="huntingBoardDestinationTitle">
+  <div class="settings-heading"><span class="settings-rule"></span><span id="huntingBoardDestinationTitle">MAP SELECTION</span></div>
+  <label class="arena-option"><input type="radio" name="hunting-board-arena" value="island" checked><span><strong>Cinderwild Isle</strong></span></label>
+  <label class="arena-option"><input type="radio" name="hunting-board-arena" value="range"><span><strong>Open Range</strong></span></label>
+</div><button type="button" class="primary-button">Go to selected location</button>`;
+settlementPanel.append(settlementTravelControls);
+settlementTravelControls.querySelector('button').addEventListener('click', async () => {
+  const destination = settlementTravelControls.querySelector('input:checked')?.value;
+  if (!['range', 'island'].includes(destination)) return;
+  settlementPanel.hidden = true;
+  altCursorHeld = false;
+  clearInput();
+  document.activeElement?.blur();
+  await setArenaMode(destination);
+  requestCameraPointerLock();
+});
+function closeSettlementDialogue() {
+  dialogueRevision++;
+  dialogueStation = null;
+  dialogueResult = null;
+  dialogueControls.replaceChildren();
+  settlementPanel.hidden = true;
+  altCursorHeld = false;
+  document.activeElement?.blur();
+  requestCameraPointerLock();
+}
+settlementPanel.querySelector('button').addEventListener('click', closeSettlementDialogue);
+function nearestSettlementStation() {
+  return currentTownView().stations.map(s => ({...s, distance: Math.hypot(s.position[0]-playerState.position[0], s.position[2]-playerState.position[2], s.position[1]-playerState.position[1])})).sort((a,b)=>a.distance-b.distance)[0];
+}
+function updateSettlementHud() {
+  const active = isTown() && !arenaScreen.classList.contains('hidden');
+  settlementPrompt.hidden = !active;
+  if (!active) { settlementPanel.hidden = true; return; }
+  const station = nearestSettlementStation();
+  const nearby = station && station.distance < 3.5;
+  settlementPrompt.hidden = !nearby || settingsOpen || !settlementPanel.hidden;
+  const characterKey = nearby && narrative?.bindings.interactions[station.id]?.characterUUID;
+  const stationName = characterKey ? narrative.text(characterKey) : narrative?.translate(station?.name || '') ?? station?.name;
+  settlementPrompt.textContent = nearby ? `E - ${stationName}` : '';
+}
+function renderSettlementDialogue() {
+  if (!narrative || !dialogueStation) return;
+  if (dialogueStation.id === 'arena-travel') {
+    settlementPanel.querySelector('h2').textContent = narrative.translate('Hunting Board');
+    return;
+  }
+  const binding = narrative.bindings.interactions[dialogueStation.id];
+  settlementPanel.querySelector('h2').textContent = binding?.characterUUID
+    ? narrative.text(binding.characterUUID) : narrative.translate(dialogueStation.id === 'arena-travel' ? 'Hunting Board' : dialogueStation.name);
+  dialogueControls.replaceChildren();
+  if (dialogueResult?.type === 'line') {
+    settlementPanel.querySelector('p').textContent = narrative.text(dialogueResult.line.text);
+    const next = document.createElement('button');
+    next.className = 'menu-button';
+    next.textContent = narrative.translate('Continue');
+    next.addEventListener('click', () => advanceSettlementDialogue(() => narrative.runtime.progressConversation()));
+    dialogueControls.append(next);
+  } else if (dialogueResult?.type === 'outputs' && dialogueResult.nodeKeys.length) {
+    for (const key of dialogueResult.nodeKeys) {
+      const choice = document.createElement('button');
+      choice.className = 'menu-button';
+      choice.textContent = narrative.text(key);
+      choice.addEventListener('click', () => advanceSettlementDialogue(() => narrative.runtime.chooseOutput(key)));
+      dialogueControls.append(choice);
+    }
+  } else if (!dialogueActionHandled) closeSettlementDialogue();
+}
+async function advanceSettlementDialogue(action) {
+  const revision = dialogueRevision;
+  for (const button of dialogueControls.querySelectorAll('button')) button.disabled = true;
+  try {
+    const result = await narrative.runtime.followSingleOutputs(await action());
+    if (revision !== dialogueRevision) return;
+    dialogueResult = result;
+    renderSettlementDialogue();
+  } catch (error) {
+    console.error(`Unable to progress settlement dialogue for ${dialogueStation?.id || 'unknown station'}.`, error);
+    if (revision === dialogueRevision) closeSettlementDialogue();
+  }
+}
+narrative?.onLanguageChange(renderSettlementDialogue);
+async function interactSettlement() {
+  if (settingsOpen) return;
+  const station = nearestSettlementStation();
+  if (!station || station.distance >= 3.5 || !settlementPanel.hidden) return;
+  const binding = narrative?.bindings.interactions[station.id];
+  if (station.id === 'arena-travel') {
+    dialogueRevision++;
+    dialogueStation = station;
+    dialogueResult = null;
+    dialogueControls.replaceChildren();
+    settlementPanel.querySelector('h2').textContent = narrative?.translate('Hunting Board') ?? 'Hunting Board';
+    settlementPanel.querySelector('p').textContent = '';
+    settlementPanel.querySelector('p').hidden = true;
+    settlementTravelControls.hidden = false;
+    settlementPanel.hidden = false;
+    clearInput();
+    altCursorHeld = true;
+    if (document.pointerLockElement) document.exitPointerLock();
+    return;
+  }
+  settlementPanel.querySelector('p').hidden = false;
+  if (binding) {
+    dialogueRevision++;
+    dialogueStation = station;
+    dialogueResult = null;
+    dialogueActionHandled = false;
+    settlementTravelControls.hidden = true;
+    settlementPanel.querySelector('p').textContent = '';
+    dialogueControls.replaceChildren();
+    settlementPanel.hidden = false;
+    clearInput();
+    altCursorHeld = true;
+    if (document.pointerLockElement) document.exitPointerLock();
+    await advanceSettlementDialogue(() => narrative.runtime.beginConversation(binding.entryNodeUUID, binding.characterUUID ? [binding.characterUUID] : []));
+    return;
+  }
+  if (station.id === 'travel') { setSettingsOpen(true); arenaSettings.hidden = false; document.querySelector('#settingsArenaSelectTitle').scrollIntoView({block:'center'}); return; }
+  settlementTravelControls.hidden = station.id !== 'arena-travel';
+  settlementPanel.querySelector('h2').textContent = station.id === 'arena-travel' ? 'Hunting Board' : station.name;
+  settlementPanel.querySelector('p').textContent = station.text;
+  settlementPanel.hidden = false;
+  clearInput();
+  altCursorHeld = true;
+  if (document.pointerLockElement) document.exitPointerLock();
+}
+
 const cameraBlockers = [];
 const floorMaterial = new THREE.MeshStandardMaterial({ color: '#526854', roughness: 0.95 });
 const floor = new THREE.Mesh(new THREE.CylinderGeometry(10, 10, 0.35, 64), floorMaterial);
@@ -291,7 +483,7 @@ registerProjectileTarget({
   onDamage: (damage) => damageTrainingTarget(damage),
 });
 const damageBehemoth = (damage, { part = 'body', stagger = 0, wound = 0, interrupt = false, periodic = false } = {}) => {
-  if (selectedArena === 'range' || !encounterTouchable(behemothState)) return { outcome: 'ignored' };
+  if (selectedArena !== 'island' || !encounterTouchable(behemothState)) return { outcome: 'ignored' };
   if (selectedArena === 'island' && !inTerritory(islandEncounter.arena, playerState.position, 1)) return { outcome: 'ignored' };
   if (selectedArena === 'island' && !periodic) alertEncounter(islandEncounter, playerState.position);
   const result = hitBehemoth(behemothState, { damage, stagger, wound, part, interrupt, attackerModifiers: periodic ? undefined : playerState.statModifiers });
@@ -312,7 +504,7 @@ const syncEncounterView = () => {
     id: 'first-behemoth', mesh, sizeClass: 'large',
     onDamage: (damage, details) => damageBehemoth(damage, { part, stagger: details?.stagger ?? 22, interrupt: details?.interrupt === true }),
   });
-  behemothView.root.visible = selectedArena !== 'range';
+  behemothView.root.visible = selectedArena === 'island';
 };
 syncEncounterView();
 let projectileObstacleMeshes = [];
@@ -344,39 +536,38 @@ arena.updateMatrixWorld(true);
 let movementGeometry = new THREE.Group();
 const movementRaycaster = new THREE.Raycaster();
 let movementMeshes = [];
-target.updateMatrixWorld(true);
-const targetProxy = targetCore.clone(false);
-targetProxy.matrix.copy(targetCore.matrixWorld);
-targetProxy.matrixAutoUpdate = false;
-targetProxy.matrixWorldNeedsUpdate = true;
-const enemyCollisionGeometry = new THREE.Group();
-enemyCollisionGeometry.add(targetProxy);
 let movementOctree;
-let enemyCollisionOctree;
+const mapCollisionCache = new Map();
 const rebuildArenaCollision = () => {
-  arena.updateMatrixWorld(true);
+  const cached = mapCollisionCache.get(selectedArena);
+  if (cached) {
+    movementGeometry = cached.geometry;
+    movementMeshes = cached.meshes;
+    movementOctree = cached.octree;
+    projectileObstacleMeshes = movementMeshes;
+    return;
+  }
+  const mapRoot = isTown() ? currentTownView().root : selectedArena === 'island' ? islandView : arena;
+  mapRoot.updateMatrixWorld(true);
   movementGeometry = new THREE.Group();
   movementMeshes = [];
-  (selectedArena === 'island' ? islandView : arena).updateMatrixWorld(true);
-  (selectedArena === 'island' ? islandView : arena).traverse((object) => {
+  mapRoot.traverse((object) => {
     if (!object.isMesh || !object.visible || object.userData.movementCollision === false) return;
-    const proxy = object.clone(false);
+    // Collision only needs positions and indices; omit render-only attributes.
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', object.geometry.attributes.position);
+    if (object.geometry.index) geometry.setIndex(object.geometry.index);
+    const proxy = new THREE.Mesh(geometry);
     proxy.matrix.copy(object.matrixWorld);
     proxy.matrixAutoUpdate = false;
-    proxy.matrixWorldNeedsUpdate = true;
     movementGeometry.add(proxy);
     movementMeshes.push(object);
   });
   projectileObstacleMeshes = movementMeshes;
   movementGeometry.updateMatrixWorld(true);
-  movementOctree = new Octree().fromGraphNode(movementGeometry);
-  target.updateMatrixWorld(true);
-  targetProxy.matrix.copy(targetCore.matrixWorld);
-  targetProxy.matrixWorldNeedsUpdate = true;
-  enemyCollisionGeometry.updateMatrixWorld(true);
-  enemyCollisionOctree = new Octree().fromGraphNode(enemyCollisionGeometry);
+  movementOctree = preparedMapCollision.get(selectedArena) || new Octree().fromGraphNode(movementGeometry);
+  mapCollisionCache.set(selectedArena, { geometry: movementGeometry, meshes: movementMeshes, octree: movementOctree });
 };
-rebuildArenaCollision();
 // Analytic footprint (base, wheels and pad) so every side blocks movement equally.
 const DUMMY_HALF = { x: 1.32, z: 1.3, height: 2.1 };
 const dummyPushOut = (cx, baseY, cz, radius) => {
@@ -415,8 +606,8 @@ const movementCollisionWorld = {
           const hit = octree.capsuleIntersect(capsule);
           if (!hit || hit.depth <= 1e-5) continue;
           const normal = hit.normal.clone().normalize();
-          capsule.translate(normal.clone().multiplyScalar(hit.depth + skin));
-          if (Math.abs(normal.y) < 0.65) contacts.push(normal.toArray());
+          capsule.translate(new THREE.Vector3(...slopeContactCorrection(normal.toArray(), hit.depth, skin)));
+          if (!isWalkableSlope(normal.toArray())) contacts.push(normal.toArray());
           corrected = true;
           moved = true;
         }
@@ -428,7 +619,7 @@ const movementCollisionWorld = {
           corrected = true;
           moved = true;
         }
-        if (!phaseEnemies && selectedArena !== 'range' && encounterTouchable(behemothState)) {
+        if (!phaseEnemies && selectedArena === 'island' && encounterTouchable(behemothState)) {
           const push = behemothPushOut(behemothState, [capsule.start.x, capsule.start.y - radius, capsule.start.z], radius, height);
           if (push) {
             const length = Math.hypot(...push);
@@ -465,10 +656,10 @@ const movementCollisionWorld = {
     const dummyBlocked = selectedArena === 'range' && Boolean(dummyPushOut(capsule.start.x, capsule.start.y - radius, capsule.start.z, radius));
     const contact = [movementOctree]
       .map((octree) => octree.capsuleIntersect(capsule))
-      .find((hit) => hit && hit.depth > 1e-4 && hit.normal.y < 0.65);
+      .find((hit) => hit && hit.depth > 1e-4 && !isWalkableSlope(hit.normal.toArray()));
     // A capsule resting on a floor or platform is expected to touch it. Treat
     // only penetration into a wall/ceiling as a blocked movement candidate.
-    return Boolean(contact) || dummyBlocked || (selectedArena !== 'range' && encounterTouchable(behemothState)
+    return Boolean(contact) || dummyBlocked || (selectedArena === 'island' && encounterTouchable(behemothState)
       && Boolean(behemothPushOut(behemothState, position, radius, height)));
   },
   raycast(origin, direction, distance) {
@@ -590,7 +781,7 @@ const applyWeaponCamera = () => {
 };
 
 const requestCameraPointerLock = () => {
-  if (arenaScreen.classList.contains('hidden') || settingsOpen || altCursorHeld || !document.hasFocus()) return;
+  if (arenaScreen.classList.contains('hidden') || mapTransitionActive || settingsOpen || !settlementPanel.hidden || altCursorHeld || !document.hasFocus()) return;
   try {
     const request = renderer.domElement.requestPointerLock();
     request?.catch(() => syncPointerLockHint());
@@ -615,6 +806,7 @@ renderer.domElement.addEventListener('click', () => {
 });
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === renderer.domElement;
+  if (locked && !settlementPanel.hidden) { document.exitPointerLock(); return; }
   const released = cameraPointerLocked && !locked;
   cameraPointerLocked = locked;
   appShell.classList.toggle('pointer-locked', locked);
@@ -790,7 +982,7 @@ const renderCombatHud = () => {
   const aimingRangedSkill = equipment?.state.action?.special?.kind === 'ranged'
     && equipment.state.action.special.aimSource === 'camera'
     && !equipment.state.action.specialLaunched;
-  const aiming = equipment && !equipment.state.sheathed && playerState.health > 0
+  const aiming = !isTown() && equipment && !equipment.state.sheathed && playerState.health > 0
     && !settingsOpen && !arenaScreen.classList.contains('hidden');
   document.querySelector('#repeaterReticle').hidden = !aiming || !aimingRangedWeapon;
   document.querySelector('.crosshair').hidden = !aiming || aimingRangedWeapon || !aimingRangedSkill && equipment?.state.airElapsed == null;
@@ -804,6 +996,7 @@ const renderCombatHud = () => {
     staminaBar.classList.toggle('low', stamina <= 25);
   }
   if (!combatStatus) return;
+  updateSettlementHud();
   islandStatus.classList.toggle('hidden', selectedArena !== 'island');
   if (selectedArena === 'island') {
     const e = islandEncounter;
@@ -827,10 +1020,10 @@ const renderCombatHud = () => {
   if (!equipment) combatResources.textContent = '';
   const woundBuff = getStatModifierRemaining(playerState.statModifiers, 'wound-haste');
   if (woundBuff > 0) combatResources.textContent += ` | WOUND HASTE +15% ${woundBuff.toFixed(1)}s`;
-  combatTargetStatus.textContent = selectedArena !== 'range' ? '' :
+  combatTargetStatus.textContent = selectedArena === 'island' ? '' :
     `TRAINING DUMMY / INDESTRUCTIBLE\nCORE ${Math.round(trainingState.core)} / PART ${Math.round(trainingState.part)} / STAGGER ${Math.round(trainingState.stagger)} / WOUND ${Math.round(trainingState.wound)}\nDPS ${trainingDps(trainingState).toFixed(1)} / LAST ${Math.round(trainingState.lastHit)} / HITS ${trainingState.hits}`;
-  behemothHud.classList.toggle('hidden', selectedArena === 'range');
-  if (selectedArena !== 'range') {
+  behemothHud.classList.toggle('hidden', selectedArena !== 'island');
+  if (selectedArena === 'island') {
     const health = Math.round(behemothState.health / BEHEMOTH.maxHealth * 100);
     const stagger = Math.round(behemothState.stagger / behemothState.staggerThreshold * 100);
     const parts = Object.entries(BEHEMOTH.parts).map(([id, definition]) => {
@@ -892,30 +1085,20 @@ const selectBehemothPart = (move, yaw, from, to, bossFrom = behemothState.positi
 };
 
 const stepEncounter = (dt, resolveContacts = () => {}) => {
-  if (selectedArena === 'range') return;
+  if (selectedArena !== 'island') return;
   playerState.invulnerability = Math.max(0, playerState.invulnerability - dt);
   if (playerState.health <= 0 && behemothState.mode !== 'defeated') return;
   const previousMode = behemothState.mode;
   const previousPosition = [...behemothState.position];
-  if (selectedArena === 'island') {
-    const previousId = islandEncounter.id;
-    islandEncounter = stepIslandEncounter(islandEncounter, [{ position: playerState.position, knockedDown: isRecovering(playerState) }], dt);
-    behemothState = islandEncounter.boss;
-    if (previousId !== islandEncounter.id) {
-      syncEncounterView();
-      for (const record of projectileTargets) if (record.kind === 'first-behemoth') record.id = islandEncounter.id;
-      for (const projectile of activeProjectiles) scene.remove(projectile.mesh);
-      activeProjectiles.length = 0;
-      equipment?.definition.onTargetRemoved?.(equipment.state, previousId);
-    }
-  } else {
-    if (behemothState.lifecycle === 'spawning') {
-      behemothState.lifecycleTime += dt;
-      if (behemothState.lifecycleTime >= ISLAND.spawnDuration) { behemothState.lifecycle = 'alive'; behemothState.lifecycleTime = 0; }
-      return;
-    }
-    if (behemothState.mode === 'defeated') behemothState.lifecycleTime = (behemothState.lifecycleTime ?? 0) + dt;
-    stepBehemoth(behemothState, playerState.position, dt, 68, { targetKnockedDown: isRecovering(playerState) });
+  const previousId = islandEncounter.id;
+  islandEncounter = stepIslandEncounter(islandEncounter, [{ position: playerState.position, knockedDown: isRecovering(playerState) }], dt);
+  behemothState = islandEncounter.boss;
+  if (previousId !== islandEncounter.id) {
+    syncEncounterView();
+    for (const record of projectileTargets) if (record.kind === 'first-behemoth') record.id = islandEncounter.id;
+    for (const projectile of activeProjectiles) scene.remove(projectile.mesh);
+    activeProjectiles.length = 0;
+    equipment?.definition.onTargetRemoved?.(equipment.state, previousId);
   }
   // Player contact always resolves before damage from the newly moved enemy.
   resolveContacts(previousPosition);
@@ -946,7 +1129,8 @@ const stepEncounter = (dt, resolveContacts = () => {}) => {
   playerState.position = corrected.position;
 };
 const processWeaponStep = (dt) => {
-  if (selectedArena !== 'range' && playerState.health <= 0) return { locked: true, movementScale: 0, travelDelta: 0 };
+  if (isTown()) return { locked: false, movementScale: 1, travelDelta: 0, events: [] };
+  if (selectedArena === 'island' && playerState.health <= 0) return { locked: true, movementScale: 0, travelDelta: 0 };
   for (const [definition, state] of weaponStates) {
     if (definition !== equipment?.definition && definition.kind === 'ranged') definition.step(state, dt);
   }
@@ -970,14 +1154,14 @@ const processWeaponStep = (dt) => {
     if (event.type === 'special-launch') { launchProjectile(event.projectile); feedback.sound('reward'); }
     if (event.type === 'attack-hit') feedback.sound('swing');
     const attackEvent = event.type === 'attack-hit';
-    const bossPart = selectedArena !== 'range' && attackEvent ? behemothInMove(event.move, event.interrupt) : null;
-    if (attackEvent && (selectedArena !== 'range' ? bossPart : targetInMove(event.move))) {
-      if (selectedArena !== 'range') damageBehemoth(event.move.damage, { part: bossPart, stagger: event.move.stagger, wound: event.move.wound, interrupt: event.interrupt });
+    const bossPart = selectedArena === 'island' && attackEvent ? behemothInMove(event.move, event.interrupt) : null;
+    if (attackEvent && (selectedArena === 'island' ? bossPart : targetInMove(event.move))) {
+      if (selectedArena === 'island') damageBehemoth(event.move.damage, { part: bossPart, stagger: event.move.stagger, wound: event.move.wound, interrupt: event.interrupt });
       else damageTrainingTarget(event.move.damage, { stagger: event.move.stagger, wound: event.move.wound });
       const confirmedEvent = event;
       if (equipment.definition.onHit?.(state, confirmedEvent) && event.ability === 'karma-breaker') state.lastEvent = 'Karma Breaker Â· damage over time';
     } else if (event.type === 'karma-tick') {
-      if (selectedArena !== 'range') damageBehemoth(event.damage, { stagger: event.stagger, periodic: true });
+      if (selectedArena === 'island') damageBehemoth(event.damage, { stagger: event.stagger, periodic: true });
       else damageTrainingTarget(event.damage, { stagger: event.stagger, periodic: true });
     }
     else if (event.type === 'combo-complete') state.lastEvent = `${event.combo.name} Â· ${event.combo.mantra} mantra`;
@@ -990,7 +1174,7 @@ const resolveContinuousContacts = (events, from, to, bossFrom = behemothState.po
     if (event.type !== 'attack-active' || event.action.hitRegistered) continue;
     const touches = (a, b, radius, height) => sweptMeleeContact(event.move, event.yaw, from, to, a, b, radius, height);
     let part = null;
-    if (selectedArena !== 'range') {
+    if (selectedArena === 'island') {
       if (!encounterTouchable(behemothState)) continue;
       part = selectBehemothPart(event.move, event.yaw, from, to, bossFrom, event.interrupt);
     } else {
@@ -999,7 +1183,7 @@ const resolveContinuousContacts = (events, from, to, bossFrom = behemothState.po
     }
     if (!part) continue;
     event.action.hitRegistered = true;
-    if (selectedArena !== 'range') damageBehemoth(event.move.damage, { part, stagger: event.move.stagger, wound: event.move.wound, interrupt: event.interrupt });
+    if (selectedArena === 'island') damageBehemoth(event.move.damage, { part, stagger: event.move.stagger, wound: event.move.wound, interrupt: event.interrupt });
     else damageTrainingTarget(event.move.damage, { stagger: event.move.stagger, wound: event.move.wound });
     equipment.definition.onHit?.(equipment.state, { ...event, type: 'attack-hit' });
   }
@@ -1030,7 +1214,7 @@ const launchProjectile = (definition) => {
   activeProjectiles.push({ ...definition, direction, position, travelled: 0, hitTargets: new Set(), mesh, collisionVolume });
 };
 const stepProjectiles = (dt) => {
-  const currentTargets = projectileTargets.filter((record) => selectedArena !== 'range'
+  const currentTargets = projectileTargets.filter((record) => selectedArena === 'island'
     ? record.kind !== 'training-dummy' && encounterTouchable(behemothState) : record.kind !== 'first-behemoth');
   for (let index = activeProjectiles.length - 1; index >= 0; index -= 1) {
     const projectile = activeProjectiles[index];
@@ -1128,7 +1312,8 @@ const updateAttackVolume = () => {
   attackVolume.visible = true;
 };
 const chainTarget = (yaw = equipment?.state.airElapsed != null ? getCameraYaw() : getAttackYaw()) => {
-  if (selectedArena !== 'range' && !encounterTouchable(behemothState)) return null;
+  if (isTown()) return null;
+  if (selectedArena === 'island' && !encounterTouchable(behemothState)) return null;
   const meshes = selectedArena === 'range' ? [targetCore] : Object.entries(behemothView.hitboxes).filter(([part]) => !BEHEMOTH.parts[part]?.quills || !behemothState.parts[part].broken).map(([, mesh]) => mesh);
   const origin = new THREE.Vector3(...playerState.position);
   return meshes.map(mesh => {
@@ -1143,7 +1328,8 @@ const chainTarget = (yaw = equipment?.state.airElapsed != null ? getCameraYaw() 
   }).filter(t => t.angle < Math.PI / 3).sort((a, b) => a.distance - b.distance)[0] ?? null;
 };
 const handleAttackInput = (input) => {
-  if (isRecovering(playerState) || playerState.dodgeInputBlock > 0 || !equipment || playerState.movementAction === 'dodge' || playerState.movementAction === 'climb' || (selectedArena !== 'range' && playerState.health <= 0)) return;
+  if (isTown()) return;
+  if (isRecovering(playerState) || playerState.dodgeInputBlock > 0 || !equipment || playerState.movementAction === 'dodge' || playerState.movementAction === 'climb' || (selectedArena === 'island' && playerState.health <= 0)) return;
   const reloadSource = equipment.definition.kind === 'ranged'
     && (input === 'reload' || input === 'light' && equipment.state.ammo === 0) ? repeaterReloadSource() : null;
   const result = equipment.definition.handleAttack(equipment.state, input, { attackYaw: equipment.state.airElapsed != null ? getCameraYaw() : getAttackYaw(), target: equipment.definition.targetContext ? chainTarget() : null, autoReload: document.querySelector('#autoReload').checked,
@@ -1153,7 +1339,7 @@ const handleAttackInput = (input) => {
 };
 weaponButton?.addEventListener('click', () => equipment ? window.unequipWeapon() : window.equipWeapon());
 renderer.domElement.addEventListener('mousedown', (event) => {
-  if (arenaScreen.classList.contains('hidden') || settingsOpen) return;
+  if (arenaScreen.classList.contains('hidden') || mapTransitionActive || settingsOpen) return;
   if (event.button === 0) { basicFireHeld = true; handleAttackInput('light'); }
   if (event.button === 2) { event.preventDefault(); handleAttackInput('heavy'); }
 });
@@ -1167,12 +1353,44 @@ const clearInput = () => {
   qHeldSince = null;
   qConsumed = false;
 };
+const menuTabs = [...document.querySelectorAll('.menu-tab')];
+const selectMenuTab = (id) => {
+  for (const tab of menuTabs) {
+    const selected = tab.id === id;
+    tab.setAttribute('aria-selected', String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    document.getElementById(tab.getAttribute('aria-controls')).hidden = !selected;
+  }
+};
+menuTabs.forEach((tab, index) => {
+  tab.addEventListener('click', () => selectMenuTab(tab.id));
+  tab.addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || menuTabs.some(item => item.hidden)) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? menuTabs.length - 1
+      : (index + (event.key === 'ArrowRight' ? 1 : -1) + menuTabs.length) % menuTabs.length;
+    selectMenuTab(menuTabs[next].id);
+    menuTabs[next].focus();
+  });
+});
+const syncMenuGameplay = () => {
+  const playing = !arenaScreen.classList.contains('hidden');
+  const languageSettings = document.querySelector('#settingsLanguageSelection');
+  if (languageSettings) languageSettings.hidden = !playing;
+  const town = playing && isTown();
+  const canSelectWeapon = playing && (town || selectedArena === 'range');
+  document.querySelector('#gameplayWeaponSettings').hidden = !canSelectWeapon;
+  arenaSettings.hidden = !playing || town;
+  document.querySelector('#gameplayTab').hidden = !playing;
+  if (!playing) selectMenuTab('preferencesTab');
+};
 const setSettingsOpen = (open, restoreCamera = true) => {
   settingsOpen = open;
   if (open) { pendingArena = selectedArena; syncArenaSelection(); }
   if (open && !settingsMenu.open) settingsMenu.showModal();
   else if (!open && settingsMenu.open) settingsMenu.close();
-  arenaSettings.hidden = arenaScreen.classList.contains('hidden');
+  syncMenuGameplay();
+  if (open) selectMenuTab(arenaScreen.classList.contains('hidden') ? 'preferencesTab' : 'gameplayTab');
   controls.enabled = !open && arenaScreen.classList.contains('hidden');
   controls.autoRotate = controls.enabled;
   settingsToggle.setAttribute('aria-expanded', String(open));
@@ -1196,7 +1414,7 @@ settingsToggle.addEventListener('click', () => setSettingsOpen(!settingsOpen));
 const keyToAction = (event) => {
   const key = event.key.toLowerCase();
   if (['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'f', ' ', 'q', 'x'].includes(key)) event.preventDefault();
-  if (arenaScreen.classList.contains('hidden')) return;
+  if (arenaScreen.classList.contains('hidden') || mapTransitionActive) return;
   if (key === 'alt') {
     altCursorHeld = true;
     if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
@@ -1204,6 +1422,8 @@ const keyToAction = (event) => {
     return;
   }
   if (event.repeat || arenaScreen.classList.contains('hidden')) return;
+  if (key === 'e' && isTown()) { interactSettlement(); return; }
+  if (isTown() && ['q', 'r', 'x'].includes(key)) return;
   if (key === 'f') pressedKeys.add('jump');
   if (key === ' ') pressedKeys.add('dodge');
   if (key === 'x' && !isRecovering(playerState) && playerState.dodgeInputBlock <= 0 && equipment && equipment.state.action?.ability !== 'crescent-special') {
@@ -1240,7 +1460,7 @@ const resetEncounter = () => {
   for (const record of projectileTargets) if (record.kind === 'first-behemoth') record.id = selectedArena === 'island' ? islandEncounter.id : 'first-behemoth';
   playerState.health = 100;
   playerState.invulnerability = 0;
-  playerState.position = selectedArena === 'island' ? [...ISLAND.arrival] : [0, -0.025, 1.5];
+  playerState.position = isTown() ? [...currentTown().arrival] : selectedArena === 'island' ? [...ISLAND.arrival] : [0, -0.025, 1.5];
   playerState.lastGroundedPosition = [...playerState.position];
   playerState.velocity = [0, 0, 0];
   playerBodyMaterial.emissive.set('#000000');
@@ -1248,74 +1468,165 @@ const resetEncounter = () => {
   activeProjectiles.length = 0;
   if (equipment) equipment.state = equipment.definition.createState();
   updateBehemothView(behemothView, behemothState, 1, collisionVisibilityToggle.checked);
-  behemothView.root.visible = selectedArena !== 'range';
+  behemothView.root.visible = selectedArena === 'island';
   renderCombatHud();
 };
 resetArenaButton.addEventListener('click', () => {
   resetEncounter();
   setSettingsOpen(false);
 });
-const setArenaMode = (mode) => {
-  selectedArena = mode === 'island' ? 'island' : 'range';
+let arenaLoadRequest = 0;
+const applyArenaMode = async (mode, persist = true) => {
+  const request = ++arenaLoadRequest;
+  const destination = ['island', 'old-town'].includes(mode) ? mode : 'range';
+  await ensureMapLoaded(destination);
+  if (request !== arenaLoadRequest) return;
+  selectedArena = ['island', 'old-town'].includes(mode) ? mode : 'range';
+  arenaScreen.classList.toggle('safe-area', isTown());
 
-  camera.far = 900;
-  camera.updateProjectionMatrix();
-  arena.visible = selectedArena !== 'island';
+  arena.visible = selectedArena === 'range';
+  oldTownView.root.visible = selectedArena === 'old-town';
   islandView.visible = selectedArena === 'island';
   const scale = ARENA_SCALE;
   arena.scale.set(scale, 1, scale);
-  updateArenaGrid(scale);
+
   for (const marker of markerMeshes) marker.visible = selectedArena === 'range';
   collisionVisuals.visible = selectedArena === 'range' && collisionVisibilityToggle.checked;
   target.visible = selectedArena === 'range';
-  behemothView.root.visible = selectedArena !== 'range';
-  selectedArenaName.textContent = selectedArena === 'island' ? 'Cinderwild Isle' : 'Open Range';
-  arenaModeBadge.textContent = selectedArena === 'island' ? 'CINDERWILD ISLE' : 'TRAINING RANGE';
-  arenaCaption.innerHTML = selectedArena === 'island' ? 'TWO TERRITORIES<br />FOLLOW THE STONE PATHS' : 'ENCLOSED RANGE<br />OPEN APPROACH';
-  for (const option of arenaOptions) option.checked = option.value === selectedArena;
+  behemothView.root.visible = selectedArena === 'island';
+  selectedArenaName.textContent = isTown() ? currentTown().name : selectedArena === 'island' ? 'Cinderwild Isle' : 'Open Range';
+  settlementPanel.hidden = true;
+  arenaModeBadge.textContent = isTown() ? currentTown().name.toUpperCase() : selectedArena === 'island' ? 'CINDERWILD ISLE' : 'TRAINING RANGE';
+  arenaCaption.innerHTML = isTown() ? 'SURVIVORS AND SHELTER<br />E TO TALK' : selectedArena === 'island' ? 'TWO TERRITORIES<br />FOLLOW THE STONE PATHS' : 'ENCLOSED RANGE<br />OPEN APPROACH';
   controls.maxDistance = selectedArena !== 'range' ? 260 : 24;
-  controls.minDistance = selectedArena !== 'range' ? 16 : 4;
+  controls.minDistance = selectedArena === 'island' ? 16 : 4;
   controls.target.set(0, 1.2, 0);
-  const previewDistance = selectedArena !== 'range' ? 176 : 18;
+  const previewDistance = selectedArena === 'old-town' ? 145 : selectedArena === 'island' ? 176 : 18;
   // Distant previews need more depth precision for the closely layered paths.
   camera.near = arenaScreen.classList.contains('hidden') ? 2 : 0.1;
-  camera.far = selectedArena === 'island' ? 400 : 120;
+  camera.far = selectedArena === 'range' ? 120 : 400;
   camera.updateProjectionMatrix();
-  environment.setArena(selectedArena);
+  environment.setArena(isTown() ? 'island' : selectedArena);
   camera.position.set(previewDistance * 0.67, previewDistance * 0.53, previewDistance * 0.75);
   controls.update();
   controls.saveState();
-  if (!arenaScreen.classList.contains('hidden')) {
-    playerState.position = selectedArena === 'island' ? [...ISLAND.arrival] : [0, -0.025, 1.5];
-    playerState.lastGroundedPosition = [...playerState.position];
-  }
   rebuildArenaCollision();
   resetEncounter();
   if (!arenaScreen.classList.contains('hidden')) { applyWeaponCamera(); updateGameplayCamera(); }
-  try { localStorage.setItem(arenaStorageKey, selectedArena); } catch { /* Current selection remains active. */ }
+  try { if (persist) localStorage.setItem(arenaStorageKey, selectedArena); } catch { /* Current selection remains active. */ }
 };
-arenaOptions.forEach((option) => option.addEventListener('change', () => setArenaMode(option.value)));
+// A modal overlay covers the HUD and other dialogs as well as the scene.
+const gameplayMapFade = document.createElement('dialog');
+gameplayMapFade.className = 'gameplay-map-fade';
+gameplayMapFade.setAttribute('aria-label', 'Traveling to another map');
+gameplayMapFade.addEventListener('cancel', event => event.preventDefault());
+document.body.append(gameplayMapFade);
+const fadeGameplayMap = async (from, to) => {
+  const animation = gameplayMapFade.animate([{ opacity: from }, { opacity: to }], {
+    duration: 800, easing: 'ease-in-out', fill: 'forwards',
+  });
+  await animation.finished;
+  gameplayMapFade.style.opacity = String(to);
+  animation.cancel();
+};
+const withFullscreenMapTransition = async (changeScreen) => {
+  if (mapTransitionActive) return;
+  mapTransitionActive = true;
+  clearInput();
+  if (settingsOpen) setSettingsOpen(false, false);
+  gameplayMapFade.style.opacity = '0';
+  gameplayMapFade.showModal();
+  try {
+    await fadeGameplayMap(0, 1);
+    await changeScreen();
+    // Let the destination render behind black before revealing it.
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  } finally {
+    try { await fadeGameplayMap(1, 0); }
+    finally {
+      gameplayMapFade.close();
+      mapTransitionActive = false;
+      clearInput();
+    }
+  }
+};
+const setArenaMode = async (mode, persist = true) => {
+  if (mapTransitionActive) return;
+  const destination = ['island', 'old-town'].includes(mode) ? mode : 'range';
+  if (arenaScreen.classList.contains('hidden') || destination === selectedArena) {
+    return applyArenaMode(destination, persist);
+  }
+  return withFullscreenMapTransition(() => applyArenaMode(destination, persist));
+};
 settingsArenaOptions.forEach((option) => option.addEventListener('change', () => {
   pendingArena = option.value;
   syncArenaSelection();
 }));
-goToArenaButton.addEventListener('click', () => {
+goToArenaButton.addEventListener('click', async () => {
   if (pendingArena === selectedArena) return;
-  if (pendingArena === 'home') {
-    setSettingsOpen(false, false);
-    setScreen(false);
-    return;
-  }
-  setArenaMode(pendingArena);
+  await setArenaMode(pendingArena);
   setSettingsOpen(false);
 });
-setArenaMode(selectedArena);
+const returnToSettlement = async () => {
+  if (!isTown()) await setArenaMode('old-town');
+  setSettingsOpen(false);
+};
+document.querySelector('#returnToSettlementButton').addEventListener('click', returnToSettlement);
+await setArenaMode(selectedArena);
 try {
   const savedWeapon = localStorage.getItem(weaponStorageKey);
   if (savedWeapon === '') window.unequipWeapon();
   else if (Object.hasOwn(window.availableWeapons, savedWeapon)) window.equipWeapon(window.availableWeapons[savedWeapon]);
 } catch { /* Keep the default weapon if storage is unavailable. */ }
+// Fade only the scene, leaving the start-page controls visible and usable.
+const homeMapFade = document.createElement('div');
+homeMapFade.className = 'home-map-fade';
+homeMapFade.setAttribute('aria-hidden', 'true');
+root.append(homeMapFade);
+const homeMaps = ['range', 'island', 'old-town'];
+const homeMapInterval = 20000;
+const homeMapFadeDuration = 800;
+let homeMapDeadline = performance.now() + homeMapInterval;
+let homeMapPhase = 'idle';
+let homeMapPhaseStarted = 0;
+let homeMapGeneration = 0;
+const cancelHomeMapTransition = () => {
+  homeMapGeneration++;
+  arenaLoadRequest++;
+  homeMapPhase = 'idle';
+  homeMapFade.style.opacity = '0';
+  homeMapDeadline = performance.now() + homeMapInterval;
+};
+const updateHomeMapPreview = (now) => {
+  if (!arenaScreen.classList.contains('hidden') || enterButton.disabled) return;
+  if (homeMapPhase === 'idle' && now >= homeMapDeadline) {
+    homeMapPhase = 'out';
+    homeMapPhaseStarted = now;
+    homeMapDeadline = now + homeMapInterval;
+  }
+  if (homeMapPhase === 'out') {
+    const progress = Math.min((now - homeMapPhaseStarted) / homeMapFadeDuration, 1);
+    homeMapFade.style.opacity = String(progress);
+    if (progress === 1) {
+      homeMapPhase = 'loading';
+      const generation = homeMapGeneration;
+      const next = homeMaps[(homeMaps.indexOf(selectedArena) + 1) % homeMaps.length];
+      setArenaMode(next, false).catch(error => {
+        console.warn('Start-page map preview could not be loaded.', error);
+      }).finally(() => {
+        if (generation !== homeMapGeneration) return;
+        homeMapPhase = 'in';
+        homeMapPhaseStarted = performance.now();
+      });
+    }
+  } else if (homeMapPhase === 'in') {
+    const progress = Math.min((now - homeMapPhaseStarted) / homeMapFadeDuration, 1);
+    homeMapFade.style.opacity = String(1 - progress);
+    if (progress === 1) homeMapPhase = 'idle';
+  }
+};
 const setScreen = (showArena) => {
+  cancelHomeMapTransition();
   if (settingsMenu.open) settingsMenu.close();
   settingsOpen = false;
   resumeCameraAfterEscape = false;
@@ -1326,24 +1637,26 @@ const setScreen = (showArena) => {
   feedback.clear();
   homeScreen.classList.toggle('hidden', showArena);
   arenaScreen.classList.toggle('hidden', !showArena);
+  syncMenuGameplay();
   appShell.classList.toggle('in-range', showArena);
   controls.enabled = !showArena;
   controls.autoRotate = !showArena;
   camera.near = showArena ? 0.1 : 2;
   camera.updateProjectionMatrix();
   if (showArena) {
+    document.activeElement?.blur();
     player.visible = true;
     target.visible = selectedArena === 'range';
-    behemothView.root.visible = selectedArena !== 'range';
+    behemothView.root.visible = selectedArena === 'island';
     resetEncounter();
     applyWeaponCamera();
-    if (selectedArena === 'range') { cameraOrbit.azimuth = 0; updateGameplayCamera(); }
+    if (selectedArena !== 'island') { cameraOrbit.azimuth = 0; updateGameplayCamera(); }
     requestCameraPointerLock();
     syncPointerLockHint();
   } else {
     player.visible = false;
     target.visible = selectedArena === 'range';
-    behemothView.root.visible = selectedArena !== 'range';
+    behemothView.root.visible = selectedArena === 'island';
     altCursorHeld = false;
     relockOnFocus = false;
     appShell.classList.remove('pointer-locked');
@@ -1358,7 +1671,19 @@ const setScreen = (showArena) => {
     targetRotationY = arena.rotation.y;
   }
 };
-enterButton.addEventListener('click', () => setScreen(true));
+enterButton.addEventListener('click', async () => {
+  enterButton.disabled = true;
+  cancelHomeMapTransition();
+  try {
+    await withFullscreenMapTransition(async () => {
+      if (!isTown()) await applyArenaMode('old-town');
+      setScreen(true);
+    });
+    requestCameraPointerLock();
+  } finally {
+    enterButton.disabled = false;
+  }
+});
 fovSlider.addEventListener('input', () => {
   selectedFov = Number(fovSlider.value);
   fovValue.value = `${selectedFov}Â°`;
@@ -1383,7 +1708,7 @@ window.addEventListener('keydown', (event) => {
     }
     return;
   }
-  if (arenaScreen.classList.contains('hidden') || settingsOpen) return;
+  if (arenaScreen.classList.contains('hidden') || mapTransitionActive || settingsOpen) return;
   if (event.target.closest?.('button, input, select, textarea, a')) return;
   keyToAction(event);
   heldKeys.add(event.key.toLowerCase());
@@ -1443,10 +1768,11 @@ let movementAccumulator = 0;
 const animate = () => {
   requestAnimationFrame(animate);
   timer.update();
+  updateHomeMapPreview(performance.now());
   const delta = Math.min(timer.getDelta(), 0.05);
   arena.rotation.y += (targetRotationY - arena.rotation.y) * delta * 0.3;
 
-  if (!arenaScreen.classList.contains('hidden')) {
+  if (!arenaScreen.classList.contains('hidden') && !mapTransitionActive) {
     const moveX = Number(heldKeys.has('d') || heldKeys.has('arrowright')) - Number(heldKeys.has('a') || heldKeys.has('arrowleft'));
     const moveY = Number(heldKeys.has('w') || heldKeys.has('arrowup')) - Number(heldKeys.has('s') || heldKeys.has('arrowdown'));
     const cameraYaw = getCameraYaw();
@@ -1455,7 +1781,7 @@ const animate = () => {
     const aimYaw = rayHitsFloor
       ? Math.atan2(-(aimPoint.x - playerState.position[0]), -(aimPoint.z - playerState.position[2]))
       : cameraYaw;
-    movementAccumulator += settingsOpen ? 0 : delta;
+    movementAccumulator += settingsOpen || !settlementPanel.hidden ? 0 : delta;
     let consumedActionPress = false;
     while (movementAccumulator >= movementStep) {
       stepStatModifiers(playerState.statModifiers, movementStep);
@@ -1502,6 +1828,7 @@ const animate = () => {
       }, movementStep, {
         colliders: ARENA_COLLIDERS,
         collisionWorld: movementCollisionWorld,
+        fallResetPosition: isTown() ? currentTown().arrival : null,
         floorBounds: selectedArena !== 'range'
           ? { minX: -75, maxX: 75, minZ: -75, maxZ: 75, y: -0.025 }
           : undefined,
@@ -1532,7 +1859,7 @@ const animate = () => {
       stepEncounter(movementStep, (bossFrom) => resolveContinuousContacts(
         weaponTick.events, playerState.position, playerState.position, bossFrom,
       ));
-      if (selectedArena !== 'range' && equipment?.state?.action?.move?.phaseEnemies !== true) {
+      if (selectedArena === 'island' && equipment?.state?.action?.move?.phaseEnemies !== true) {
         playerState.position = movementCollisionWorld.moveCapsule(playerState.position, [0, 0, 0], 0.36, 1.72).position;
       }
       behemothView.root.position.set(...behemothState.position);
@@ -1555,7 +1882,7 @@ const animate = () => {
       tempestCastRing.rotation.z = castProgress * Math.PI * 1.5;
     } else tempestCastMaterial.opacity = 0.9;
     updateAttackVolume();
-    if (selectedArena !== 'range') updateBehemothView(behemothView, behemothState, delta, collisionVisibilityToggle.checked);
+    if (selectedArena === 'island') updateBehemothView(behemothView, behemothState, delta, collisionVisibilityToggle.checked);
     if (playerState.invulnerability < 0.48 && playerBodyMaterial.emissiveIntensity > 0) {
       playerBodyMaterial.emissiveIntensity = Math.max(0, playerBodyMaterial.emissiveIntensity - delta * 2);
     }
@@ -1572,7 +1899,7 @@ const animate = () => {
     const cameraDistance = cameraOffset.length();
     const cameraDirection = cameraOffset.normalize();
     cameraRaycaster.set(controls.target, cameraDirection);
-    const obstructions = cameraRaycaster.intersectObjects(selectedArena === 'island' ? movementMeshes : cameraBlockers, false);
+    const obstructions = cameraRaycaster.intersectObjects(selectedArena !== 'range' ? movementMeshes : cameraBlockers, false);
     if (obstructions.length && obstructions[0].distance < cameraDistance) {
       camera.position.copy(controls.target).addScaledVector(cameraDirection, Math.max(0.7, obstructions[0].distance - 0.35));
     }

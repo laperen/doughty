@@ -1,0 +1,10 @@
+{
+  "formatVersion": 1,
+  "languages": [
+    {
+      "id": "531014c3-70a2-41ab-b5f3-44703118a4c6",
+      "name": "Japanese",
+      "file": "localization/0001.json"
+    }
+  ]
+}
