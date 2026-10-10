@@ -109,6 +109,7 @@ const materialInventory = loadInventory({ getItem: key => localStorage.getItem(k
 const persistMaterials = () => {
   const saved = saveInventory(materialInventory, { setItem: (key, value) => localStorage.setItem(key, value) });
   document.querySelector('#inventorySaveWarning').hidden = saved;
+  return saved;
 };
 const syncArenaSelection = () => {
   for (const option of settingsArenaOptions) option.checked = option.value === pendingArena;
@@ -306,6 +307,7 @@ async function interactSettlement() {
   if (settingsOpen) return;
   const station = nearestSettlementStation();
   if (!station || station.distance >= 3.5 || !settlementPanel.hidden) return;
+  if (station.id === 'extractor') { openMaterials('extract'); return; }
   const binding = narrative?.interactions[station.id];
   if (station.id === 'arena-travel') {
     dialogueRevision++;
@@ -1426,13 +1428,13 @@ settingsMenu.addEventListener('cancel', event => {
   setSettingsOpen(false, false);
 });
 settingsToggle.addEventListener('click', () => setSettingsOpen(!settingsOpen));
-const inventoryView = createInventoryView({ state: materialInventory, onBack: () => {
+const inventoryView = createInventoryView({ state: materialInventory, onExtract: persistMaterials, onBack: () => {
   inventoryView.close();
   setSettingsOpen(true);
   document.querySelector(isTown() ? '#openInventoryButton' : '#openLootButton').focus();
 } });
 const openMaterials = mode => {
-  if (arenaScreen.classList.contains('hidden') || mapTransitionActive || (mode === 'player' ? !isTown() : selectedArena !== 'island')) return;
+  if (arenaScreen.classList.contains('hidden') || mapTransitionActive || (mode !== 'loot' ? !isTown() : selectedArena !== 'island')) return;
   setSettingsOpen(true);
   settingsMenu.close();
   inventoryView.show(mode);

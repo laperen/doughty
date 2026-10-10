@@ -5,14 +5,16 @@ export const MATERIAL_SPECIES = Object.freeze({
   'first-behemoth': { name: 'Embermane', core: 'heart', parts: { ...commonParts, horn: 'horn' }, items: { leg: 'legs', tail: 'tails', head: 'heads', horn: 'horns', heart: 'cores' } },
   quillshot: { name: 'Quillshot', core: 'core', parts: { ...commonParts, leftTusk: 'tusk', rightTusk: 'tusk', quillFrontLeft: 'quills', quillFrontRight: 'quills', quillRearLeft: 'quills', quillRearRight: 'quills' }, items: { leg: 'legs', tail: 'tails', head: 'heads', tusk: 'horns', quills: 'growths', core: 'cores' } },
 });
+export const RARITIES = Object.freeze({ common: { name: 'Common', dust: 5, score: 1 }, rare: { name: 'Rare', dust: 10, score: 2 }, superior: { name: 'Superior', dust: 20, score: 3 } });
 export const MATERIALS = Object.freeze(Object.fromEntries(Object.entries(MATERIAL_SPECIES).flatMap(([speciesId, species]) => Object.entries(species.items).map(([part, type]) => {
   const id = `${speciesId}:${part}`;
-  return [id, { id, speciesId, type, name: `${species.name} ${part[0].toUpperCase()}${part.slice(1)}`, rare: type === 'cores' }];
+  const rarity = type === 'cores' ? 'superior' : (speciesId === 'first-behemoth' ? ['horn', 'tail'] : ['head', 'tail']).includes(part) ? 'rare' : 'common';
+  return [id, { id, speciesId, type, rarity, rarityScore: RARITIES[rarity].score, dustYield: RARITIES[rarity].dust, name: `${species.name} ${part[0].toUpperCase()}${part.slice(1)}`, rare: rarity === 'rare' }];
 }))));
 export const INVENTORY_STORAGE_KEY = 'doughty-material-inventory-v1';
 const validStacks = input => Object.fromEntries(Object.entries(input && typeof input === 'object' ? input : {}).filter(([id, count]) => MATERIALS[id] && Number.isSafeInteger(count) && count > 0));
 export function createInventoryState(saved = {}) {
-  return { player: validStacks(saved?.player), loot: validStacks(saved?.loot) };
+  return { player: validStacks(saved?.player), loot: validStacks(saved?.loot), aetherDust: Number.isSafeInteger(saved?.aetherDust) && saved.aetherDust >= 0 ? saved.aetherDust : 0 };
 }
 export function loadInventory(storage) {
   try { return createInventoryState(JSON.parse(storage.getItem(INVENTORY_STORAGE_KEY) || '{}')); }
@@ -51,4 +53,30 @@ export function filterStacks(stacks, types = [], species = []) {
     .map(([id, count]) => ({ ...MATERIALS[id], count }))
     .filter(item => (!types.length || types.includes(item.type)) && (!species.length || species.includes(item.speciesId)))
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Validate the complete selection before consuming any banked parts. */
+export function extractionYield(inventory, selections) {
+  const entries = Object.entries(selections || {});
+  if (!entries.length) return 0;
+  let total = 0;
+  for (const [id, quantity] of entries) {
+    if (!MATERIALS[id] || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > (inventory.player[id] || 0)) return 0;
+    total += MATERIALS[id].dustYield * quantity;
+    if (!Number.isSafeInteger(total)) return 0;
+  }
+  return Number.isSafeInteger(inventory.aetherDust + total) ? total : 0;
+}
+export function extractSelectedParts(inventory, selections) {
+  const dust = extractionYield(inventory, selections);
+  if (!dust) return 0;
+  for (const [id, quantity] of Object.entries(selections)) {
+    inventory.player[id] -= quantity;
+    if (!inventory.player[id]) delete inventory.player[id];
+  }
+  inventory.aetherDust += dust;
+  return dust;
+}
+export function extractAetherDust(inventory, id, quantity) {
+  return extractSelectedParts(inventory, { [id]: quantity });
 }

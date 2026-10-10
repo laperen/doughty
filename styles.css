@@ -171,3 +171,78 @@
 
 .gameplay-map-fade{position:fixed;inset:0;width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:#000;opacity:0;outline:none}
 .gameplay-map-fade::backdrop{background:transparent}
+
+.material-stack.superior{border-color:#b792ef}
+#extractionControls{padding:16px 20px;margin-top:16px;background:#17212d;border:1px solid #72dfec;flex:none}
+#extractionControls[hidden]{display:none}
+.inventory-menu.extractor-mode[open]{display:flex;flex-direction:column;overflow:hidden}
+.extractor-mode .inventory-layout{flex:1;min-height:0;overflow:auto;margin-top:12px;padding-bottom:16px}
+.extractor-mode .inventory-heading,.extractor-mode>p{flex:none}
+.extractor-mode>p{margin:8px 0}
+#extractionControls h3{margin:0 0 10px}
+#extractionSelections{max-height:22dvh;overflow:auto}
+.extraction-selection{display:flex;align-items:center;gap:16px;padding:6px 0;flex-wrap:wrap}
+.extraction-selection>span{flex:1;min-width:160px}
+.extraction-selection label{display:flex;gap:10px;align-items:center}
+.extraction-selection input{width:90px;padding:8px;background:#101820;color:var(--paper);border:1px solid #ffffff50}
+.extraction-selection input:invalid{border-color:#ef9d87}
+.extraction-actions{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:10px}
+#extractionPreview{font:16px var(--mono);color:var(--acid);margin:0}
+#extractionStatus:empty{display:none}
+.material-increments{display:flex;gap:6px;min-height:44px;margin-top:12px;visibility:hidden}
+.material-increments button{padding:10px;min-width:44px;min-height:44px}
+.material-increments button[hidden]{display:none}
+.material-stack:hover .material-increments,.material-stack:focus-within .material-increments,.material-stack.increments-open .material-increments{visibility:visible}
+.material-stack.has-selection{background:#203338}
+.material-stack:focus-visible{outline:2px solid var(--acid);outline-offset:2px}
+@media(max-width:650px){
+  #extractionControls{padding:12px;margin-top:8px}
+  .extraction-actions{gap:8px}
+  .extraction-selection{gap:8px}
+  .extraction-selection>span{flex-basis:100%}
+  .extractor-mode .inventory-grid{grid-template-columns:1fr}
+  .extractor-mode .inventory-heading{gap:8px}
+  .extractor-mode #inventoryDescription{font-size:12px}
+}
+
+/* Every material menu shares a stationary filter column and scrolling items. */
+.inventory-menu[open]{display:flex;flex-direction:column;overflow:hidden}
+.inventory-menu .inventory-heading,.inventory-menu>p{flex:none}
+.inventory-menu>p{margin:8px 0}
+#inventoryDescription{height:2.5em;min-height:2.5em;font-size:14px}
+.inventory-menu .inventory-layout{flex:1;min-height:0;overflow:hidden;grid-template-columns:230px minmax(0,1fr);margin-top:12px;padding:0}
+.inventory-layout>aside{min-height:0;overflow:auto;display:block;padding-right:4px}
+.inventory-content{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
+.inventory-items{flex:1;min-height:0;overflow:auto;padding:0 4px 16px}
+#inventorySummary{margin-top:0}
+#extractionControls{box-sizing:border-box;max-height:48%;overflow:auto;margin-top:12px}
+#extractionSelections{max-height:16dvh}
+@media(max-width:650px){
+  .inventory-menu{padding:16px 12px}
+  .inventory-menu .inventory-layout{grid-template-columns:110px minmax(0,1fr);gap:12px}
+  .inventory-layout>aside{display:block;padding-right:2px;font-size:12px}
+  .inventory-layout fieldset{min-width:0;margin-bottom:12px;padding:8px 6px}
+  .inventory-layout label{align-items:flex-start;gap:6px;overflow-wrap:anywhere}
+  .inventory-layout input{flex:none;width:16px;height:16px}
+  .inventory-layout aside .menu-button{width:100%;padding:10px 6px}
+  .inventory-menu .inventory-grid{grid-template-columns:minmax(0,1fr)}
+  .material-stack{padding:12px}
+  .material-stack h3{font-size:15px}
+  #extractionControls{padding:10px;max-height:48%}
+  #extractionControls h3{font-size:15px}
+  .extraction-selection>span{min-width:0;overflow-wrap:anywhere}
+  .extraction-selection label{flex-wrap:wrap;font-size:12px;gap:6px}
+  .extraction-selection input{width:65px}
+  .extraction-actions .menu-button{padding:10px 8px}
+  #extractionPreview{font-size:13px;overflow-wrap:anywhere}
+}
+
+@media(max-width:650px){.inventory-menu #inventoryDescription{font-size:12px;height:3.5em;min-height:3.5em}}
+
+.inventory-filter-section{border:1px solid #ffffff30;margin:0 0 20px;padding:12px 16px}
+.inventory-filter-section summary{cursor:pointer;font:13px var(--mono);padding:4px 0;overflow-wrap:anywhere}
+.inventory-filter-section summary:focus-visible{outline:2px solid var(--acid);outline-offset:4px}
+.filter-active-count{margin-left:6px;color:var(--acid)}
+.inventory-filter-section[open] .filter-active-count{display:none}
+.filter-options{margin-top:8px}
+@media(max-width:650px){.inventory-filter-section{margin-bottom:12px;padding:8px 6px}.inventory-filter-section summary{font-size:12px}}

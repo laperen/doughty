@@ -1219,6 +1219,78 @@
       },
       "fda09146-ee72-5670-9c5f-93e174371571": {
         "value": "Quillshot Core"
+      },
+      "cc3b6c2e-41ad-41ca-8e15-cd097b4afa3e": {
+        "value": "Extractor"
+      },
+      "20f34fd1-8a1e-4961-a57d-2f6ebf9b1c59": {
+        "value": "Common"
+      },
+      "0f6736a2-9af8-474b-94b5-f28b576b0404": {
+        "value": "Rare"
+      },
+      "08d10dd5-0417-46d8-90a1-294c5c768cc0": {
+        "value": "Superior"
+      },
+      "5aea317e-8408-4c15-8ad9-ce9581c6d81d": {
+        "value": "Material"
+      },
+      "dde3bf01-d4a9-4b45-ae04-3a7adbc2b89b": {
+        "value": "Quantity"
+      },
+      "4e46d531-c29d-4e27-a464-fccfe86d999a": {
+        "value": "Confirm extraction"
+      },
+      "c29d6b81-6ff6-4201-87e3-6454f1749f33": {
+        "value": "Extract aether-dust from stored parts. Confirming consumes the selected quantity."
+      },
+      "31478145-aa98-4c69-9440-133c7a50456c": {
+        "value": "Select an owned material and a valid quantity."
+      },
+      "dc98d16a-e806-4b9b-ad5a-ccc855b4b29c": {
+        "value": "Extraction complete."
+      },
+      "174183dc-8aad-41ba-bb2f-164a0a79f90c": {
+        "value": "Extraction complete. Browser storage is unavailable; progress remains in memory."
+      },
+      "20378122-e6dd-46ab-83cb-7f4103f8f184": {
+        "value": "Aether-dust: {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}"
+      },
+      "68d99d6b-c7f4-4a4d-ab67-2eeab39bf41f": {
+        "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}} aether-dust per part"
+      },
+      "fc68f37d-022b-40be-acc4-1666f7719e72": {
+        "value": "Consume {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}} parts for {{value:c35e4551-0658-4de8-8b09-320c066c031d}} aether-dust."
+      },
+      "50512ea7-be99-4036-96d0-faca1a704441": {
+        "value": "Extraction selections"
+      },
+      "4b8e38e6-6637-42f7-a9b7-8971a1d9cc50": {
+        "value": "Selected parts"
+      },
+      "f87bacc0-c5cf-4a44-8c90-148d72d4f801": {
+        "value": "Clear selections"
+      },
+      "1a56ce2d-25c8-4eb1-9205-f28085803fa2": {
+        "value": "Remove"
+      },
+      "0ba14d60-5a89-4d88-88a9-5fd65db9784e": {
+        "value": "No parts selected."
+      },
+      "240c96f0-5213-49e7-ab5f-9e85d5167e66": {
+        "value": "Hover, focus, or tap a part to add quantities. Review your selections below before confirming extraction."
+      },
+      "6da63742-0d94-4e88-8d08-a1220939db09": {
+        "value": "Total aether-dust: {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}"
+      },
+      "66d0de9a-08b6-4140-b599-bf69ab8659af": {
+        "value": "Selected: {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}"
+      },
+      "6a7cca3c-eea6-48f4-9eb9-c269724bb6a5": {
+        "value": "Cell researcher"
+      },
+      "059b1831-e2e0-44fa-8560-0fee87a4edc0": {
+        "value": "I am setting up this outdoor lab to create cells from aether-dust. Cell creation is not available yet."
       }
     },
     "stats": {

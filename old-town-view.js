@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 const OLD_TOWN_STATIONS = Object.freeze([
+  { id: 'cell-researcher', name: 'Cell researcher', position: [32, 3, 3.5], color: '#dce6e4', text: 'I am setting up this outdoor lab to create cells from aether-dust. Cell creation is not available yet.' },
+  { id: 'extractor', name: 'Extractor', position: [36, 3, 3.5], color: '#72dfec', text: '' },
   { id: 'arena-travel', name: 'Arena travel', position: [0, 0, 24], color: '#96e3f4', text: 'Choose where to travel. Enter the hunting grounds for Behemoth encounters, or visit Open Range to practice.' },
   { id: 'guide', name: 'Settlement guide', position: [-5, 0, 30], color: '#dfbb71', text: 'Welcome to Old Emberwatch. These streets are what remains of our settlement. Survivors from other settlements arrive here seeking shelter and help.' },
   { id: 'smith', name: 'Weapon smith', position: [23.5, 0, 13], color: '#d88457', text: 'The smith will craft and upgrade weapons using the parts you accumulate in the hunting grounds. Crafting is not available in this mockup.' },
@@ -209,7 +211,39 @@ export function createOldTownView() {
   // Middle street wraps a freestanding workshop; warm west / blue east districts.
   house(-28,-4,13,12,3,8,'#8d725b'); house(-12,-5,10,9,3,6,'#7d8b81');
   house(15,-3,12,13,3,7.5,'#69818c');
-  house(34,-2,9,14,3,9,'#916c51');
+  // Outdoor cell laboratory replaces the eastern terrace residence.
+  // Keep the front and sides open to the existing slope and eastern lane.
+  const labStart = root.children.length;
+  box([9,.08,13],'#8b9696',[34,3.045,-2],false);
+  for(const x of [29.6,38.4]) for(const z of [-8.2,2.8]) box([.22,3.5,.22],colors.timber,[x,4.75,z]);
+  const labCanopy=box([9.4,.16,8],'#5b8f94',[34,6.55,-4],false); labCanopy.rotation.x=.06;
+  box([8.8,2,.18],'#647d80',[34,4,-8.3]);
+  for(const x of [30,34,38]) {
+    box([2.4,.18,1.15],'#c6d0c8',[x,4.12,-5.8]);
+    for(const dx of [-.9,.9]) box([.14,1.02,.75],'#43575d',[x+dx,3.53,-5.8]);
+    for(let i=0;i<3;i++) {
+      const bx=x-.65+i*.65;
+      cylinder(.15,.4,['#75d9dd','#9da4e7','#a3c7a2'][i],[bx,4.42,-5.8],false,10);
+      cylinder(.08,.14,'#cedbdd',[bx,4.69,-5.8],false,10);
+    }
+  }
+  // Central experiment stand, containment rings, and suspended cell specimen.
+  cylinder(.9,.6,'#405a63',[34,3.3,-1.3],true,12);
+  cylinder(1,.12,'#a4bec2',[34,3.66,-1.3],true,16);
+  mesh(new THREE.OctahedronGeometry(.42),'#8de7e3',[34,4.45,-1.3],false);
+  const ring=mesh(new THREE.TorusGeometry(.75,.055,6,24),'#d9b884',[34,4.45,-1.3],false); ring.rotation.x=Math.PI/2;
+  for(const x of [33.15,34.85]) box([.1,1.8,.1],'#5b757c',[x,4.1,-1.3]);
+  // Copper conduits connect two outdoor reagent tanks to the rear workbench.
+  for(const x of [30.2,37.8]) {
+    cylinder(.48,1.7,'#516b72',[x,3.85,-2.5],true,12);
+    for(const y of [3.15,4.55]) cylinder(.51,.12,'#c4ad80',[x,y,-2.5],false,12);
+    box([.17,.17,2.9],'#bc9870',[x,4.3,-4],false);
+    mesh(new THREE.SphereGeometry(.14,8,6),'#76e1d9',[x,4.8,-2.5],false);
+  }
+  box([2,.15,1],'#c6d0c8',[30.5,4.05,1.3]);
+  for(const x of [29.75,31.25]) box([.14,1,.7],'#43575d',[x,3.5,1.3]);
+  box([.65,.12,.5],'#ddcfaa',[30.5,4.2,1.3],false);
+  const labEnd = root.children.length;
   house(-23,-21,11,12,3,7,'#7b7162');
   house(22,-25,10,10,3,7,'#607984');
   // Shared open-front smithy attached to the building behind the travel board.
@@ -275,13 +309,18 @@ export function createOldTownView() {
     cylinder(.55,1.25,colors.timber,[x+1.7,y+.625,z],true);
     for(const h of [.2,1]) cylinder(.57,.07,'#7c8585',[x+1.7,y+h,z],false);
   }
-  const positions={ 'arena-travel':[0,0,39], guide:[-5,0,49], smith:[-5,0,24], armorer:[3,0,24], potions:[30,0,32.5], sword:[-21,0,39], repeaters:[-21,0,49], chains:[24,0,39], 'future-master':[24,0,49], refugee:[30,3,19], travel:[5,0,55] };
+  const positions={ 'cell-researcher':[32,3,3.5], extractor:[36,3,3.5], 'arena-travel':[0,0,39], guide:[-5,0,49], smith:[-5,0,24], armorer:[3,0,24], potions:[30,0,32.5], sword:[-21,0,39], repeaters:[-21,0,49], chains:[24,0,39], 'future-master':[24,0,49], refugee:[30,3,19], travel:[5,0,55] };
   const stations=OLD_TOWN_STATIONS.map(s=>({...s,position:positions[s.id]}));
   stations.find(s=>s.id==='guide').text='Welcome to Old Emberwatch. The market lanes climb around the old inn to the watchtower courtyard. Cross the western stream to explore the bridge quarter, visit the smithy behind the travel board, or meet the weapon masters on either side of the arrival square.';
-  for(const s of stations) if(!['travel','arena-travel'].includes(s.id)) {
+  for(const s of stations) if(!['travel','arena-travel','extractor'].includes(s.id)) {
     cylinder(.34,1.1,s.color,[s.position[0],s.position[1]+.85,s.position[2]],true,8);
     mesh(new THREE.SphereGeometry(.25,8,6),'#c9ad8a',[s.position[0],s.position[1]+1.65,s.position[2]]);
   }
+  // Extractor beside the outdoor laboratory, clear of the eastern through-lane.
+  cylinder(.8,.65,'#344654',[36,3.325,3.5],true,12);
+  cylinder(.38,1.15,'#72dfec',[36,4.2,3.5],true,12);
+  cylinder(.65,.2,'#344654',[36,4.88,3.5],true,12);
+  for(const x of [35.45,36.55]) box([.12,1.3,.12],'#637b85',[x,4.2,3.5]);
   // Visible travel board beside the arrival medallion.
   for(const x of [-.9,.9]) box([.14,2.2,.14],colors.timber,[x,1.1,39]);
   box([2.3,1.25,.18],colors.trim,[0,1.5,39]);
