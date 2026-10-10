@@ -246,3 +246,41 @@
 .inventory-filter-section[open] .filter-active-count{display:none}
 .filter-options{margin-top:8px}
 @media(max-width:650px){.inventory-filter-section{margin-bottom:12px;padding:8px 6px}.inventory-filter-section summary{font-size:12px}}
+
+#equipmentItems{flex:1;min-height:0;overflow:auto;align-content:start;margin-top:16px}
+#equipmentCurrent .menu-button{margin-left:16px}
+#equipmentFilterLabel{display:flex;align-items:center;gap:12px;margin:8px 0}
+
+/* Crafting and equipment use separate browsing and commitment states. */
+.equipment-menu .equipment-layout{display:grid;grid-template-columns:minmax(220px,.85fr) minmax(260px,1.4fr) minmax(260px,1fr);gap:28px;flex:1;min-height:0}
+.equipment-sidebar,.equipment-summary{overflow:auto;min-height:0;padding:12px}
+#equipmentTabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+#equipmentTabs .active{background:#29617a;border-color:#97d6e6}
+.equipment-menu #equipmentItems{margin:0;display:grid;gap:10px;overflow:visible}
+.equipment-row{position:relative;border:1px solid #435362;border-radius:8px;padding:12px;background:#182631}
+.equipment-row .menu-button::after,.equipment-slot .menu-button::after{content:"";position:absolute;inset:0;border-radius:inherit;cursor:pointer}
+.equipment-row:focus-within,.equipment-slot:focus-within{outline:2px solid #97d6e6;outline-offset:2px}
+.equipment-row.selected{border-color:#eaf5ff;box-shadow:0 0 0 1px #eaf5ff}
+.equipment-row .menu-button{width:100%;text-align:left;border:0;background:transparent;padding:6px}
+.equipment-row p{margin:8px 6px}.equipment-row small{color:#a5bbc8;margin:6px}
+.equipment-marker{display:inline-block;width:24px;color:#b8e88b}
+.equipment-preview{display:flex;flex-direction:column;min-height:0;text-align:center;background:radial-gradient(ellipse at center,#30495655,transparent 70%)}
+#equipmentModel{flex:1;min-height:160px;overflow:hidden}#equipmentModel canvas{display:block;width:100%;height:100%}
+#equipmentModel{cursor:grab;touch-action:none;user-select:none}#equipmentModel.dragging{cursor:grabbing}
+#equipmentDetails{padding:16px}#equipmentDetails h3{font-size:clamp(20px,2vw,30px);margin:8px 0}
+.equipment-origin{text-transform:uppercase;letter-spacing:.14em;color:#b6c6d0}
+.equipment-summary{background:#182631;border:1px solid #354858;border-radius:12px}
+.equipment-summary h3{margin-top:20px}.equipment-summary h3:first-child{margin-top:0}
+.equipment-summary .menu-button{display:block;width:100%;margin-top:18px}
+.equipment-requirement{display:flex;justify-content:space-between;gap:14px;border-bottom:1px solid #364553;padding:14px 0}
+.requirement-met{color:#b8e88b}.requirement-missing{color:#ff9a8d}
+.equipment-hold{--hold:0%;background:linear-gradient(90deg,#b99645 var(--hold),#334451 var(--hold));touch-action:none;user-select:none}
+.equipment-hold[data-holding]{border-color:#ffdc88}.equipment-hold:disabled{opacity:.45;cursor:not-allowed}
+.equipment-slot{position:relative;padding:24px;border:1px solid #6a8799;border-radius:12px}
+.equipment-footer{display:flex;gap:24px;align-items:center;min-height:50px;flex:none}.equipment-footer p{margin:8px 0}
+.equipment-menu[data-page="picker"] .equipment-sidebar{grid-column:3;grid-row:1;background:#182631;border-radius:12px}
+.equipment-menu[data-page="picker"] .equipment-preview{grid-column:2;grid-row:1}
+.equipment-menu[data-page="picker"] .equipment-summary{grid-column:1;grid-row:1}
+.equipment-menu[data-page="picker"] #equipmentItems{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:900px){.equipment-menu .equipment-layout{gap:12px;grid-template-columns:minmax(150px,.8fr) minmax(180px,1fr) minmax(200px,1fr)}.equipment-sidebar,.equipment-summary{padding:8px}}
+@media(max-width:650px){.inventory-menu.equipment-menu[open]{overflow:auto}.equipment-menu .equipment-layout{display:flex;flex-direction:column;flex:none}.equipment-sidebar,.equipment-summary{overflow:visible}.equipment-preview{min-height:320px}#equipmentModel{height:240px;flex:none}.equipment-footer{flex-direction:column;gap:0;align-items:flex-start}.equipment-menu[data-page="picker"] #equipmentItems{grid-template-columns:repeat(2,minmax(0,1fr))}}

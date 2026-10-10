@@ -1,3 +1,4 @@
+import { damageProfile } from './weapon-damage.js';
 import { getStatModifierRemaining } from './stat-modifiers.js';
 import { STAMINA } from './stamina.js';
 /**
@@ -15,7 +16,7 @@ export const STRIKER_CRESCENT_SPECIAL = Object.freeze({
   id: 'crescent-projectile',
   label: 'Crescent',
   kind: 'ranged',
-  damage: 100,
+  ...damageProfile(20, 5.0),
   width: 4, // World units across the blade face.
   height: 0.2, // Thin vertical profile.
   depth: 1.72 * (2 / 3), // Forward length; swapped with the previous hitbox height.
@@ -34,7 +35,7 @@ export const STRIKER_CRESCENT_SPECIAL = Object.freeze({
     return {
       id: this.id,
       kind: this.kind,
-      damage: this.damage,
+      damage: this.damage, damageMultiplier: this.damageMultiplier, damageMultiplier: this.damageMultiplier,
       width: this.width,
       height: this.height,
       depth: this.depth,
@@ -60,7 +61,7 @@ export const STRIKER_SURGE_ABILITY = Object.freeze({
 
 const LIGHT_OPEN = Object.freeze({
   id: 'light-open', presentation: { weight: 'light', side: 1 }, label: 'Light opener', startup: 0.12, active: 0.1, recovery: 0.14,
-  range: 1.75, arc: 105, damage: 20, stagger: 8,
+  range: 1.75, arc: 105, ...damageProfile(20, 1.0, 0.4),
   travel: 0.5, movementLock: 0.22,
 });
 const COMBOS = Object.freeze([
@@ -68,11 +69,11 @@ const COMBOS = Object.freeze([
     id: 'focused-assault', name: 'Focused Assault', inputs: ['light', 'light', 'light'], mantra: 'Focus',
     moves: [LIGHT_OPEN, Object.freeze({
       id: 'light-follow', presentation: { weight: 'light', side: -1 }, label: 'Quick strike', startup: 0.12, active: 0.1, recovery: 0.14,
-      range: 1.82, arc: 110, damage: 22, stagger: 9,
+      range: 1.82, arc: 110, ...damageProfile(20, 1.1, 0.45),
       travel: 0.5, movementLock: 0.22,
     }), Object.freeze({
       id: 'focused-finisher', presentation: { weight: 'light', side: 1 }, label: 'Focused finisher', startup: 0.16, active: 0.12, recovery: 0.24,
-      range: 2.0, arc: 120, damage: 34, stagger: 18,
+      range: 2.0, arc: 120, ...damageProfile(20, 1.7, 0.9),
       travel: 0.5, movementLock: 0.28,
     })],
   },
@@ -80,11 +81,11 @@ const COMBOS = Object.freeze([
     id: 'spirit-barrage', name: 'Spirit Barrage', inputs: ['light', 'heavy', 'heavy'], mantra: 'Spirit',
     moves: [LIGHT_OPEN, Object.freeze({
       id: 'spirit-barrage-flurry', presentation: { weight: 'light', side: 1 }, label: 'Spirit Barrage', startup: 0.22, active: 0.52, recovery: 0.24,
-      range: 2.2, arc: 125, damage: 14, stagger: 8,
+      range: 2.2, arc: 125, ...damageProfile(20, 0.7, 0.4),
       travel: 0.5, movementLock: 0.74, hitOffsets: [0.26, 0.40, 0.54, 0.68],
     }), Object.freeze({
       id: 'spirit-heavy-finisher', presentation: { weight: 'heavy', side: -1 }, label: 'Spirit heavy finisher', startup: 0.24, active: 0.14, recovery: 0.26,
-      range: 2.05, arc: 100, damage: 30, stagger: 18,
+      range: 2.05, arc: 100, ...damageProfile(20, 1.5, 0.9),
       travel: 0.5, movementLock: 0.38,
     })],
   },
@@ -92,15 +93,15 @@ const COMBOS = Object.freeze([
     id: 'mighty-squall', name: 'Mighty Squall', inputs: ['heavy', 'heavy', 'heavy'], mantra: 'Might',
     moves: [Object.freeze({
       id: 'heavy-open', presentation: { weight: 'heavy', side: 1 }, label: 'Heavy opener', startup: 0.24, active: 0.14, recovery: 0.26,
-      range: 1.95, arc: 100, damage: 30, stagger: 18,
+      range: 1.95, arc: 100, ...damageProfile(20, 1.5, 0.9),
       travel: 0.5, movementLock: 0.38,
     }), Object.freeze({
       id: 'heavy-follow', presentation: { weight: 'heavy', side: -1 }, label: 'Heavy follow-up', startup: 0.26, active: 0.14, recovery: 0.28,
-      range: 2.0, arc: 105, damage: 34, stagger: 21,
+      range: 2.0, arc: 105, ...damageProfile(20, 1.7, 1.05),
       travel: 0.5, movementLock: 0.4,
     }), Object.freeze({
       id: 'mighty-finisher', presentation: { weight: 'heavy', side: 1 }, label: 'Mighty finisher', startup: 0.34, active: 0.18, recovery: 0.38,
-      range: 2.25, arc: 115, damage: 48, stagger: 34,
+      range: 2.25, arc: 115, ...damageProfile(20, 2.4, 1.7),
       travel: 0.5, movementLock: 0.52,
     })],
   },
@@ -257,7 +258,7 @@ export function useStrikerTechnique(state, { attackYaw = state.attackYaw, camera
       ability: 'crescent-special',
       special: special.activate({ attackYaw, cameraYaw, groundNormal }),
       launchDelay: 0.5,
-      move: { id: 'crescent-windup', label: 'Crescent wind-up', startup: 0, active: 0, recovery: 0.5, range: 0, arc: 0, damage: 0, stagger: 0, travel: 0, movementLock: 0.5 },
+      move: { id: 'crescent-windup', label: 'Crescent wind-up', startup: 0, active: 0, recovery: 0.5, range: 0, arc: 0, ...damageProfile(20, 0.0, 0.0), travel: 0, movementLock: 0.5 },
     };
     state.attackYaw = Number.isFinite(state.action.special.attackYaw) ? state.action.special.attackYaw : attackYaw;
     state.elapsed = 0;
@@ -277,7 +278,7 @@ export function useStrikerTechnique(state, { attackYaw = state.attackYaw, camera
     state.mantras.splice(0, 2);
     state.action = { ability: 'karma-breaker', interrupt: true, move: {
       id: 'karma-breaker', presentation: { weight: 'heavy', side: 1, motion: 'thrust' }, label: 'Karma Breaker', startup: 0.40, active: 0.15, recovery: 0.48,
-      range: LIGHT_OPEN.range, arc: LIGHT_OPEN.arc, damage: 55, stagger: 32, travel: 6,
+      range: LIGHT_OPEN.range, arc: LIGHT_OPEN.arc, ...damageProfile(20, 2.75, 1.6), travel: 6,
       travelSpeedMultiplier: 2, travelDuringActive: true, continuousHitbox: true, hitOffsets: [], movementLock: 0.95,
     } };
     state.attackYaw = Number.isFinite(cameraYaw) ? cameraYaw : attackYaw;
@@ -297,7 +298,7 @@ export function useStrikerTechnique(state, { attackYaw = state.attackYaw, camera
     grantSurgeAvailability(state);
     state.action = { ability: 'tempest-form', move: {
       id: 'tempest-cast', label: 'Tempest Form Cast', startup: 0, active: 0, recovery: 0.5,
-      range: 0, arc: 0, damage: 0, stagger: 0, travel: 0, movementLock: 0.5,
+      range: 0, arc: 0, ...damageProfile(20, 0.0, 0.0), travel: 0, movementLock: 0.5,
     } };
     state.attackYaw = Number.isFinite(attackYaw) ? attackYaw : null;
     state.elapsed = 0;
@@ -345,7 +346,7 @@ export function useStrikerSurge(state, { attackYaw = state.attackYaw } = {}) {
   for (const slot of state.mantras) slot.remaining = MANTRA_DURATION;
   state.action = { ability: 'surge', move: {
     id: 'surge', label: 'Surge', startup: 0.12, active: 0.16, recovery: 0.18,
-    range: 2.85, arc: 70, damage: 24, stagger: 14, ...SURGE_TRAVEL_PROFILE, phaseEnemies: true, travelDuringActive: true, movementLock: 0.38,
+    range: 2.85, arc: 70, ...damageProfile(20, 1.2, 0.7), ...SURGE_TRAVEL_PROFILE, phaseEnemies: true, travelDuringActive: true, movementLock: 0.38,
   } };
   state.attackYaw = Number.isFinite(attackYaw) ? attackYaw : null;
   state.elapsed = 0;
@@ -394,7 +395,7 @@ export function stepStriker(state, dt, { attackSpeedMultiplier = 1, spend = () =
     state.karmaDotRemaining = Math.max(0, state.karmaDotRemaining - dt);
     while (state.karmaDotAccumulator >= 1) {
       state.karmaDotAccumulator -= 1;
-      events.push({ type: 'karma-tick', damage: 12, stagger: 4 });
+      events.push({ type: 'karma-tick', ...damageProfile(20, 0.6, 0.2) });
     }
   }
   if (!state.action && state.chainWindowRemaining > 0) {

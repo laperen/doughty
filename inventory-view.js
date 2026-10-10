@@ -1,4 +1,4 @@
-import { PART_TYPES, MATERIAL_SPECIES, MATERIALS, RARITIES, filterStacks, extractionYield, extractSelectedParts } from './inventory.js';
+import { PART_TYPES, MATERIAL_SPECIES, MATERIALS, RARITIES, filterStacks, extractionYield, extractSelectedParts, donationYield, donateSelectedParts } from './inventory.js';
 
 /** Full-screen material browser; selections remain drafts until confirmation. */
 export function createInventoryView({ state, onBack, onExtract = () => true }) {
@@ -7,7 +7,7 @@ export function createInventoryView({ state, onBack, onExtract = () => true }) {
   dialog.className = 'inventory-menu';
   dialog.setAttribute('aria-labelledby', 'inventoryTitle');
   dialog.innerHTML = `<header class="inventory-heading"><h2 id="inventoryTitle"></h2><button class="menu-button" id="inventoryBack">Back to Gameplay</button></header>
-    <p id="inventoryDescription"></p><p id="aetherDustBalance"></p><div class="inventory-layout"><aside>
+    <p id="inventoryDescription"></p><p id="aetherDustBalance"></p><p id="currencyBalance"></p><div class="inventory-layout"><aside>
     <details class="inventory-filter-section" id="inventoryTypes"><summary><span>Part type</span><span class="filter-active-count">(0)</span></summary><div class="filter-options"></div></details>
     <details class="inventory-filter-section" id="inventorySpecies"><summary><span>Behemoth</span><span class="filter-active-count">(0)</span></summary><div class="filter-options"></div></details>
     <button class="menu-button" id="inventoryClear">Clear filters</button></aside>
@@ -21,10 +21,10 @@ export function createInventoryView({ state, onBack, onExtract = () => true }) {
   const selected = selector => [...dialog.querySelectorAll(`${selector} input:checked`)].map(input => input.value);
   function updateSelectionState() {
     for (const update of cardUpdates.values()) update();
-    const total = extractionYield(state, selections);
+    const total = mode === 'donate' ? donationYield(state, selections) : extractionYield(state, selections);
     dialog.querySelector('#extractConfirm').disabled = !total;
     dialog.querySelector('#extractionClear').disabled = !Object.keys(selections).length;
-    dialog.querySelector('#extractionPreview').textContent = `Total aether-dust: ${total}`;
+    dialog.querySelector('#extractionPreview').textContent = mode === 'donate' ? `Total currency: ${total}` : `Total aether-dust: ${total}`;
   }
   function renderSelections() {
     const list = dialog.querySelector('#extractionSelections'); list.replaceChildren();
@@ -49,9 +49,9 @@ export function createInventoryView({ state, onBack, onExtract = () => true }) {
   }
   dialog.querySelector('#extractionClear').addEventListener('click', () => { selections = {}; renderSelections(); });
   dialog.querySelector('#extractConfirm').addEventListener('click', () => {
-    if (!extractSelectedParts(state, selections)) { updateSelectionState(); return; }
+    if (!(mode === 'donate' ? donateSelectedParts(state, selections) : extractSelectedParts(state, selections))) { updateSelectionState(); return; }
     const saved = onExtract(); selections = {}; render();
-    dialog.querySelector('#extractionStatus').textContent = saved === false ? 'Extraction complete. Browser storage is unavailable; progress remains in memory.' : 'Extraction complete.';
+    dialog.querySelector('#extractionStatus').textContent = mode === 'donate' ? (saved === false ? 'Donation complete. Browser storage is unavailable; progress remains in memory.' : 'Donation complete.') : saved === false ? 'Extraction complete. Browser storage is unavailable; progress remains in memory.' : 'Extraction complete.';
   });
   function addFilters(selector, entries) {
     const options = dialog.querySelector(`${selector} .filter-options`);
@@ -67,16 +67,19 @@ export function createInventoryView({ state, onBack, onExtract = () => true }) {
     for (const selector of ['#inventoryTypes', '#inventorySpecies']) {
       dialog.querySelector(`${selector} .filter-active-count`).textContent = `(${selected(selector).length})`;
     }
-    const stacks = state[mode === 'extract' ? 'player' : mode];
+    const stacks = state[['extract', 'donate'].includes(mode) ? 'player' : mode];
     const all = filterStacks(stacks);
     const items = filterStacks(stacks, selected('#inventoryTypes'), selected('#inventorySpecies'));
-    dialog.classList.toggle('extractor-mode', mode === 'extract');
-    dialog.querySelector('#inventoryTitle').textContent = mode === 'extract' ? 'Extractor' : mode === 'loot' ? 'Hunting Loot' : 'Inventory';
+    dialog.classList.toggle('extractor-mode', ['extract', 'donate'].includes(mode));
+    dialog.querySelector('#inventoryTitle').textContent = mode === 'donate' ? 'Settlement donation' : ['extract', 'donate'].includes(mode) ? 'Extractor' : mode === 'loot' ? 'Hunting Loot' : 'Inventory';
     dialog.querySelector('#inventoryDescription').textContent = mode === 'loot'
       ? 'Materials harvested from defeated Behemoths. Added to your inventory when you return to safety.'
-      : mode === 'extract' ? 'Hover, focus, or tap a part to add quantities. Review your selections below before confirming extraction.' : 'Materials stored safely in your inventory.';
-    dialog.querySelector('#aetherDustBalance').textContent = `Aether-dust: ${state.aetherDust}`;
-    dialog.querySelector('#extractionControls').hidden = mode !== 'extract';
+      : mode === 'donate' ? 'Donate stored parts for settlement currency. Review your selections before confirming.' : mode === 'extract' ? 'Hover, focus, or tap a part to add quantities. Review your selections below before confirming extraction.' : 'Materials stored safely in your inventory.';
+    dialog.querySelector('#aetherDustBalance').textContent = mode === 'donate' ? `Currency: ${state.currency}` : `Aether-dust: ${state.aetherDust}`;
+    dialog.querySelector('#currencyBalance').textContent = mode === 'donate' ? '' : `Currency: ${state.currency}`;
+    dialog.querySelector('#extractionControls').setAttribute('aria-label', mode === 'donate' ? 'Donation selections' : 'Extraction selections');
+    dialog.querySelector('#extractionControls').hidden = !['extract', 'donate'].includes(mode);
+    dialog.querySelector('#extractConfirm').textContent = mode === 'donate' ? 'Confirm donation' : 'Confirm extraction';
     dialog.querySelector('#inventorySummary').textContent = `${items.length} / ${all.length} stacks`;
     const grid = dialog.querySelector('#inventoryStacks'); grid.replaceChildren(); cardUpdates.clear();
     for (const item of items) {
@@ -86,7 +89,7 @@ export function createInventoryView({ state, onBack, onExtract = () => true }) {
       const count = document.createElement('strong'); count.textContent = `\u00d7 ${item.count}`;
       const rarity = document.createElement('p'); rarity.textContent = RARITIES[item.rarity].name;
       card.append(name, type, rarity, count);
-      if (mode === 'extract') {
+      if (['extract', 'donate'].includes(mode)) {
         card.tabIndex = 0;
         const actions = document.createElement('div'); actions.className = 'material-increments';
         const buttons = [1, 10, 100].map(amount => {

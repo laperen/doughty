@@ -2,10 +2,11 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 const OLD_TOWN_STATIONS = Object.freeze([
   { id: 'cell-researcher', name: 'Cell researcher', position: [32, 3, 3.5], color: '#dce6e4', text: 'I am setting up this outdoor lab to create cells from aether-dust. Cell creation is not available yet.' },
+  { id: 'donation', name: 'Settlement donation', position: [23, 3, 0], color: '#dfbb71', text: '' },
   { id: 'extractor', name: 'Extractor', position: [36, 3, 3.5], color: '#72dfec', text: '' },
   { id: 'arena-travel', name: 'Arena travel', position: [0, 0, 24], color: '#96e3f4', text: 'Choose where to travel. Enter the hunting grounds for Behemoth encounters, or visit Open Range to practice.' },
   { id: 'guide', name: 'Settlement guide', position: [-5, 0, 30], color: '#dfbb71', text: 'Welcome to Old Emberwatch. These streets are what remains of our settlement. Survivors from other settlements arrive here seeking shelter and help.' },
-  { id: 'smith', name: 'Weapon smith', position: [23.5, 0, 13], color: '#d88457', text: 'The smith will craft and upgrade weapons using the parts you accumulate in the hunting grounds. Crafting is not available in this mockup.' },
+  { id: 'smith', name: 'Weapon smith', position: [23.5, 0, 13], color: '#d88457', text: 'The smith crafts swords and chainblades using currency and banked Behemoth parts.' },
   { id: 'armorer', name: 'Armorer', position: [26.5, 0, 13], color: '#80a3b1', text: 'The armorer will turn your gathered parts into armor and upgrades. Armor progression is not available in this mockup.' },
   { id: 'potions', name: 'Potion maker', position: [17, 0, 25], color: '#94b788', text: 'Herbs, bottles and remedies are prepared here for hunters and arriving survivors. Potion crafting is not available in this mockup.' },
   { id: 'sword', name: 'Striker Sword master', position: [-20, 6, -46], color: '#cc9764', text: 'Practice Focused Assault (LLL), Spirit Barrage (LHH), and Mighty Squall (HHH) in Open Range. Each completed combo earns its own Mantra.' },
@@ -309,13 +310,16 @@ export function createOldTownView() {
     cylinder(.55,1.25,colors.timber,[x+1.7,y+.625,z],true);
     for(const h of [.2,1]) cylinder(.57,.07,'#7c8585',[x+1.7,y+h,z],false);
   }
-  const positions={ 'cell-researcher':[32,3,3.5], extractor:[36,3,3.5], 'arena-travel':[0,0,39], guide:[-5,0,49], smith:[-5,0,24], armorer:[3,0,24], potions:[30,0,32.5], sword:[-21,0,39], repeaters:[-21,0,49], chains:[24,0,39], 'future-master':[24,0,49], refugee:[30,3,19], travel:[5,0,55] };
+  const positions={ 'cell-researcher':[32,3,3.5], extractor:[36,3,3.5], donation:[23,3,0], 'arena-travel':[0,0,39], guide:[-5,0,49], smith:[-5,0,24], armorer:[3,0,24], potions:[30,0,32.5], sword:[-21,0,39], repeaters:[-21,0,49], chains:[24,0,39], 'future-master':[24,0,49], refugee:[30,3,19], travel:[5,0,55] };
   const stations=OLD_TOWN_STATIONS.map(s=>({...s,position:positions[s.id]}));
   stations.find(s=>s.id==='guide').text='Welcome to Old Emberwatch. The market lanes climb around the old inn to the watchtower courtyard. Cross the western stream to explore the bridge quarter, visit the smithy behind the travel board, or meet the weapon masters on either side of the arrival square.';
-  for(const s of stations) if(!['travel','arena-travel','extractor'].includes(s.id)) {
+  for(const s of stations) if(!['travel','arena-travel','extractor','donation'].includes(s.id)) {
     cylinder(.34,1.1,s.color,[s.position[0],s.position[1]+.85,s.position[2]],true,8);
     mesh(new THREE.SphereGeometry(.25,8,6),'#c9ad8a',[s.position[0],s.position[1]+1.65,s.position[2]]);
   }
+  // Donation desk beside the east wall of the enclosed building west of the cell lab.
+  box([1.7,.9,.9],'#8c6943',[23,3.45,0]);
+  box([1.9,.12,1.1],'#dfbb71',[23,3.96,0]);
   // Extractor beside the outdoor laboratory, clear of the eastern through-lane.
   cylinder(.8,.65,'#344654',[36,3.325,3.5],true,12);
   cylinder(.38,1.15,'#72dfec',[36,4.2,3.5],true,12);

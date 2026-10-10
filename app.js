@@ -1,3 +1,6 @@
+import { EQUIPMENT, createEquipmentState, equipItem, craftWeapon, canChangeEquipment } from './equipment.js';
+import { createEquipmentView } from './equipment-view.js';
+import { resolveWeaponEvents } from './weapon-damage.js';
 import { loadMapAsset } from './map-loader.js';
 import { loadInventory, saveInventory, collectDefeatLoot, bankLoot } from './inventory.js';
 import { createInventoryView } from './inventory-view.js';
@@ -34,6 +37,11 @@ let narrative = null;
 let dialogueActionHandled = false;
 try {
   narrative = await createNarrative({ commands: {
+    OpenSmithCrafting() {
+      dialogueActionHandled = true;
+      settlementPanel.hidden = true;
+      openEquipment('smith');
+    },
     OpenHuntingBoard() {
       dialogueActionHandled = true;
       settlementTravelControls.hidden = false;
@@ -106,6 +114,10 @@ try {
 } catch { /* Use the current range when storage is unavailable. */ }
 let pendingArena = selectedArena;
 const materialInventory = loadInventory({ getItem: key => localStorage.getItem(key) });
+try {
+  const saved = JSON.parse(localStorage.getItem('doughty-material-inventory-v1') || '{}');
+  materialInventory.equipment = createEquipmentState(saved.equipment, localStorage.getItem('doughty-selected-weapon') ?? 'striker-sword');
+} catch {}
 const persistMaterials = () => {
   const saved = saveInventory(materialInventory, { setItem: (key, value) => localStorage.setItem(key, value) });
   document.querySelector('#inventorySaveWarning').hidden = saved;
@@ -307,6 +319,8 @@ async function interactSettlement() {
   if (settingsOpen) return;
   const station = nearestSettlementStation();
   if (!station || station.distance >= 3.5 || !settlementPanel.hidden) return;
+  if (station.id === 'donation') { openMaterials('donate'); return; }
+  if (station.id === 'repeaters') { openEquipment(station.id); return; }
   if (station.id === 'extractor') { openMaterials('extract'); return; }
   const binding = narrative?.interactions[station.id];
   if (station.id === 'arena-travel') {
@@ -469,7 +483,7 @@ const targetCore = trainingView.hitbox;
 let trainingState = createTrainingState();
 const damageTrainingTarget = (damage, { stagger = 0, wound = 0, periodic = false } = {}) => {
   hitTrainingTarget(trainingState, { damage, stagger, wound, periodic });
-  feedback.impact([target.position.x, 1.5, target.position.z + 1.2], damage, { periodic, part: 'head' });
+  feedback.impact([target.position.x, 1.5, target.position.z + 1.2], damage, { periodic, part: 'head', woundDamage: Math.max(0, wound), staggerDamage: Math.max(0, stagger) });
 };
 scene.add(target);
 let behemothState = createBehemothState();
@@ -503,7 +517,7 @@ const damageBehemoth = (damage, { part = 'body', stagger = 0, wound = 0, interru
   const point = behemothView.hitboxes[part]?.getWorldPosition(new THREE.Vector3())
     ?? new THREE.Vector3(...behemothState.position);
   feedback.impact(point.toArray(), damage,
-    { outcome: result.outcome, part: result.partDamage > 0 ? part : 'body', periodic, brokenPart: result.brokenPart, wounded: result.wounded });
+    { outcome: result.outcome, part: result.partDamage > 0 ? part : 'body', periodic, brokenPart: result.brokenPart, wounded: result.wounded, woundDamage: result.woundDamage, staggerDamage: result.staggerDamage });
   return result;
 };
 const syncEncounterView = () => {
@@ -727,9 +741,8 @@ const weaponStates = new Map();
 const rangedEffects = [];
 const buffCollectors = new Set();
 window.registerBuffCollector = collector => { buffCollectors.add(collector); return () => buffCollectors.delete(collector); };
-const weaponSelect = document.querySelector('#weaponSelect');
 const repeatersSettings = document.querySelector('#repeatersSettings');
-const updateWeaponSettings = () => { repeatersSettings.hidden = weaponSelect.value !== 'repeaters'; };
+const updateWeaponSettings = () => { repeatersSettings.hidden = equipment?.definition.id !== 'repeaters'; };
 updateWeaponSettings();
 const weaponStorageKey = 'doughty-selected-weapon';
 const saveWeaponSelection = id => {
@@ -738,10 +751,6 @@ const saveWeaponSelection = id => {
 const autoReloadToggle = document.querySelector('#autoReload');
 try { autoReloadToggle.checked = localStorage.getItem('repeaters-auto-reload') !== 'false'; } catch {}
 autoReloadToggle.addEventListener('change', () => { try { localStorage.setItem('repeaters-auto-reload', autoReloadToggle.checked); } catch {} });
-weaponSelect.addEventListener('change', () => {
-  if (weaponSelect.value === '') window.unequipWeapon();
-  else window.equipWeapon(window.availableWeapons[weaponSelect.value]);
-});
 window.availableWeapons = { 'striker-sword': STRIKER_SWORD, repeaters: REPEATERS, chainblades: CHAINBLADES };
 let equippedWeapon = STRIKER_SWORD; // Weapon availability is separate from its sheathed state.
 const cameraOrbit = { azimuth: Math.PI / 4, polar: 1.15, distance: 13, shoulder: 0 };
@@ -846,6 +855,11 @@ window.addEventListener('mousemove', (event) => {
 
 // Future weapon equip code can call this without changing the movement simulation.
 window.equipWeapon = (definition = STRIKER_SWORD) => {
+  if (!arenaScreen.classList.contains('hidden') && !canChangeEquipment(selectedArena)) return false;
+  const selected = materialInventory.equipment.equipped;
+  const itemId = selected && EQUIPMENT[selected].type === definition.id ? selected : `starter:${definition.id}`;
+  if (!materialInventory.equipment.owned[itemId]) return false;
+  materialInventory.equipment.equipped = itemId;
   if (!definition?.createState || !definition?.handleAttack || !definition?.step || !definition?.setSheathed) throw new Error('Weapon must implement createState, handleAttack, step, and setSheathed.');
   clearInput();
   if (equipment) { equipment.definition.cancelAction?.(equipment.state); weaponStates.set(equipment.definition, equipment.state); }
@@ -853,23 +867,26 @@ window.equipWeapon = (definition = STRIKER_SWORD) => {
   definition.cancelAction?.(nextState);
   definition.setSheathed(nextState, true);
   equipment = { definition, state: nextState };
-  document.querySelector('#weaponSelect').value = definition.id;
+  persistMaterials();
   updateWeaponSettings();
   equippedWeapon = definition;
   saveWeaponSelection(definition.id);
-  if (weaponButton) weaponButton.textContent = `UNEQUIP ${definition.name.toUpperCase()}`;
+  if (weaponButton) weaponButton.textContent = 'Equipment';
   applyWeaponCamera();
   renderCombatHud();
 };
 window.unequipWeapon = () => {
+  if (!arenaScreen.classList.contains('hidden') && !canChangeEquipment(selectedArena)) return false;
+  materialInventory.equipment.equipped = null;
+  persistMaterials();
   clearInput();
   if (equipment) { equipment.definition.cancelAction?.(equipment.state); weaponStates.set(equipment.definition, equipment.state); }
-  document.querySelector('#weaponSelect').value = '';
-  updateWeaponSettings();
+
   equipment = null;
+  updateWeaponSettings();
   equippedWeapon = null;
   saveWeaponSelection('');
-  if (weaponButton) weaponButton.textContent = 'EQUIP STRIKER SWORD';
+  if (weaponButton) weaponButton.textContent = 'Equipment';
   applyWeaponCamera();
   renderCombatHud();
 };
@@ -1158,6 +1175,7 @@ const processWeaponStep = (dt) => {
   }
   const attackSpeedMultiplier = getEffectiveStat(1, 'attackSpeed', playerState.statModifiers);
   const result = equipment.definition.step(state, dt, { attackSpeedMultiplier, spend: (amount) => spendStamina(playerState, amount) });
+  result.events = resolveWeaponEvents(result.events, EQUIPMENT[materialInventory.equipment.equipped]?.damage ?? 20);
   for (const event of result.events) {
     if (event.type === 'empowered-reload') { absorbEmpoweredReload(new THREE.Vector3().fromArray(event.origin)); continue; }
     if (event.type === 'ranged-shot') { fireRepeaters(event); continue; }
@@ -1350,7 +1368,7 @@ const handleAttackInput = (input) => {
   if (result.type === 'unsheathed') basicFireHeld = false;
   if (result.type !== 'input-ignored') renderCombatHud();
 };
-weaponButton?.addEventListener('click', () => equipment ? window.unequipWeapon() : window.equipWeapon());
+weaponButton?.addEventListener('click', () => openEquipment());
 renderer.domElement.addEventListener('mousedown', (event) => {
   if (arenaScreen.classList.contains('hidden') || mapTransitionActive || settingsOpen) return;
   if (event.button === 0) { basicFireHeld = true; handleAttackInput('light'); }
@@ -1394,13 +1412,13 @@ const syncMenuGameplay = () => {
   document.querySelector('#inventoryActions').hidden = !playing || (!town && selectedArena !== 'island');
   document.querySelector('#openInventoryButton').hidden = !town;
   document.querySelector('#openLootButton').hidden = !playing || selectedArena !== 'island';
-  const canSelectWeapon = playing && (town || selectedArena === 'range');
-  document.querySelector('#gameplayWeaponSettings').hidden = !canSelectWeapon;
+  document.querySelector('#gameplayWeaponSettings').hidden = !playing;
   arenaSettings.hidden = !playing || town;
   document.querySelector('#gameplayTab').hidden = !playing;
   if (!playing) selectMenuTab('preferencesTab');
 };
 const setSettingsOpen = (open, restoreCamera = true) => {
+  if (!open && equipmentView.open) equipmentView.close();
   if (!open && inventoryView.open) inventoryView.close();
   settingsOpen = open;
   if (open) { pendingArena = selectedArena; syncArenaSelection(); }
@@ -1441,6 +1459,24 @@ const openMaterials = mode => {
 };
 document.querySelector('#openInventoryButton').addEventListener('click', () => openMaterials('player'));
 document.querySelector('#openLootButton').addEventListener('click', () => openMaterials('loot'));
+const equipmentView = createEquipmentView({ inventory: materialInventory, area: () => selectedArena,
+  onEquip: id => {
+    if (!equipItem(materialInventory.equipment, id, selectedArena)) return false;
+    if (id === null) window.unequipWeapon(); else window.equipWeapon(window.availableWeapons[EQUIPMENT[id].type]);
+    return true;
+  },
+  onCraft: (id, crafter) => {
+    if (!craftWeapon(materialInventory, id, crafter, selectedArena)) return false;
+    persistMaterials(); return true;
+  },
+  onBack: () => { equipmentView.close(); setSettingsOpen(true); document.querySelector('#openEquipmentButton').focus(); },
+});
+const openEquipment = (crafter = null) => {
+  if (arenaScreen.classList.contains('hidden') || mapTransitionActive || crafter && !isTown()) return;
+  setSettingsOpen(true); settingsMenu.close(); equipmentView.show(crafter);
+};
+document.querySelector('#openEquipmentButton').addEventListener('click', () => openEquipment());
+
 const keyToAction = (event) => {
   const key = event.key.toLowerCase();
   if (['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'f', ' ', 'q', 'x'].includes(key)) event.preventDefault();
@@ -1604,11 +1640,9 @@ const returnToSettlement = async () => {
 };
 document.querySelector('#returnToSettlementButton').addEventListener('click', returnToSettlement);
 await setArenaMode(selectedArena);
-try {
-  const savedWeapon = localStorage.getItem(weaponStorageKey);
-  if (savedWeapon === '') window.unequipWeapon();
-  else if (Object.hasOwn(window.availableWeapons, savedWeapon)) window.equipWeapon(window.availableWeapons[savedWeapon]);
-} catch { /* Keep the default weapon if storage is unavailable. */ }
+const savedEquipment = materialInventory.equipment.equipped;
+if (savedEquipment === null) window.unequipWeapon();
+else window.equipWeapon(window.availableWeapons[EQUIPMENT[savedEquipment].type]);
 // Fade only the scene, leaving the start-page controls visible and usable.
 const homeMapFade = document.createElement('div');
 homeMapFade.className = 'home-map-fade';
@@ -1658,6 +1692,7 @@ const updateHomeMapPreview = (now) => {
 };
 const setScreen = (showArena) => {
   cancelHomeMapTransition();
+  if (equipmentView.open) equipmentView.close();
   if (inventoryView.open) inventoryView.close();
   if (settingsMenu.open) settingsMenu.close();
   settingsOpen = false;
@@ -1731,6 +1766,11 @@ fovSlider.addEventListener('input', () => {
 });
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
+    if (equipmentView.open) {
+      event.preventDefault();
+      if (!event.repeat) { equipmentView.close(); setSettingsOpen(true); }
+      return;
+    }
     if (inventoryView.open) {
       event.preventDefault();
       if (!event.repeat) { inventoryView.close(); setSettingsOpen(true); }
@@ -1949,7 +1989,7 @@ const animate = () => {
   }
   environment.update(delta);
   sunShadows.update(controls.target);
-  renderer.render(scene, camera);
+  if (!equipmentView.open) renderer.render(scene, camera);
 };
 animate();
 requestAnimationFrame(() => loading.classList.add('done'));

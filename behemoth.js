@@ -143,11 +143,12 @@ function startRunOut(state, playerPosition, bounds) {
 export function hitBehemoth(state, { damage = 0, partDamage = damage, stagger = 0, wound = 0, attackerModifiers, part = 'body', interrupt = false } = {}) {
   if (state.mode === 'defeated') return { outcome: 'ignored' };
   const woundResult = resolveWound(state.parts[part], BEHEMOTH.parts[part], wound, attackerModifiers);
+  let staggerDamage = 0;
   const trueStagger = state.mode === 'reaction' && state.move === 'true-stagger';
   const { brokenPart, partDamage: appliedPartDamage } = applyPartDamage(state, BEHEMOTH, part, partDamage);
   const result = outcome => {
     if (state.mode !== 'defeated') activateEnrage(state);
-    return { ...woundResult, outcome, brokenPart, part, partDamage: appliedPartDamage };
+    return { ...woundResult, staggerDamage, outcome, brokenPart, part, partDamage: appliedPartDamage };
   };
   applyCoreDamage(state, BEHEMOTH, damage);
   state.flash = 0.16;
@@ -157,7 +158,8 @@ export function hitBehemoth(state, { damage = 0, partDamage = damage, stagger = 
     return result('defeated');
   }
   if (!trueStagger) {
-    state.stagger = Math.min(state.staggerThreshold, state.stagger + Math.max(0, stagger) * (BEHEMOTH.staggerMultipliers[part] ?? 0));
+    staggerDamage = Math.min(state.staggerThreshold - state.stagger, Math.max(0, stagger) * (BEHEMOTH.staggerMultipliers[part] ?? 0));
+    state.stagger += staggerDamage;
   }
   // True stagger, interrupt, and part break each own a separate reaction.
   if (state.stagger >= state.staggerThreshold) {

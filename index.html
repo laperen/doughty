@@ -114,9 +114,8 @@
           <p id="inventorySaveWarning" role="status" hidden>Inventory could not be saved. Keep this game open to retain your materials.</p>
         </div>
         <div id="gameplayWeaponSettings" hidden>
-          <div class="camera-settings weapon-selection" aria-labelledby="weaponSelectionTitle">
-            <div id="weaponSelectionTitle" class="settings-heading">WEAPON</div><label for="weaponSelect">Equipped weapon</label>
-            <select id="weaponSelect"><option value="striker-sword">Striker Sword</option><option value="repeaters">Repeaters</option><option value="chainblades">Chain Blades</option><option value="">Unarmed</option></select>
+          <div class="camera-settings weapon-selection" aria-label="Equipment">
+            <button id="openEquipmentButton" class="menu-button">Equipment</button>
             <div id="repeatersSettings" hidden>
               <label><input id="autoReload" type="checkbox" checked> Repeaters: automatic reload</label>
               <p>Automatic reload starts when firing with an empty magazine.</p>

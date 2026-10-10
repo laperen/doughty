@@ -1,3 +1,4 @@
+import { damageProfile } from './weapon-damage.js';
 import { STAMINA } from './stamina.js';
 
 // Unmeasured values are prototype tuning; rule durations and the cap are confirmed.
@@ -5,21 +6,21 @@ export const CHAINBLADES_TUNING = Object.freeze({ maxResources: 4, chargePerReso
   chargePerHit: 10, chainWindow: 1, inputBuffer: .24, pullMin: 2.3, pullMax: 12,
   pushRange: 2.6, airWindow: 1.5, pushDuration: .3, pushBack: 1.4, airHeight: 3, dashTravel: 6,
   slamWindup: .25, slamLanding: .45, slamImpact: .5,
-  slamDamagePerResource: 35, dodgeDuration: .25, dodgeSpeed: 11 });
+  slamDamageMultiplierPerResource: 2.5, slamDamagePerResource: 35, dodgeDuration: .25, dodgeSpeed: 11 });
 const T = CHAINBLADES_TUNING;
 const duration = m => m.startup + m.active + m.recovery;
 const move = (id, values = {}) => ({ id, label: id, startup: .12, active: .24, recovery: .16,
-  range: 2.1, arc: 125, damage: 14, stagger: 0, wound: 0, travel: .4, movementLock: .52,
+  range: 2.1, arc: 125, ...damageProfile(14, 1.0, 0.0, 0.0), travel: .4, movementLock: .52,
   hitOffsets: [.17, .32], interrupt: true, presentation: { weight: 'light' }, ...values });
 const lights = Array.from({ length: 6 }, (_, i) => move(`Twin cut ${i + 1}`, { recovery: i === 5 ? .36 : .16 }));
 const heavies = Array.from({ length: 4 }, (_, i) => move(`Wounding cut ${i + 1}`, {
   startup: .24, active: .14, recovery: i === 3 ? .46 : .26, movementLock: .38,
-  damage: 28, wound: 40, hitOffsets: [.31], interrupt: false, presentation: { weight: 'heavy' },
+  ...damageProfile(14, 2.0, undefined, 2.857142857142857), hitOffsets: [.31], interrupt: false, presentation: { weight: 'heavy' },
 }));
 const spin = move('Chain spin', { startup: .2, active: .65, recovery: .22, range: 3.8,
-  arc: 360, damage: 12, travel: 0, movementLock: 1.07, interrupt: false,
+  arc: 360, ...damageProfile(14, 0.8571428571428571), travel: 0, movementLock: 1.07, interrupt: false,
   hitOffsets: [.25, .4, .55, .7, .82], presentation: { motion: 'spin', weight: 'heavy' } });
-const finish = move('Chain finisher', { damage: 24, recovery: .34, hitOffsets: [.24],
+const finish = move('Chain finisher', { ...damageProfile(14, 1.7142857142857142), recovery: .34, hitOffsets: [.24],
   presentation: { motion: 'chain-finisher', weight: 'light' } });
 
 export function createChainbladesState() {
@@ -46,10 +47,10 @@ export function inputChainblades(s, input, context = {}) {
     s.sequence = '';
     if (input === 'light') return start(s, move('Aerial dash', { startup: .05, active: .28, recovery: .22,
       hitOffsets: [], continuousHitbox: true, travelDuringActive: true, travel: Math.min(T.pullMax, context.target?.distance ?? T.dashTravel),
-      damage: 30, movementLock: .55, presentation: { motion: 'air-dash', weight: 'light' } }), context.target?.yaw ?? context.attackYaw, 'air-dash');
+      ...damageProfile(14, 2.142857142857143), movementLock: .55, presentation: { motion: 'air-dash', weight: 'light' } }), context.target?.yaw ?? context.attackYaw, 'air-dash');
     s.slamResources = s.resources + 1;
     return start(s, move('Aerial slam', { startup: .45, active: .15, recovery: .4,
-      hitOffsets: [T.slamImpact], range: 2.5, originOffset: 3, arc: 360, damage: T.slamDamagePerResource * s.slamResources,
+      hitOffsets: [T.slamImpact], range: 2.5, originOffset: 3, arc: 360, ...damageProfile(14, T.slamDamageMultiplierPerResource * s.slamResources),
       travel: 0, movementLock: 1, presentation: { motion: 'slam', weight: 'heavy' } }), context.attackYaw, 'air-slam');
   }
   if (s.action) {
@@ -67,7 +68,7 @@ export function inputChainblades(s, input, context = {}) {
   else if (context.target && context.target.distance > T.pullMin && context.target.distance <= T.pullMax) {
     sequence = '';
     m = move('Chain pull', { startup: .18, active: .3, recovery: .2, hitOffsets: [], continuousHitbox: true,
-      travelDuringActive: true, travel: Math.max(0, context.target.distance - 1), damage: 18,
+      travelDuringActive: true, travel: Math.max(0, context.target.distance - 1), ...damageProfile(14, 1.2857142857142858),
       interrupt: false, movementLock: .68, presentation: { motion: 'thrust', weight: 'heavy' } });
   } else m = heavies[sequence.length - 1];
   // Match the existing Strikers stamina policy: spend available stamina, including partial pools.
@@ -80,7 +81,7 @@ export function pushOff(s, { target, attackYaw, grounded = true } = {}) {
   s.resources--; s.airElapsed = 0; s.sequence = ''; s.chainWindowRemaining = 0;
   return start(s, move('Push off - L dash / H slam', { startup: T.pushDuration, active: T.airWindow - T.pushDuration, recovery: 0,
     hitOffsets: [], travel: T.pushBack, travelDuration: T.pushDuration, retreat: true,
-    damage: 0, range: 0, movementLock: T.airWindow, presentation: { motion: 'push-off' } }), target.yaw ?? attackYaw, 'push-off');
+    ...damageProfile(14, 0.0), range: 0, movementLock: T.airWindow, presentation: { motion: 'push-off' } }), target.yaw ?? attackYaw, 'push-off');
 }
 /** Separate rise, suspended wind-up, and accelerating fall; time is real seconds. */
 export function chainbladesAirHeight(ability, elapsed, airElapsed = elapsed) {

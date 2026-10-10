@@ -82,7 +82,8 @@ export function hitQuillshot(s, { damage = 0, partDamage = damage, stagger = 0, 
   s.flash = 0.15;
   let outcome = 'hit';
   const down = s.mode === 'reaction' && s.move === 'true-stagger';
-  if (!down) s.stagger += Math.max(0, stagger) * (BEHEMOTH.staggerMultipliers[part] ?? 0);
+  const staggerDamage = down ? 0 : Math.max(0, stagger) * (BEHEMOTH.staggerMultipliers[part] ?? 0);
+  s.stagger += staggerDamage;
   if (s.health <= 0) {
     s.mode = 'defeated'; s.move = null; s.projectiles.length = 0; s.impactEvents.length = 0;
     clearBehemothModes(s);
@@ -94,7 +95,7 @@ export function hitQuillshot(s, { damage = 0, partDamage = damage, stagger = 0, 
   else if (part === 'head' && interrupt && isQuillshotInterruptible(s)) { react(s, 'interrupt', 5); outcome = 'interrupt'; }
   else if (brokenPart) outcome = QUARTERS.includes(part) ? 'quill-break' : 'hit';
   if (s.mode !== 'defeated') enrage(s);
-  return { ...woundResult, outcome, brokenPart, part, partDamage: appliedPartDamage };
+  return { ...woundResult, staggerDamage, outcome, brokenPart, part, partDamage: appliedPartDamage };
 }
 function volley(s, players) {
   for (const p of players) {

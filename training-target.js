@@ -6,7 +6,7 @@ export function createTrainingState() {
 }
 
 export function hitTrainingTarget(state, { damage = 0, stagger = 0, wound = 0, periodic = false } = {}) {
-  if (damage <= 0 && stagger <= 0) return;
+  if (damage <= 0 && stagger <= 0 && wound <= 0) return;
   state.core += Math.max(0, damage);
   state.part += Math.max(0, damage);
   state.stagger += Math.max(0, stagger);

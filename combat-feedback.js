@@ -18,9 +18,9 @@ export function createCombatFeedback(scene, container) {
     mesh.rotation.x = -Math.PI / 2; mesh.visible = false; scene.add(mesh);
     return { mesh, life: 0 };
   });
-  const labels = Array.from({ length: 24 }, () => {
+  const labels = Array.from({ length: 72 }, () => {
     const element = document.createElement('span'); element.className = 'damage-number'; element.hidden = true; layer.append(element);
-    return { element, position: new THREE.Vector3(), life: 0, duration: 1, drift: 0 };
+    return { element, position: new THREE.Vector3(), life: 0, duration: 1, drift: 0, offsetY: 0 };
   });
   let particleCursor = 0, labelCursor = 0, ringCursor = 0, shake = 0, bannerTime = 0, time = 0;
   let audio, master, noiseBuffer;
@@ -77,16 +77,23 @@ export function createCombatFeedback(scene, container) {
       p.velocity.set((Math.random() - 0.5) * 5, 1 + Math.random() * 3, (Math.random() - 0.5) * 5);
     }
   };
-  const impact = (position, damage, { outcome = 'hit', part = 'body', periodic = false, brokenPart = null, wounded = false } = {}) => {
+  const impact = (position, damage, { outcome = 'hit', part = 'body', periodic = false, brokenPart = null, wounded = false, woundDamage = 0, staggerDamage = 0 } = {}) => {
     if (outcome === 'ignored') return;
     const style = damageFeedback(outcome, part, periodic);
     if (brokenPart && outcome !== 'part-break') style.label = [style.label, damageFeedback('part-break', brokenPart).label].filter(Boolean).join(' / ');
     if (wounded) { style.label = [style.label, 'WOUNDED'].filter(Boolean).join(' / '); style.color = '#fa597d'; }
-    const label = labels[labelCursor++ % labels.length];
-    label.position.set(...position); label.life = label.duration = periodic ? 0.7 : 0.95;
-    label.drift = (labelCursor % 3 - 1) * 23;
-    label.element.textContent = String(Math.round(damage)); label.element.style.color = style.color;
-    label.element.classList.toggle('damage-heavy', Boolean(style.label)); label.element.hidden = false;
+    const drift = (labelCursor % 3 - 1) * 23;
+    const number = (amount, color, channel, offsetY = 0) => {
+      const label = labels[labelCursor++ % labels.length];
+      label.position.set(...position); label.life = label.duration = periodic ? 0.7 : 0.95;
+      label.drift = drift; label.offsetY = offsetY;
+      label.element.textContent = String(Math.round(amount)); label.element.style.color = color;
+      label.element.dataset.channel = channel;
+      label.element.classList.toggle('damage-heavy', channel === 'damage' && Boolean(style.label)); label.element.hidden = false;
+    };
+    number(damage, style.color, 'damage');
+    if (woundDamage > 0) number(woundDamage, '#ff4444', 'wound', -26);
+    if (staggerDamage > 0) number(staggerDamage, '#d3d3d3', 'stagger', 26);
     if (!periodic) burst(position, style.color, style.strength);
     shake = Math.max(shake, style.strength * 0.075);
     if (style.label) {
@@ -118,7 +125,7 @@ export function createCombatFeedback(scene, container) {
       projected.project(camera);
       label.element.hidden = label.life <= 0 || projected.z < -1 || projected.z > 1 || Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1;
       label.element.style.left = `${(projected.x * 0.5 + 0.5) * container.clientWidth + label.drift}px`;
-      label.element.style.top = `${(-projected.y * 0.5 + 0.5) * container.clientHeight}px`;
+      label.element.style.top = `${(-projected.y * 0.5 + 0.5) * container.clientHeight + label.offsetY}px`;
       label.element.style.opacity = String(Math.min(1, label.life * 4));
     }
   };
