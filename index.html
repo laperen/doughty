@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
-	<title>Doughty</title>
+	<title data-text-id="39f52b5a-e913-41c9-a1b8-007880f94963">Doughty</title>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0a0d13" />
@@ -25,7 +25,7 @@
 
       <section id="homeScreen" class="screen home-screen">
         <div class="hero-copy">
-          <div class="hero-title"><h1>Doughty</h1><span class="dictionary-pronunciation">/ˈdaʊti/</span></div>
+          <div class="hero-title"><h1 data-text-id="39f52b5a-e913-41c9-a1b8-007880f94963">Doughty</h1><span class="dictionary-pronunciation">/ˈdaʊti/</span></div>
           <div class="dictionary-entry" aria-label="Definition of doughty">
             <p class="dictionary-part-of-speech"><em>adjective</em></p>
             <ol class="dictionary-definitions"><li>Brave, determined, and persistent in the face of difficulty.</li></ol>
@@ -108,6 +108,11 @@
         <div id="feedbackSettings" class="camera-settings"><div class="settings-heading">FEEDBACK</div></div>
         </div>
         <div id="gameplayPanel" role="tabpanel" aria-labelledby="gameplayTab">
+        <div id="inventoryActions" class="camera-settings" hidden>
+          <button id="openInventoryButton" class="menu-button" hidden>Inventory</button>
+          <button id="openLootButton" class="menu-button" hidden>Hunting Loot</button>
+          <p id="inventorySaveWarning" role="status" hidden>Inventory could not be saved. Keep this game open to retain your materials.</p>
+        </div>
         <div id="gameplayWeaponSettings" hidden>
           <div class="camera-settings weapon-selection" aria-labelledby="weaponSelectionTitle">
             <div id="weaponSelectionTitle" class="settings-heading">WEAPON</div><label for="weaponSelect">Equipped weapon</label>

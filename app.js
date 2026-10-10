@@ -1,4 +1,6 @@
 import { loadMapAsset } from './map-loader.js';
+import { loadInventory, saveInventory, collectDefeatLoot, bankLoot } from './inventory.js';
+import { createInventoryView } from './inventory-view.js';
 import { createNarrative } from './narrative.js';
 import { OLD_TOWN, createOldTownView } from './old-town-view.js';
 import { behemothPushOut } from './behemoth-collision.js';
@@ -103,6 +105,11 @@ try {
   else if (['range', 'island', 'old-town'].includes(savedArena)) selectedArena = savedArena;
 } catch { /* Use the current range when storage is unavailable. */ }
 let pendingArena = selectedArena;
+const materialInventory = loadInventory({ getItem: key => localStorage.getItem(key) });
+const persistMaterials = () => {
+  const saved = saveInventory(materialInventory, { setItem: (key, value) => localStorage.setItem(key, value) });
+  document.querySelector('#inventorySaveWarning').hidden = saved;
+};
 const syncArenaSelection = () => {
   for (const option of settingsArenaOptions) option.checked = option.value === pendingArena;
   goToArenaButton.disabled = pendingArena === selectedArena;
@@ -250,7 +257,7 @@ function updateSettlementHud() {
   const station = nearestSettlementStation();
   const nearby = station && station.distance < 3.5;
   settlementPrompt.hidden = !nearby || settingsOpen || !settlementPanel.hidden;
-  const characterKey = nearby && narrative?.bindings.interactions[station.id]?.characterUUID;
+  const characterKey = nearby && narrative?.interactions[station.id]?.characterUUID;
   const stationName = characterKey ? narrative.text(characterKey) : narrative?.translate(station?.name || '') ?? station?.name;
   settlementPrompt.textContent = nearby ? `E - ${stationName}` : '';
 }
@@ -260,7 +267,7 @@ function renderSettlementDialogue() {
     settlementPanel.querySelector('h2').textContent = narrative.translate('Hunting Board');
     return;
   }
-  const binding = narrative.bindings.interactions[dialogueStation.id];
+  const binding = narrative.interactions[dialogueStation.id];
   settlementPanel.querySelector('h2').textContent = binding?.characterUUID
     ? narrative.text(binding.characterUUID) : narrative.translate(dialogueStation.id === 'arena-travel' ? 'Hunting Board' : dialogueStation.name);
   dialogueControls.replaceChildren();
@@ -299,7 +306,7 @@ async function interactSettlement() {
   if (settingsOpen) return;
   const station = nearestSettlementStation();
   if (!station || station.distance >= 3.5 || !settlementPanel.hidden) return;
-  const binding = narrative?.bindings.interactions[station.id];
+  const binding = narrative?.interactions[station.id];
   if (station.id === 'arena-travel') {
     dialogueRevision++;
     dialogueStation = station;
@@ -487,6 +494,10 @@ const damageBehemoth = (damage, { part = 'body', stagger = 0, wound = 0, interru
   if (selectedArena === 'island' && !inTerritory(islandEncounter.arena, playerState.position, 1)) return { outcome: 'ignored' };
   if (selectedArena === 'island' && !periodic) alertEncounter(islandEncounter, playerState.position);
   const result = hitBehemoth(behemothState, { damage, stagger, wound, part, interrupt, attackerModifiers: periodic ? undefined : playerState.statModifiers });
+  if (result.outcome === 'defeated') {
+    collectDefeatLoot(materialInventory, behemothState);
+    persistMaterials();
+  }
   const point = behemothView.hitboxes[part]?.getWorldPosition(new THREE.Vector3())
     ?? new THREE.Vector3(...behemothState.position);
   feedback.impact(point.toArray(), damage,
@@ -1378,6 +1389,9 @@ const syncMenuGameplay = () => {
   const languageSettings = document.querySelector('#settingsLanguageSelection');
   if (languageSettings) languageSettings.hidden = !playing;
   const town = playing && isTown();
+  document.querySelector('#inventoryActions').hidden = !playing || (!town && selectedArena !== 'island');
+  document.querySelector('#openInventoryButton').hidden = !town;
+  document.querySelector('#openLootButton').hidden = !playing || selectedArena !== 'island';
   const canSelectWeapon = playing && (town || selectedArena === 'range');
   document.querySelector('#gameplayWeaponSettings').hidden = !canSelectWeapon;
   arenaSettings.hidden = !playing || town;
@@ -1385,6 +1399,7 @@ const syncMenuGameplay = () => {
   if (!playing) selectMenuTab('preferencesTab');
 };
 const setSettingsOpen = (open, restoreCamera = true) => {
+  if (!open && inventoryView.open) inventoryView.close();
   settingsOpen = open;
   if (open) { pendingArena = selectedArena; syncArenaSelection(); }
   if (open && !settingsMenu.open) settingsMenu.showModal();
@@ -1411,6 +1426,19 @@ settingsMenu.addEventListener('cancel', event => {
   setSettingsOpen(false, false);
 });
 settingsToggle.addEventListener('click', () => setSettingsOpen(!settingsOpen));
+const inventoryView = createInventoryView({ state: materialInventory, onBack: () => {
+  inventoryView.close();
+  setSettingsOpen(true);
+  document.querySelector(isTown() ? '#openInventoryButton' : '#openLootButton').focus();
+} });
+const openMaterials = mode => {
+  if (arenaScreen.classList.contains('hidden') || mapTransitionActive || (mode === 'player' ? !isTown() : selectedArena !== 'island')) return;
+  setSettingsOpen(true);
+  settingsMenu.close();
+  inventoryView.show(mode);
+};
+document.querySelector('#openInventoryButton').addEventListener('click', () => openMaterials('player'));
+document.querySelector('#openLootButton').addEventListener('click', () => openMaterials('loot'));
 const keyToAction = (event) => {
   const key = event.key.toLowerCase();
   if (['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'f', ' ', 'q', 'x'].includes(key)) event.preventDefault();
@@ -1482,6 +1510,7 @@ const applyArenaMode = async (mode, persist = true) => {
   await ensureMapLoaded(destination);
   if (request !== arenaLoadRequest) return;
   selectedArena = ['island', 'old-town'].includes(mode) ? mode : 'range';
+  if (isTown() && !arenaScreen.classList.contains('hidden')) { bankLoot(materialInventory); persistMaterials(); }
   arenaScreen.classList.toggle('safe-area', isTown());
 
   arena.visible = selectedArena === 'range';
@@ -1627,6 +1656,7 @@ const updateHomeMapPreview = (now) => {
 };
 const setScreen = (showArena) => {
   cancelHomeMapTransition();
+  if (inventoryView.open) inventoryView.close();
   if (settingsMenu.open) settingsMenu.close();
   settingsOpen = false;
   resumeCameraAfterEscape = false;
@@ -1644,6 +1674,7 @@ const setScreen = (showArena) => {
   camera.near = showArena ? 0.1 : 2;
   camera.updateProjectionMatrix();
   if (showArena) {
+    if (isTown()) { bankLoot(materialInventory); persistMaterials(); }
     document.activeElement?.blur();
     player.visible = true;
     target.visible = selectedArena === 'range';
@@ -1698,6 +1729,11 @@ fovSlider.addEventListener('input', () => {
 });
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
+    if (inventoryView.open) {
+      event.preventDefault();
+      if (!event.repeat) { inventoryView.close(); setSettingsOpen(true); }
+      return;
+    }
     event.preventDefault();
     clearTimeout(pointerUnlockSettingsTimer);
     pointerUnlockSettingsTimer = null;

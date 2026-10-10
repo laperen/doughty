@@ -1,3 +1,4 @@
+import { sourceText, parameters } from './narrative-references.js';
 import { StoryNodesRuntime } from './storynodes-runtime/index.js';
 
 const own = (object, key) => Object.prototype.hasOwnProperty.call(object || {}, key);
@@ -30,31 +31,30 @@ export class DoughtyNarrativeRuntime extends StoryNodesRuntime {
   }
 }
 
-/** English bindings identify UI text; exported UUIDs supply its current wording. */
+/** Legacy English references identify UI text; exported UUIDs supply its current wording. */
 export class NarrativeCatalog {
-  constructor(runtime, bindings) {
+  constructor(runtime, sources = sourceText, parameterIds = parameters) {
     this.runtime = runtime;
-    this.bindings = bindings;
     this.exact = new Map();
     this.patterns = [];
     this.cache = new Map();
-    const parameters = new Set(Object.values(bindings.parameters || {}).map(p => p.uuid));
-    // Bindings preserve the English input snapshot even after an editor re-export.
-    const originals = new Map(Object.values(bindings.texts || {}).map(e => [e.uuid, e.original]));
+    const parameterKeys = new Set(Object.values(parameterIds));
+    // References preserve the English input snapshot even after an editor re-export.
+    const originals = new Map(Object.entries(sources));
     const expand = (text, seen = []) => String(text).replace(tokens, (token, kind, key) => {
-      if (kind !== 'name' || parameters.has(key) || seen.includes(key)) return token;
+      if (kind !== 'name' || parameterKeys.has(key) || seen.includes(key)) return token;
       const value = originals.get(key) ?? runtime.project.text[key]?.value;
       return value == null ? token : expand(value, [...seen, key]);
     });
-    for (const entry of Object.values(bindings.texts || {})) {
-      // Bindings may outlive removed content in a later editor export.
+    for (const [uuid, original] of originals) {
+      // References may outlive removed content in a later editor export.
       // Obsolete text must not prevent valid UI and NPC dialogue from loading.
-      if (!runtime.project.text[entry.uuid]) continue;
-      const source = normalize(expand(entry.original));
+      if (!runtime.project.text[uuid]) continue;
+      const source = normalize(expand(original));
       if (!source) continue;
       const matches = [...source.matchAll(tokens)];
       if (!matches.length) {
-        if (!this.exact.has(source)) this.exact.set(source, entry.uuid);
+        if (!this.exact.has(source)) this.exact.set(source, uuid);
         continue;
       }
       const fixed = source.replace(tokens, '');
@@ -69,7 +69,7 @@ export class NarrativeCatalog {
         offset = match.index + match[0].length;
       }
       pattern += escape(source.slice(offset));
-      this.patterns.push({ uuid: entry.uuid, regex: new RegExp(`^${pattern}$`), slots, weight: fixed.length });
+      this.patterns.push({ uuid: uuid, regex: new RegExp(`^${pattern}$`), slots, weight: fixed.length });
     }
     this.patterns.sort((a, b) => b.weight - a.weight);
   }

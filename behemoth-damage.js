@@ -7,6 +7,7 @@ export function applyPartDamage(state, definition, part, damage) {
     meter.damage = Math.min(definition.parts[part].health, meter.damage + Math.max(0, damage));
     if (meter.damage >= definition.parts[part].health) {
       meter.broken = true;
+      meter.everBroken = true;
       brokenPart = part;
     }
   }

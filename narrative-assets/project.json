@@ -1132,6 +1132,93 @@
       },
       "fce1e430-e01b-4f4b-bf9b-b32e74e89753": {
         "value": "English (source)"
+      },
+      "02f6e0d5-3fea-5a18-994f-e37acc57b6c1": {
+        "value": "Inventory"
+      },
+      "ba1eda85-6a50-50ce-9350-de908a81c56c": {
+        "value": "Hunting Loot"
+      },
+      "9022a151-2a13-52c1-9983-f8683b958ca2": {
+        "value": "Back to Gameplay"
+      },
+      "d4f888f5-dded-55bd-85d3-922050dae405": {
+        "value": "Part type"
+      },
+      "9ae1786e-665e-592a-aa72-453df610df53": {
+        "value": "Behemoth"
+      },
+      "627098a5-b0d9-5482-bc2c-69ec94dc8fc7": {
+        "value": "Clear filters"
+      },
+      "2e71f9a0-4af9-537a-b719-a56a3adba41a": {
+        "value": "Material stacks"
+      },
+      "8e770261-2376-5164-8569-cbcf06b81320": {
+        "value": "Materials harvested from defeated Behemoths. Added to your inventory when you return to safety."
+      },
+      "4fefa59d-55fc-582d-a175-78961721aab6": {
+        "value": "Materials stored safely in your inventory."
+      },
+      "df634829-14a8-5dbc-bf94-9cb58a4cebac": {
+        "value": "No materials match these filters."
+      },
+      "e0836a18-2f6a-5ebe-a4a0-7aae75939307": {
+        "value": "No materials collected yet."
+      },
+      "57832197-cfd6-59c1-b726-82f9f729510c": {
+        "value": "Inventory could not be saved. Keep this game open to retain your materials."
+      },
+      "78460bfc-dc36-51c0-8be8-f235125c98f2": {
+        "value": "Legs"
+      },
+      "a5aa3879-745f-5e8b-b44c-72565bf50eb4": {
+        "value": "Tails"
+      },
+      "7f60d6e9-0294-5d62-aa3e-d51bab8fc8e0": {
+        "value": "Heads"
+      },
+      "821eeec5-4ea1-5f25-b6f6-d73a15507814": {
+        "value": "Horns"
+      },
+      "165c37b5-4fc3-570f-b2ce-58911b7b1e62": {
+        "value": "Cores (core and heart)"
+      },
+      "b4bfab00-75cc-53f7-b0e4-3e9b7b96906a": {
+        "value": "Growths"
+      },
+      "d8a5a63d-64ba-52ef-917e-eab78f34e70d": {
+        "value": "Embermane Leg"
+      },
+      "88d8aae8-8bf5-54cb-ac3c-9205a1701341": {
+        "value": "Embermane Tail"
+      },
+      "5c88b1b4-0a69-558d-9167-6f95744b8883": {
+        "value": "Embermane Head"
+      },
+      "cf8883cd-9f97-5bbf-aa8d-33354a554622": {
+        "value": "Embermane Horn"
+      },
+      "726f4f6a-9c79-5dc6-ba13-f3338257da9d": {
+        "value": "Embermane Heart"
+      },
+      "889340bb-589b-5b10-9e4a-4e19916ebeb9": {
+        "value": "Quillshot Leg"
+      },
+      "47431653-cab9-5104-b77d-fd3428735ed5": {
+        "value": "Quillshot Tail"
+      },
+      "c9b81109-583e-52c2-ba07-cfd1582d997f": {
+        "value": "Quillshot Head"
+      },
+      "169fb32d-6110-5ab1-8daf-c999eda243f3": {
+        "value": "Quillshot Tusk"
+      },
+      "4cf5dd57-0656-5308-9877-ffb321ed7125": {
+        "value": "Quillshot Quills"
+      },
+      "fda09146-ee72-5670-9c5f-93e174371571": {
+        "value": "Quillshot Core"
       }
     },
     "stats": {

@@ -1,3 +1,4 @@
+import { projectId, interactions } from './narrative-references.js';
 import { DoughtyNarrativeRuntime, NarrativeCatalog } from './narrative-catalog.js';
 
 const storageKey = 'doughty-narrative-language';
@@ -12,16 +13,15 @@ async function readJSON(url) {
 
 export async function createNarrative({ commands = {}, document: doc = document } = {}) {
   const base = new URL('./narrative-assets/', import.meta.url);
-  const [project, bindings, index] = await Promise.all([
+  const [project, index] = await Promise.all([
     readJSON(new URL('project.json', base)),
-    readJSON(new URL('./narrative-bindings.json', import.meta.url)),
     readJSON(new URL('localization/index.json', base)),
   ]);
   const runtime = new DoughtyNarrativeRuntime({ commands });
   runtime.loadProject(project);
-  if (bindings.projectId !== runtime.project.id) throw new Error('Narrative bindings belong to a different project.');
+  if (projectId !== runtime.project.id) throw new Error('Narrative references belong to a different project.');
   await runtime.loadLocalizationIndex(index, path => readJSON(new URL(path, base)));
-  const catalog = new NarrativeCatalog(runtime, bindings);
+  const catalog = new NarrativeCatalog(runtime);
   // The runtime validates entries and participants when a conversation starts.
   // An obsolete interaction must not disable unrelated NPCs at startup.
   let selectedLanguage = '';
@@ -44,7 +44,9 @@ export async function createNarrative({ commands = {}, document: doc = document 
     if (!entries) { entries = new Map(); records.set(node, entries); }
     let record = entries.get(key);
     if (!record || value !== record.rendered) record = { source: value };
-    const rendered = catalog.translate(record.source);
+    const textId = !attribute && element.getAttribute('data-text-id');
+    const rendered = textId && runtime.project.text[textId]
+      ? catalog.text(textId) : catalog.translate(record.source);
     record.rendered = rendered;
     entries.set(key, record);
     tracked.add(node);
@@ -120,7 +122,7 @@ export async function createNarrative({ commands = {}, document: doc = document 
   settingsSelect.addEventListener('change', () => setLanguage(settingsSelect.value));
   setLanguage(selectedLanguage);
   return {
-    runtime, bindings, catalog, setLanguage,
+    runtime, interactions, catalog, setLanguage,
     translate: text => catalog.translate(text),
     text: (id, overrides) => catalog.text(id, overrides),
     onLanguageChange(listener) { listeners.add(listener); return () => listeners.delete(listener); },
