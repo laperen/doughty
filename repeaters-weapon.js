@@ -3,7 +3,7 @@ import { getStatModifierRemaining } from './stat-modifiers.js';
 
 // Reference timings; damage, range boundaries and vertical spread are prototype tuning.
 export const REPEATER_TUNING = Object.freeze({ shotInterval: .35, ...damageProfile(10, 1), reload: 1,
-  empoweredDuration: 20, empoweredMultiplier: 1.7, idealRange: 8, middleRange: 15, maxRange: 25 });
+  empoweredDuration: 20, empoweredPercent: 70, idealRange: 8, middleRange: 15, maxRange: 25 });
 export const SCATTERSHOT = Object.freeze({ id: 'scattershot', label: 'Scattershot', cooldown: 15,
   duration: 1.1, fireAt: .45, pellets: 10, ...damageProfile(10, 1.2), spread: 60, verticalSpread: 6 });
 export const CAPTAIN_GRIP = Object.freeze({ id: 'captain-grip', label: 'Haste mine', cooldown: 20,
@@ -59,7 +59,9 @@ export function createRepeaters({ chamber = SCATTERSHOT, grip = CAPTAIN_GRIP } =
         if (!action.fired && state.elapsed >= fireAt) {
           action.fired = true;
           if (action.type === 'light' || action.type === 'heavy') events.push({ type: 'ranged-shot',
-            ...damageProfile(10, (action.type === 'light' ? REPEATER_TUNING.damageMultiplier : chamber.damageMultiplier ?? chamber.damage / 10) * (state.empowered > 0 ? REPEATER_TUNING.empoweredMultiplier : 1)),
+            ...damageProfile(10, action.type === 'light' ? REPEATER_TUNING.damageMultiplier : chamber.damageMultiplier ?? chamber.damage / 10),
+            damageModifiers: state.empowered > 0 ? [{ source: 'repeater-empowered', stat: 'coreDamage',
+              percent: REPEATER_TUNING.empoweredPercent, flat: 0, remaining: state.empowered }] : [],
             pellets: action.type === 'light' ? 1 : chamber.pellets,
             spread: action.type === 'light' ? 0 : chamber.spread,
             verticalSpread: chamber.verticalSpread, hand: action.hand });

@@ -24,7 +24,8 @@ export function stepStatModifiers(modifiers, dt) {
 /** Apply summed percentages to base first, then apply flat additions. */
 export function getEffectiveStat(baseValue, stat, modifiers) {
   const active = modifiers.filter((modifier) => modifier.stat === stat && modifier.remaining > 0);
-  const percent = active.reduce((sum, modifier) => sum + modifier.percent, 0);
+  const totalPercent = active.reduce((sum, modifier) => sum + modifier.percent, 0);
+  const percent = stat === 'attackSpeed' ? Math.min(50, totalPercent) : totalPercent;
   const flat = active.reduce((sum, modifier) => sum + modifier.flat, 0);
   return baseValue * (1 + percent / 100) + flat;
 }

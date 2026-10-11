@@ -45,17 +45,15 @@ try {
       settlementPanel.hidden = true;
       openEquipment('smith');
     },
-    OpenHuntingBoard() {
-      dialogueActionHandled = true;
-      settlementTravelControls.hidden = false;
-    },
-    OpenTravelSettings() {
+    OpenRepeaterCrafting() {
       dialogueActionHandled = true;
       settlementPanel.hidden = true;
-      altCursorHeld = false;
-      setSettingsOpen(true);
-      arenaSettings.hidden = false;
-      document.querySelector('#settingsArenaSelectTitle').scrollIntoView({ block: 'center' });
+      openEquipment('repeaters');
+    },
+    OpenCellResearch() {
+      dialogueActionHandled = true;
+      settlementPanel.hidden = true;
+      openCells();
     },
   } });
 } catch (error) {
@@ -323,8 +321,6 @@ async function interactSettlement() {
   const station = nearestSettlementStation();
   if (!station || station.distance >= 3.5 || !settlementPanel.hidden) return;
   if (station.id === 'donation') { openMaterials('donate'); return; }
-  if (station.id === 'repeaters') { openEquipment(station.id); return; }
-  if (station.id === 'cell-researcher') { openCells(); return; }
   if (station.id === 'extractor') { openMaterials('extract'); return; }
   const binding = narrative?.interactions[station.id];
   if (station.id === 'arena-travel') {
@@ -358,7 +354,9 @@ async function interactSettlement() {
     await advanceSettlementDialogue(() => narrative.runtime.beginConversation(binding.entryNodeUUID, binding.characterUUID ? [binding.characterUUID] : []));
     return;
   }
-  if (station.id === 'travel') { setSettingsOpen(true); arenaSettings.hidden = false; document.querySelector('#settingsArenaSelectTitle').scrollIntoView({block:'center'}); return; }
+  // Retain service access if narrative assets could not be loaded.
+  if (station.id === 'repeaters') { openEquipment(station.id); return; }
+  if (station.id === 'cell-researcher') { openCells(); return; }
   settlementTravelControls.hidden = station.id !== 'arena-travel';
   settlementPanel.querySelector('h2').textContent = station.id === 'arena-travel' ? 'Hunting Board' : station.name;
   settlementPanel.querySelector('p').textContent = station.text;
@@ -485,7 +483,9 @@ const target = trainingView.root;
 target.position.set(0, 0, -4.2);
 const targetCore = trainingView.hitbox;
 let trainingState = createTrainingState();
-const damageTrainingTarget = (damage, { stagger = 0, wound = 0, periodic = false } = {}) => {
+const damageTrainingTarget = (damage, { stagger = 0, wound = 0, periodic = false, damageModifiers = [] } = {}) => {
+  const multiplier = getEffectiveStat(1, 'coreDamage', [...playerState.statModifiers, ...damageModifiers]);
+  damage *= multiplier; stagger *= multiplier; wound *= multiplier;
   hitTrainingTarget(trainingState, { damage, stagger, wound, periodic });
   feedback.impact([target.position.x, 1.5, target.position.z + 1.2], damage, { periodic, part: 'head', woundDamage: Math.max(0, wound), staggerDamage: Math.max(0, stagger) });
 };
@@ -507,7 +507,7 @@ const registerProjectileTarget = ({ id, mesh, sizeClass = 'small', onDamage }) =
 };
 registerProjectileTarget({
   id: 'training-dummy', mesh: targetCore, sizeClass: 'large',
-  onDamage: (damage) => damageTrainingTarget(damage),
+  onDamage: (damage, details) => damageTrainingTarget(damage, details),
 });
 let cellCombat = createCellCombatState();
 const currentEmbeddedCell = () => {
@@ -519,20 +519,21 @@ const clearCellCombat = () => {
   playerState.cellStatus = null;
   playerState.statModifiers = playerState.statModifiers.filter(m => m.source !== 'evasive-fury');
 };
-const damageBehemoth = (damage, { part = 'body', stagger = 0, wound = 0, interrupt = false, periodic = false } = {}) => {
+const damageBehemoth = (damage, { part = 'body', stagger = 0, wound = 0, interrupt = false, periodic = false, damageModifiers = [] } = {}) => {
   if (selectedArena !== 'island' || !encounterTouchable(behemothState)) return { outcome: 'ignored' };
   if (selectedArena === 'island' && !inTerritory(islandEncounter.arena, playerState.position, 1)) return { outcome: 'ignored' };
   if (selectedArena === 'island' && !periodic) alertEncounter(islandEncounter, playerState.position);
   const cell = currentEmbeddedCell();
+  const modifiers = [...playerState.statModifiers, ...damageModifiers];
   if (damage > 0 && cell.id === 'recycle') {
     const bonus = periodic
       ? (cellCombat.target === behemothState ? cellBonus(cell.level) * cellCombat.stacks / 5 : 0)
       : recordRecycleHit(cellCombat, behemothState, part, cell.level);
-    const multiplier = getEffectiveStat(1, 'coreDamage', [...playerState.statModifiers,
-      { source: 'recycle', stat: 'coreDamage', percent: bonus, flat: 0, remaining: 1 }]);
-    damage *= multiplier; stagger *= multiplier; wound *= multiplier;
+    modifiers.push({ source: 'recycle', stat: 'coreDamage', percent: bonus, flat: 0, remaining: 1 });
     playerState.cellStatus = { id: cell.id, level: cell.level, stacks: cellCombat.stacks, bonus };
   }
+  const multiplier = getEffectiveStat(1, 'coreDamage', modifiers);
+  damage *= multiplier; stagger *= multiplier; wound *= multiplier;
   const result = hitBehemoth(behemothState, { damage, stagger, wound, part, interrupt, attackerModifiers: periodic ? undefined : playerState.statModifiers });
   if (result.outcome === 'defeated') {
     collectDefeatLoot(materialInventory, behemothState);
@@ -553,7 +554,7 @@ const syncEncounterView = () => {
   for (let i = projectileTargets.length - 1; i >= 0; i--) if (projectileTargets[i].kind === 'first-behemoth') projectileTargets.splice(i, 1);
   for (const [part, mesh] of Object.entries(behemothView.hitboxes)) registerProjectileTarget({
     id: 'first-behemoth', mesh, sizeClass: 'large',
-    onDamage: (damage, details) => damageBehemoth(damage, { part, stagger: details?.stagger ?? 22, interrupt: details?.interrupt === true }),
+    onDamage: (damage, details) => damageBehemoth(damage, { part, stagger: details?.stagger ?? 22, interrupt: details?.interrupt === true, damageModifiers: details?.damageModifiers }),
   });
   behemothView.root.visible = selectedArena === 'island';
 };
@@ -957,7 +958,7 @@ function fireRepeaters(event) {
     const yaw = event.pellets === 1 ? 0 : THREE.MathUtils.degToRad((i % columns) / (columns - 1) * event.spread - event.spread / 2);
     const pitch = event.pellets === 1 ? 0 : THREE.MathUtils.degToRad((i < columns ? -1 : 1) * event.verticalSpread / 2);
     const hit = repeaterAim(yaw, pitch);
-    hit.record?.onDamage?.(event.damage * repeaterFalloff(hit.distance), { stagger: 0, interrupt: false, source: 'repeaters' });
+    hit.record?.onDamage?.(event.damage * repeaterFalloff(hit.distance), { stagger: 0, interrupt: false, source: 'repeaters', damageModifiers: event.damageModifiers });
     const mesh = new THREE.Line(new THREE.BufferGeometry().setFromPoints([hit.origin, hit.end]),
       new THREE.LineBasicMaterial({ color: equipment.state.empowered > 0 ? '#68efff' : '#ffe9a0', transparent: true, opacity: .8 }));
     scene.add(mesh); rangedEffects.push({ mesh, remaining: .07 });

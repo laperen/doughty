@@ -521,21 +521,6 @@
       "b9e1f2cb-ebec-4170-aa3f-9b15ad9e769a": {
         "value": "A Behemoth destroyed our settlement. We brought what we could carry. Refugees will arrive on and off with requests for help; quests are not available in this mockup."
       },
-      "120c7c82-56a9-4c1e-a86a-cef13e97ef04": {
-        "value": "Hunting grounds / training"
-      },
-      "712d398d-1fff-4fbd-9dc1-0bf9551596f8": {
-        "value": "Hunting grounds / training interaction"
-      },
-      "6558d63e-b797-4a06-ba69-9cb7c155e47e": {
-        "value": "Hunting grounds / training greeting"
-      },
-      "93d9b9a5-8930-4121-8bbe-78a2948e6a74": {
-        "value": "Choose {{name:71d642cf-1562-4a25-b467-acd81e6e74a6}} to enter the hunting grounds, or {{name:412a0cf5-2746-40e7-bfcf-8adb5e422469}} to train. Hunting grounds support continuing encounters until you choose to return."
-      },
-      "bb3bdf89-00d9-4b87-914b-f3401d881047": {
-        "value": "OpenTravelSettings"
-      },
       "5b737e09-c15f-4851-8a39-0ebee7d1755d": {
         "value": "Island encounter"
       },
@@ -1507,6 +1492,18 @@
       },
       "359a1b2d-c020-40be-95b4-44de8179ec3b": {
         "value": "No cells match these filters."
+      },
+      "750e875b-ec6f-4f82-9149-efeb0cf60ec9": {
+        "value": "Cell researcher interaction"
+      },
+      "63f923c7-8f5c-4a2d-be7a-fc7790d75da9": {
+        "value": "Cell researcher greeting"
+      },
+      "6053f717-69e0-41d8-b3a9-da3020144ca2": {
+        "value": "Craft and upgrade cells"
+      },
+      "5e353120-52a3-4161-b5f7-79d93af84566": {
+        "value": "Craft repeaters"
       }
     },
     "stats": {
@@ -2087,6 +2084,17 @@
           "autoAction": []
         },
         "variations": {}
+      },
+      "6a7cca3c-eea6-48f4-9eb9-c269724bb6a5": {
+        "names": {},
+        "proxyStats": {},
+        "relationships": {},
+        "scheduleBindings": {
+          "regular": [],
+          "autoDialogue": [],
+          "autoAction": []
+        },
+        "variations": {}
       }
     },
     "nodes": {
@@ -2277,7 +2285,16 @@
       },
       "6a645de8-a45a-42ae-b9e3-adf2bc4fdf5c": {
         "type": "dialogue",
-        "outputs": [],
+        "outputs": [
+          {
+            "target": "5e353120-52a3-4161-b5f7-79d93af84566",
+            "condition": ""
+          },
+          {
+            "target": "76ce266b-7fa7-4de9-bfef-4a46cc64619a",
+            "condition": ""
+          }
+        ],
         "lines": [
           {
             "participantIndex": 0,
@@ -2387,37 +2404,6 @@
           }
         ]
       },
-      "712d398d-1fff-4fbd-9dc1-0bf9551596f8": {
-        "type": "start",
-        "outputs": [
-          {
-            "target": "6558d63e-b797-4a06-ba69-9cb7c155e47e",
-            "condition": ""
-          }
-        ],
-        "participants": []
-      },
-      "6558d63e-b797-4a06-ba69-9cb7c155e47e": {
-        "type": "dialogue",
-        "outputs": [
-          {
-            "target": "bb3bdf89-00d9-4b87-914b-f3401d881047",
-            "condition": ""
-          }
-        ],
-        "lines": [
-          {
-            "participantIndex": null,
-            "text": "93d9b9a5-8930-4121-8bbe-78a2948e6a74",
-            "present": []
-          }
-        ]
-      },
-      "bb3bdf89-00d9-4b87-914b-f3401d881047": {
-        "type": "command",
-        "outputs": [],
-        "command": "OpenTravelSettings"
-      },
       "a525b6d3-6eb4-44e8-9623-75bb3607d630": {
         "type": "command",
         "outputs": [],
@@ -2427,6 +2413,57 @@
         "type": "dialogue",
         "outputs": [],
         "lines": []
+      },
+      "750e875b-ec6f-4f82-9149-efeb0cf60ec9": {
+        "type": "start",
+        "outputs": [
+          {
+            "target": "63f923c7-8f5c-4a2d-be7a-fc7790d75da9",
+            "condition": ""
+          }
+        ],
+        "participants": [
+          {
+            "role": "NPC",
+            "type": "specific",
+            "characterKey": "6a7cca3c-eea6-48f4-9eb9-c269724bb6a5"
+          }
+        ]
+      },
+      "63f923c7-8f5c-4a2d-be7a-fc7790d75da9": {
+        "type": "dialogue",
+        "outputs": [
+          {
+            "target": "6053f717-69e0-41d8-b3a9-da3020144ca2",
+            "condition": ""
+          },
+          {
+            "target": "76ce266b-7fa7-4de9-bfef-4a46cc64619a",
+            "condition": ""
+          }
+        ],
+        "lines": [
+          {
+            "participantIndex": 0,
+            "text": "059b1831-e2e0-44fa-8560-0fee87a4edc0",
+            "present": [
+              {
+                "participantIndex": 0,
+                "variations": {}
+              }
+            ]
+          }
+        ]
+      },
+      "6053f717-69e0-41d8-b3a9-da3020144ca2": {
+        "type": "command",
+        "outputs": [],
+        "command": "OpenCellResearch"
+      },
+      "5e353120-52a3-4161-b5f7-79d93af84566": {
+        "type": "command",
+        "outputs": [],
+        "command": "OpenRepeaterCrafting"
       }
     },
     "nodeTypes": {
@@ -2440,7 +2477,7 @@
         "a4789a9c-19f7-496b-ad7a-7127fdd44746",
         "07c62e00-39e7-4557-b4da-7e865fb5b2e7",
         "57249d8a-60f5-4874-98eb-157339f1d24a",
-        "712d398d-1fff-4fbd-9dc1-0bf9551596f8"
+        "750e875b-ec6f-4f82-9149-efeb0cf60ec9"
       ],
       "dialogue": [
         "fa76e5d7-838f-4798-8965-b5cfd9bd7360",
@@ -2452,12 +2489,13 @@
         "13602413-0a14-4e30-a7f6-09acd2d05bec",
         "82f900eb-ea1a-45a8-903c-3c7f0fc25d5e",
         "78bb44e9-f20c-4252-b40b-598c8db5c79b",
-        "6558d63e-b797-4a06-ba69-9cb7c155e47e",
-        "76ce266b-7fa7-4de9-bfef-4a46cc64619a"
+        "76ce266b-7fa7-4de9-bfef-4a46cc64619a",
+        "63f923c7-8f5c-4a2d-be7a-fc7790d75da9"
       ],
       "command": [
-        "bb3bdf89-00d9-4b87-914b-f3401d881047",
-        "a525b6d3-6eb4-44e8-9623-75bb3607d630"
+        "a525b6d3-6eb4-44e8-9623-75bb3607d630",
+        "6053f717-69e0-41d8-b3a9-da3020144ca2",
+        "5e353120-52a3-4161-b5f7-79d93af84566"
       ]
     }
   }

@@ -3,6 +3,14 @@
 export const projectId = "39f52b5a-e913-41c9-a1b8-007880f94963";
 
 export const sourceText = {
+  "6a7cca3c-eea6-48f4-9eb9-c269724bb6a5": "Cell researcher",
+  "059b1831-e2e0-44fa-8560-0fee87a4edc0": "I can craft cells from aether-dust and upgrade matching pairs.",
+  "750e875b-ec6f-4f82-9149-efeb0cf60ec9": "Cell researcher interaction",
+  "63f923c7-8f5c-4a2d-be7a-fc7790d75da9": "Cell researcher greeting",
+  "6053f717-69e0-41d8-b3a9-da3020144ca2": "Craft and upgrade cells",
+  "0e71c033-0061-4974-b279-bd02e2f0f570": "Settlement donation",
+  "cc3b6c2e-41ad-41ca-8e15-cd097b4afa3e": "Extractor",
+  "5e353120-52a3-4161-b5f7-79d93af84566": "Craft repeaters",
   "b068967a-1e8b-4d83-b288-d7d8f0f4edcb": "Defense",
   "51f5515a-a0a8-415f-894a-e9d8b8fbf90b": "Mobility",
   "2d43b446-b49d-46ef-885c-e34b39486653": "Power",
@@ -207,10 +215,6 @@ export const sourceText = {
   "82075edb-ac6e-4b59-a9bb-d5bd739c3ffd": "SETTING THE STAGE",
   "d2051ab6-97fe-493e-ab61-09aab58e1520": "3D preview requires WebGL and a connection to load Three.js.",
   "f53cb860-03c1-4653-9c57-d1daab4f01fb": "Arena travel",
-  "1168e7e3-ff68-49ad-ae29-65671d494fa9": "Arena travel interaction",
-  "4f6f823d-3f69-4ebc-be8f-8561da77d74e": "Arena travel greeting",
-  "406fe80c-59f6-42af-8b6d-8cf5dbf1da0e": "Choose where to travel. Enter the hunting grounds for Behemoth encounters, or visit {{name:412a0cf5-2746-40e7-bfcf-8adb5e422469}} to practice.",
-  "ae1f9589-45ec-43f1-93cf-4e9347977bba": "OpenHuntingBoard",
   "aff2af5b-f1de-4637-8c94-5dd8f1f9bd35": "Settlement guide",
   "26a0d6f5-997b-4a94-9f10-fc6e119fc997": "Settlement guide interaction",
   "fa76e5d7-838f-4798-8965-b5cfd9bd7360": "Settlement guide greeting",
@@ -247,11 +251,6 @@ export const sourceText = {
   "57249d8a-60f5-4874-98eb-157339f1d24a": "Arriving survivor interaction",
   "78bb44e9-f20c-4252-b40b-598c8db5c79b": "Arriving survivor greeting",
   "b9e1f2cb-ebec-4170-aa3f-9b15ad9e769a": "A Behemoth destroyed our settlement. We brought what we could carry. Refugees will arrive on and off with requests for help; quests are not available in this mockup.",
-  "120c7c82-56a9-4c1e-a86a-cef13e97ef04": "Hunting grounds / training",
-  "712d398d-1fff-4fbd-9dc1-0bf9551596f8": "Hunting grounds / training interaction",
-  "6558d63e-b797-4a06-ba69-9cb7c155e47e": "Hunting grounds / training greeting",
-  "93d9b9a5-8930-4121-8bbe-78a2948e6a74": "Choose {{name:71d642cf-1562-4a25-b467-acd81e6e74a6}} to enter the hunting grounds, or {{name:412a0cf5-2746-40e7-bfcf-8adb5e422469}} to train. Hunting grounds support continuing encounters until you choose to return.",
-  "bb3bdf89-00d9-4b87-914b-f3401d881047": "OpenTravelSettings",
   "5b737e09-c15f-4851-8a39-0ebee7d1755d": "Island encounter",
   "dc22b57d-6727-4ece-adc8-580636b76321": "Close",
   "b1e1a914-e3c1-468a-b0ab-4814da03dee0": "Hunting Board",
@@ -500,11 +499,6 @@ export const parameters = {
 };
 
 export const interactions = {
-  "arena-travel": {
-    "kind": "board",
-    "characterUUID": null,
-    "entryNodeUUID": "1168e7e3-ff68-49ad-ae29-65671d494fa9"
-  },
   "guide": {
     "kind": "npc",
     "characterUUID": "aff2af5b-f1de-4637-8c94-5dd8f1f9bd35",
@@ -550,10 +544,9 @@ export const interactions = {
     "characterUUID": "5eb89e82-b717-4a1e-a000-e41f17f15be9",
     "entryNodeUUID": "57249d8a-60f5-4874-98eb-157339f1d24a"
   },
-  "travel": {
-    "kind": "board",
-    "characterUUID": null,
-    "entryNodeUUID": "712d398d-1fff-4fbd-9dc1-0bf9551596f8"
+  "cell-researcher": {
+    "kind": "npc",
+    "characterUUID": "6a7cca3c-eea6-48f4-9eb9-c269724bb6a5",
+    "entryNodeUUID": "750e875b-ec6f-4f82-9149-efeb0cf60ec9"
   }
 };
-

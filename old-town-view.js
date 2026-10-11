@@ -14,7 +14,6 @@ const OLD_TOWN_STATIONS = Object.freeze([
   { id: 'chains', name: 'Chain Blades master', position: [-20, 6, -58], color: '#79b7ac', text: 'Use heavy strikes to wound, hits to build resources, and Q to push off before an airborne return or slam. Practice in Open Range.' },
   { id: 'future-master', name: 'Reserved training station', position: [-32, 6, -58], color: '#a69987', text: 'A station reserved for a future weapon master. Three weapons currently have masters in Old Emberwatch.' },
   { id: 'refugee', name: 'Arriving survivor', position: [29, 5, -37], color: '#bd9aa0', text: 'A Behemoth destroyed our settlement. We brought what we could carry. Refugees will arrive on and off with requests for help; quests are not available in this mockup.' },
-  { id: 'travel', name: 'Hunting grounds / training', position: [5, 0, 42], color: '#89c8c0', text: 'Choose Cinderwild Isle to enter the hunting grounds, or Open Range to train. Hunting grounds support continuing encounters until you choose to return.' },
 ]);
 
 export const OLD_TOWN = Object.freeze({ name: 'Old Emberwatch', arrival: [0, 0, 60] });
@@ -310,10 +309,10 @@ export function createOldTownView() {
     cylinder(.55,1.25,colors.timber,[x+1.7,y+.625,z],true);
     for(const h of [.2,1]) cylinder(.57,.07,'#7c8585',[x+1.7,y+h,z],false);
   }
-  const positions={ 'cell-researcher':[32,3,3.5], extractor:[36,3,3.5], donation:[23,3,0], 'arena-travel':[0,0,39], guide:[-5,0,49], smith:[-5,0,24], armorer:[3,0,24], potions:[30,0,32.5], sword:[-21,0,39], repeaters:[-21,0,49], chains:[24,0,39], 'future-master':[24,0,49], refugee:[30,3,19], travel:[5,0,55] };
+  const positions={ 'cell-researcher':[32,3,3.5], extractor:[36,3,3.5], donation:[23,3,0], 'arena-travel':[0,0,39], guide:[-5,0,49], smith:[-5,0,24], armorer:[3,0,24], potions:[30,0,32.5], sword:[-21,0,39], repeaters:[-21,0,49], chains:[24,0,39], 'future-master':[24,0,49], refugee:[30,3,19] };
   const stations=OLD_TOWN_STATIONS.map(s=>({...s,position:positions[s.id]}));
   stations.find(s=>s.id==='guide').text='Welcome to Old Emberwatch. The market lanes climb around the old inn to the watchtower courtyard. Cross the western stream to explore the bridge quarter, visit the smithy behind the travel board, or meet the weapon masters on either side of the arrival square.';
-  for(const s of stations) if(!['travel','arena-travel','extractor','donation'].includes(s.id)) {
+  for(const s of stations) if(!['arena-travel','extractor','donation'].includes(s.id)) {
     cylinder(.34,1.1,s.color,[s.position[0],s.position[1]+.85,s.position[2]],true,8);
     mesh(new THREE.SphereGeometry(.25,8,6),'#c9ad8a',[s.position[0],s.position[1]+1.65,s.position[2]]);
   }
