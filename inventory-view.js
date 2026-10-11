@@ -1,3 +1,4 @@
+import { CELLS, CELL_TYPES } from './cells.js';
 import { PART_TYPES, MATERIAL_SPECIES, MATERIALS, RARITIES, filterStacks, extractionYield, extractSelectedParts, donationYield, donateSelectedParts } from './inventory.js';
 
 /** Full-screen material browser; selections remain drafts until confirmation. */
@@ -7,7 +8,8 @@ export function createInventoryView({ state, onBack, onExtract = () => true }) {
   dialog.className = 'inventory-menu';
   dialog.setAttribute('aria-labelledby', 'inventoryTitle');
   dialog.innerHTML = `<header class="inventory-heading"><h2 id="inventoryTitle"></h2><button class="menu-button" id="inventoryBack">Back to Gameplay</button></header>
-    <p id="inventoryDescription"></p><p id="aetherDustBalance"></p><p id="currencyBalance"></p><div class="inventory-layout"><aside>
+    <nav id="inventoryTabs" role="tablist" aria-label="Inventory categories"><button class="menu-button" id="inventoryPartsTab" role="tab" aria-controls="inventoryPartsPanel">Parts</button><button class="menu-button" id="inventoryCellsTab" role="tab" aria-controls="inventoryCellsPanel">Cells</button></nav>
+    <p id="inventoryDescription"></p><p id="aetherDustBalance"></p><p id="currencyBalance"></p><section id="inventoryCellsPanel" role="tabpanel" aria-labelledby="inventoryCellsTab" class="inventory-layout" hidden><aside><details class="inventory-filter-section" id="inventoryCellTypes"><summary><span>Cell type</span><span class="filter-active-count">(0)</span></summary><div class="filter-options"></div></details><button class="menu-button" id="inventoryCellsClear">Clear filters</button></aside><div class="inventory-content"><div class="inventory-grid" id="inventoryCells"></div></div></section><div class="inventory-layout" id="inventoryPartsPanel" role="tabpanel" aria-labelledby="inventoryPartsTab"><aside>
     <details class="inventory-filter-section" id="inventoryTypes"><summary><span>Part type</span><span class="filter-active-count">(0)</span></summary><div class="filter-options"></div></details>
     <details class="inventory-filter-section" id="inventorySpecies"><summary><span>Behemoth</span><span class="filter-active-count">(0)</span></summary><div class="filter-options"></div></details>
     <button class="menu-button" id="inventoryClear">Clear filters</button></aside>
@@ -16,6 +18,7 @@ export function createInventoryView({ state, onBack, onExtract = () => true }) {
     <div class="extraction-actions"><button class="menu-button" id="extractionClear">Clear selections</button><p id="extractionPreview" aria-live="polite"></p><button class="menu-button" id="extractConfirm">Confirm extraction</button></div><p id="extractionStatus" role="status"></p></footer></div></div>`;
   document.body.append(dialog);
   let mode = 'player';
+  let category = 'parts';
   let selections = {};
   const cardUpdates = new Map();
   const selected = selector => [...dialog.querySelectorAll(`${selector} input:checked`)].map(input => input.value);
@@ -61,9 +64,39 @@ export function createInventoryView({ state, onBack, onExtract = () => true }) {
       input.addEventListener('change', render);
     }
   }
+  addFilters('#inventoryCellTypes', Object.entries(CELL_TYPES));
+  dialog.querySelector('#inventoryCellsClear').addEventListener('click', () => {
+    for (const input of dialog.querySelectorAll('#inventoryCellTypes input')) input.checked = false;
+    render();
+  });
   addFilters('#inventoryTypes', Object.entries(PART_TYPES));
   addFilters('#inventorySpecies', Object.entries(MATERIAL_SPECIES).map(([id, value]) => [id, value.name]));
   function render() {
+    const cellsActive = mode === 'player' && category === 'cells';
+    dialog.querySelector('#inventoryTabs').hidden = mode !== 'player';
+    dialog.querySelector('#inventoryPartsPanel').hidden = cellsActive;
+    dialog.querySelector('#inventoryCellsPanel').hidden = !cellsActive;
+    for (const [id, active] of [['inventoryPartsTab', !cellsActive], ['inventoryCellsTab', cellsActive]]) {
+      const tab = dialog.querySelector('#' + id);
+      tab.setAttribute('aria-selected', String(active)); tab.tabIndex = active ? 0 : -1;
+    }
+    const cellGrid = dialog.querySelector('#inventoryCells'); cellGrid.replaceChildren();
+    const cellTypes = selected('#inventoryCellTypes');
+    dialog.querySelector('#inventoryCellTypes .filter-active-count').textContent = `(${cellTypes.length})`;
+    if (cellsActive) {
+      for (const [key, count] of Object.entries(state.cells || {}).sort(([a], [b]) => a.localeCompare(b))) {
+        const [id, rank] = key.split(':');
+        if (!CELLS[id] || count <= 0 || (cellTypes.length && !cellTypes.includes(CELLS[id].type))) continue;
+        const card = document.createElement('article'); card.className = 'material-stack'; card.dataset.cellStack = key;
+        const name = document.createElement('h3'); name.textContent = CELLS[id].name;
+        const level = document.createElement('p'); level.textContent = '+' + rank;
+        const quantity = document.createElement('strong'); quantity.textContent = '\u00d7 ' + count;
+        const description = document.createElement('p'); description.textContent = CELLS[id].description;
+        const type = document.createElement('p'); type.textContent = CELL_TYPES[CELLS[id].type];
+        card.append(name, type, level, quantity, description); cellGrid.append(card);
+      }
+      if (!cellGrid.children.length) { const empty = document.createElement('p'); empty.textContent = Object.keys(state.cells || {}).length ? 'No cells match these filters.' : 'No cells crafted yet.'; cellGrid.append(empty); }
+    }
     for (const selector of ['#inventoryTypes', '#inventorySpecies']) {
       dialog.querySelector(`${selector} .filter-active-count`).textContent = `(${selected(selector).length})`;
     }
@@ -74,7 +107,7 @@ export function createInventoryView({ state, onBack, onExtract = () => true }) {
     dialog.querySelector('#inventoryTitle').textContent = mode === 'donate' ? 'Settlement donation' : ['extract', 'donate'].includes(mode) ? 'Extractor' : mode === 'loot' ? 'Hunting Loot' : 'Inventory';
     dialog.querySelector('#inventoryDescription').textContent = mode === 'loot'
       ? 'Materials harvested from defeated Behemoths. Added to your inventory when you return to safety.'
-      : mode === 'donate' ? 'Donate stored parts for settlement currency. Review your selections before confirming.' : mode === 'extract' ? 'Hover, focus, or tap a part to add quantities. Review your selections below before confirming extraction.' : 'Materials stored safely in your inventory.';
+      : cellsActive ? 'Cells stored in your inventory.' : mode === 'donate' ? 'Donate stored parts for settlement currency. Review your selections before confirming.' : mode === 'extract' ? 'Hover, focus, or tap a part to add quantities. Review your selections below before confirming extraction.' : 'Materials stored safely in your inventory.';
     dialog.querySelector('#aetherDustBalance').textContent = mode === 'donate' ? `Currency: ${state.currency}` : `Aether-dust: ${state.aetherDust}`;
     dialog.querySelector('#currencyBalance').textContent = mode === 'donate' ? '' : `Currency: ${state.currency}`;
     dialog.querySelector('#extractionControls').setAttribute('aria-label', mode === 'donate' ? 'Donation selections' : 'Extraction selections');
@@ -118,6 +151,16 @@ export function createInventoryView({ state, onBack, onExtract = () => true }) {
     if (!items.length) { const empty = document.createElement('p'); empty.textContent = all.length ? 'No materials match these filters.' : 'No materials collected yet.'; grid.append(empty); }
     renderSelections();
   }
+  const tabs = [dialog.querySelector('#inventoryPartsTab'), dialog.querySelector('#inventoryCellsTab')];
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => { category = index ? 'cells' : 'parts'; render(); });
+    tab.addEventListener('keydown', event => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? 1 : 1 - index;
+      category = next ? 'cells' : 'parts'; render(); tabs[next].focus();
+    });
+  });
   dialog.querySelector('#inventoryClear').addEventListener('click', () => {
     for (const input of dialog.querySelectorAll('input[type="checkbox"]')) input.checked = false;
     render();
@@ -126,7 +169,7 @@ export function createInventoryView({ state, onBack, onExtract = () => true }) {
   dialog.addEventListener('cancel', event => { event.preventDefault(); onBack(); });
   return {
     get open() { return dialog.open; },
-    show(nextMode) { mode = nextMode; selections = {}; dialog.querySelector('#extractionStatus').textContent = ''; render(); dialog.showModal(); dialog.querySelector('#inventoryBack').focus(); },
+    show(nextMode) { mode = nextMode; category = 'parts'; dialog.querySelector('#inventoryCellTypes').open = false; selections = {}; dialog.querySelector('#extractionStatus').textContent = ''; render(); dialog.showModal(); dialog.querySelector('#inventoryBack').focus(); },
     close() { selections = {}; dialog.close(); },
   };
 }

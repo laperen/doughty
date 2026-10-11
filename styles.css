@@ -284,3 +284,14 @@
 .equipment-menu[data-page="picker"] #equipmentItems{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:900px){.equipment-menu .equipment-layout{gap:12px;grid-template-columns:minmax(150px,.8fr) minmax(180px,1fr) minmax(200px,1fr)}.equipment-sidebar,.equipment-summary{padding:8px}}
 @media(max-width:650px){.inventory-menu.equipment-menu[open]{overflow:auto}.equipment-menu .equipment-layout{display:flex;flex-direction:column;flex:none}.equipment-sidebar,.equipment-summary{overflow:visible}.equipment-preview{min-height:320px}#equipmentModel{height:240px;flex:none}.equipment-footer{flex-direction:column;gap:0;align-items:flex-start}.equipment-menu[data-page="picker"] #equipmentItems{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.cell-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 1rem; }
+.cell-card { padding: 1rem; border: 1px solid #667784; border-radius: .5rem; }
+.cell-rank { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; padding: .8rem 0; border-top: 1px solid #667784; }
+.cell-rank strong { margin-left: .4rem; }
+.cell-balance strong { margin-left: .5rem; }
+.cell-rank button:disabled { opacity: .45; cursor: not-allowed; }
+
+#inventoryTabs { display: flex; gap: .6rem; margin: 1rem 0; }
+#inventoryTabs[hidden], #inventoryPartsPanel[hidden], #inventoryCellsPanel[hidden] { display: none; }
+#inventoryTabs [aria-selected="true"] { border-color: var(--acid); color: var(--acid); }

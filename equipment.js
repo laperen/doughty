@@ -3,7 +3,7 @@ export const STARTER_DAMAGE = Object.freeze({ 'striker-sword': 20, repeaters: 10
 const types = { 'striker-sword': 'Sword', repeaters: 'Repeaters', chainblades: 'Chainblades' };
 export const EQUIPMENT = Object.freeze(Object.fromEntries(Object.entries(types).flatMap(([type, name]) => [
   [`starter:${type}`, { id: `starter:${type}`, type, name: `Starter ${name}`, damage: STARTER_DAMAGE[type], starter: true }],
-  ...['embermane', 'quillshot'].map(species => [`${species}:${type}`, { id: `${species}:${type}`, type, species,
+  ...['embermane', 'quillshot'].map(species => [`${species}:${type}`, { id: `${species}:${type}`, type, species, embeddedCell: species === 'embermane' ? 'evasive-fury' : 'recycle',
     name: `${species === 'embermane' ? 'Embermane' : 'Quillshot'} ${name}`, damage: STARTER_DAMAGE[type] + (type === 'striker-sword' ? 5 : 2) }]),
 ])));
 export const RECIPES = Object.freeze(Object.fromEntries(Object.values(EQUIPMENT).filter(item => !item.starter).map(item => {

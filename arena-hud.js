@@ -40,6 +40,9 @@ export function createArenaHud(container) {
       const items = [...(equipment?.definition.getHudResources?.(equipment.state, player) ?? [])];
       const woundHaste = getStatModifierRemaining(player.statModifiers, 'wound-haste');
       if (woundHaste > 0) items.push({ id: 'wound-haste', label: 'Wound haste +15%', kind: 'status', glyph: '+15%', value: woundHaste, max: 20, text: `+15% / ${Math.ceil(woundHaste)}s` });
+      const fury = player.statModifiers.find(m => m.source === 'evasive-fury');
+      if (fury) items.push({ id: 'evasive-fury', label: 'Evasive Fury', kind: 'status', value: fury.remaining, max: 8, text: `+${fury.percent}% / ${Math.ceil(fury.remaining)}s` });
+      if (player.cellStatus?.id === 'recycle') items.push({ id: 'recycle', label: 'Recycle', kind: 'status', value: player.cellStatus.stacks, max: 5, text: `${player.cellStatus.stacks}/5 +${Number(player.cellStatus.bonus.toFixed(1))}%` });
       const layout = JSON.stringify(items.map(({ id, label, kind, glyph }) => ({ id, label, kind, glyph })));
       if (layout !== resourceLayout) {
         resourceLayout = layout;

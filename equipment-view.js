@@ -1,3 +1,4 @@
+import { CELLS, embeddedCellLevel } from './cells.js';
 import { EQUIPMENT, RECIPES, canCraft, canChangeEquipment } from './equipment.js';
 import { MATERIALS } from './inventory.js';
 import * as THREE from 'three';
@@ -149,6 +150,11 @@ export function createEquipmentView({ inventory, area, onEquip, onCraft, onBack 
     if (item) {
       details.append(element('p', `Damage: ${item.damage}`));
       const progress = state.owned[item.id];
+      if (item.embeddedCell) {
+        const perk = element('p', CELLS[item.embeddedCell].name);
+        perk.append(element('strong', ` +${embeddedCellLevel(progress)}`)); details.append(perk);
+        details.append(element('p', CELLS[item.embeddedCell].description));
+      }
       if (progress) details.append(element('p', `Tier: ${progress.tier} · Reforges: ${progress.reforges}`));
     }
     const summary = q('equipmentSummary'); summary.replaceChildren();

@@ -85,8 +85,9 @@ export function createBehemothView(scene) {
   const partMeshes = { head, horn, tail, ...bodyRig.userData };
   const hitboxes = {};
   const outlines = [];
+  // Detect exit faces when a point-blank shot starts inside the part hitbox.
   const addHitbox = (id, parent, size, position) => {
-    const box = new THREE.Mesh(new THREE.BoxGeometry(...size), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+    const box = new THREE.Mesh(new THREE.BoxGeometry(...size), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
     box.position.set(...position); box.name = `${id} hitbox`; box.userData.part = id; parent.add(box);
     const outline = new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry), new THREE.LineBasicMaterial({ color: '#ffe487' }));
     box.add(outline); outlines.push(outline); hitboxes[id] = box;

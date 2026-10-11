@@ -1,3 +1,4 @@
+import { createCellInventory } from './cells.js';
 import { createEquipmentState } from './equipment.js';
 /** Materials are species-owned; physical parts explicitly map to shared items. */
 export const PART_TYPES = Object.freeze({ legs: 'Legs', tails: 'Tails', heads: 'Heads', horns: 'Horns', cores: 'Cores (core and heart)', growths: 'Growths' });
@@ -15,7 +16,7 @@ export const MATERIALS = Object.freeze(Object.fromEntries(Object.entries(MATERIA
 export const INVENTORY_STORAGE_KEY = 'doughty-material-inventory-v1';
 const validStacks = input => Object.fromEntries(Object.entries(input && typeof input === 'object' ? input : {}).filter(([id, count]) => MATERIALS[id] && Number.isSafeInteger(count) && count > 0));
 export function createInventoryState(saved = {}) {
-  return { player: validStacks(saved?.player), loot: validStacks(saved?.loot), currency: Number.isSafeInteger(saved?.currency) && saved.currency >= 0 ? saved.currency : 0, equipment: createEquipmentState(saved?.equipment), aetherDust: Number.isSafeInteger(saved?.aetherDust) && saved.aetherDust >= 0 ? saved.aetherDust : 0 };
+  return { cells: createCellInventory(saved?.cells), player: validStacks(saved?.player), loot: validStacks(saved?.loot), currency: Number.isSafeInteger(saved?.currency) && saved.currency >= 0 ? saved.currency : 0, equipment: createEquipmentState(saved?.equipment), aetherDust: Number.isSafeInteger(saved?.aetherDust) && saved.aetherDust >= 0 ? saved.aetherDust : 0 };
 }
 export function loadInventory(storage) {
   try { return createInventoryState(JSON.parse(storage.getItem(INVENTORY_STORAGE_KEY) || '{}')); }

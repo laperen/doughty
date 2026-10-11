@@ -1,3 +1,6 @@
+import { cellBonus, embeddedCellLevel, createCell, createCellCombatState, recordRecycleHit, activateEvasiveFury } from './cells.js';
+import { selectRepeaterRayHit } from './repeater-targeting.js';
+import { createCellView } from './cell-view.js';
 import { EQUIPMENT, createEquipmentState, equipItem, craftWeapon, canChangeEquipment } from './equipment.js';
 import { createEquipmentView } from './equipment-view.js';
 import { resolveWeaponEvents } from './weapon-damage.js';
@@ -321,6 +324,7 @@ async function interactSettlement() {
   if (!station || station.distance >= 3.5 || !settlementPanel.hidden) return;
   if (station.id === 'donation') { openMaterials('donate'); return; }
   if (station.id === 'repeaters') { openEquipment(station.id); return; }
+  if (station.id === 'cell-researcher') { openCells(); return; }
   if (station.id === 'extractor') { openMaterials('extract'); return; }
   const binding = narrative?.interactions[station.id];
   if (station.id === 'arena-travel') {
@@ -505,10 +509,30 @@ registerProjectileTarget({
   id: 'training-dummy', mesh: targetCore, sizeClass: 'large',
   onDamage: (damage) => damageTrainingTarget(damage),
 });
+let cellCombat = createCellCombatState();
+const currentEmbeddedCell = () => {
+  const item = EQUIPMENT[materialInventory.equipment.equipped];
+  return { id: item?.embeddedCell, level: item?.embeddedCell ? embeddedCellLevel(materialInventory.equipment.owned[item.id]) : 0 };
+};
+const clearCellCombat = () => {
+  cellCombat = createCellCombatState();
+  playerState.cellStatus = null;
+  playerState.statModifiers = playerState.statModifiers.filter(m => m.source !== 'evasive-fury');
+};
 const damageBehemoth = (damage, { part = 'body', stagger = 0, wound = 0, interrupt = false, periodic = false } = {}) => {
   if (selectedArena !== 'island' || !encounterTouchable(behemothState)) return { outcome: 'ignored' };
   if (selectedArena === 'island' && !inTerritory(islandEncounter.arena, playerState.position, 1)) return { outcome: 'ignored' };
   if (selectedArena === 'island' && !periodic) alertEncounter(islandEncounter, playerState.position);
+  const cell = currentEmbeddedCell();
+  if (damage > 0 && cell.id === 'recycle') {
+    const bonus = periodic
+      ? (cellCombat.target === behemothState ? cellBonus(cell.level) * cellCombat.stacks / 5 : 0)
+      : recordRecycleHit(cellCombat, behemothState, part, cell.level);
+    const multiplier = getEffectiveStat(1, 'coreDamage', [...playerState.statModifiers,
+      { source: 'recycle', stat: 'coreDamage', percent: bonus, flat: 0, remaining: 1 }]);
+    damage *= multiplier; stagger *= multiplier; wound *= multiplier;
+    playerState.cellStatus = { id: cell.id, level: cell.level, stacks: cellCombat.stacks, bonus };
+  }
   const result = hitBehemoth(behemothState, { damage, stagger, wound, part, interrupt, attackerModifiers: periodic ? undefined : playerState.statModifiers });
   if (result.outcome === 'defeated') {
     collectDefeatLoot(materialInventory, behemothState);
@@ -902,7 +926,7 @@ function repeaterAim(yawOffset = 0, pitchOffset = 0) {
   const ray = new THREE.Raycaster();
   ray.setFromCamera(new THREE.Vector2(0, 0), camera);
   ray.far = 100;
-  const cameraHit = ray.intersectObjects(objects, false)[0];
+  const cameraHit = selectRepeaterRayHit(ray.intersectObjects(objects, false), records);
   const aim = cameraHit?.point ?? ray.ray.at(100, new THREE.Vector3());
   const origin = new THREE.Vector3(playerState.position[0], playerState.position[1] + 1.3, playerState.position[2]);
   const direction = aim.clone().sub(origin).normalize();
@@ -910,7 +934,7 @@ function repeaterAim(yawOffset = 0, pitchOffset = 0) {
   const right = new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize();
   direction.applyAxisAngle(right, pitchOffset);
   ray.set(origin, direction); ray.far = 25;
-  const hit = ray.intersectObjects(objects, false)[0];
+  const hit = selectRepeaterRayHit(ray.intersectObjects(objects, false), records);
   return { origin, end: hit?.point ?? origin.clone().addScaledVector(direction, 25),
     distance: hit?.distance ?? Infinity, record: hit && records.find(record => record.mesh === hit.object) };
 }
@@ -1124,6 +1148,7 @@ const stepEncounter = (dt, resolveContacts = () => {}) => {
   islandEncounter = stepIslandEncounter(islandEncounter, [{ position: playerState.position, knockedDown: isRecovering(playerState) }], dt);
   behemothState = islandEncounter.boss;
   if (previousId !== islandEncounter.id) {
+    clearCellCombat();
     syncEncounterView();
     for (const record of projectileTargets) if (record.kind === 'first-behemoth') record.id = islandEncounter.id;
     for (const projectile of activeProjectiles) scene.remove(projectile.mesh);
@@ -1139,6 +1164,11 @@ const stepEncounter = (dt, resolveContacts = () => {}) => {
     if (meleeHit) behemothState.attackHit = true;
     const incomingDamage = meleeHit ? BEHEMOTH.moves[behemothState.move].damage : quillHit.damage;
     const rolling = playerState.movementAction === 'dodge' && playerState.actionTime > 0.08;
+    const cell = currentEmbeddedCell();
+    if (cell.id === 'evasive-fury') activateEvasiveFury(playerState.statModifiers, cell.level, {
+      contact: true, dodgeProtected: rolling, damage: incomingDamage,
+      otherwiseProtected: equipment?.state.airHeight > 0 || isRecoveryProtected(playerState) || playerState.invulnerability > 0,
+    });
     if (!rolling && !(equipment?.state.airHeight > 0) && !isRecoveryProtected(playerState) && playerState.invulnerability === 0) {
       playerState.health = Math.max(0, playerState.health - incomingDamage);
       equipment?.definition.cancelAction?.(equipment.state);
@@ -1418,6 +1448,7 @@ const syncMenuGameplay = () => {
   if (!playing) selectMenuTab('preferencesTab');
 };
 const setSettingsOpen = (open, restoreCamera = true) => {
+  if (!open && cellView.open) cellView.close();
   if (!open && equipmentView.open) equipmentView.close();
   if (!open && inventoryView.open) inventoryView.close();
   settingsOpen = open;
@@ -1459,9 +1490,18 @@ const openMaterials = mode => {
 };
 document.querySelector('#openInventoryButton').addEventListener('click', () => openMaterials('player'));
 document.querySelector('#openLootButton').addEventListener('click', () => openMaterials('loot'));
+const cellView = createCellView({ inventory: materialInventory, area: () => selectedArena, narrative,
+  onCreate: (id, rank) => { if (!createCell(materialInventory, id, rank, selectedArena)) return false; persistMaterials(); return true; },
+  onBack: () => { cellView.close(); setSettingsOpen(true); },
+});
+const openCells = () => {
+  if (arenaScreen.classList.contains('hidden') || mapTransitionActive || !isTown()) return;
+  setSettingsOpen(true); settingsMenu.close(); cellView.show();
+};
 const equipmentView = createEquipmentView({ inventory: materialInventory, area: () => selectedArena,
   onEquip: id => {
     if (!equipItem(materialInventory.equipment, id, selectedArena)) return false;
+    clearCellCombat();
     if (id === null) window.unequipWeapon(); else window.equipWeapon(window.availableWeapons[EQUIPMENT[id].type]);
     return true;
   },
@@ -1524,6 +1564,7 @@ const resetEncounter = () => {
   behemothState = selectedArena === 'island' ? islandEncounter.boss : createBehemothState();
   syncEncounterView();
   for (const record of projectileTargets) if (record.kind === 'first-behemoth') record.id = selectedArena === 'island' ? islandEncounter.id : 'first-behemoth';
+  clearCellCombat();
   playerState.health = 100;
   playerState.invulnerability = 0;
   playerState.position = isTown() ? [...currentTown().arrival] : selectedArena === 'island' ? [...ISLAND.arrival] : [0, -0.025, 1.5];
@@ -1692,6 +1733,7 @@ const updateHomeMapPreview = (now) => {
 };
 const setScreen = (showArena) => {
   cancelHomeMapTransition();
+  if (cellView.open) cellView.close();
   if (equipmentView.open) equipmentView.close();
   if (inventoryView.open) inventoryView.close();
   if (settingsMenu.open) settingsMenu.close();
@@ -1766,6 +1808,11 @@ fovSlider.addEventListener('input', () => {
 });
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
+    if (cellView.open) {
+      event.preventDefault();
+      if (!event.repeat) { cellView.close(); setSettingsOpen(true); }
+      return;
+    }
     if (equipmentView.open) {
       event.preventDefault();
       if (!event.repeat) { equipmentView.close(); setSettingsOpen(true); }

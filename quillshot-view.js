@@ -16,7 +16,8 @@ export function createQuillshotView(scene) {
   blob(rig, 'Heavy barrel', [0, 1.45, 0], [1.5, 1.1, 2.05]);
   blob(rig, 'Shoulder armor', [0, 1.6, -1], [1.55, 1.05, 1.15], armor);
   const parts = {}, hitboxes = {}, outlines = [];
-  const invisible = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+  // Detect exit faces when a point-blank shot starts inside the part hitbox.
+  const invisible = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
   function hitbox(id, at, size) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(...size), invisible); m.position.set(...at); m.userData.part = id; rig.add(m); hitboxes[id] = m;
     const line = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({ color: '#ffe487' })); m.add(line); outlines.push(line);

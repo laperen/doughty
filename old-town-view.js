@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 const OLD_TOWN_STATIONS = Object.freeze([
-  { id: 'cell-researcher', name: 'Cell researcher', position: [32, 3, 3.5], color: '#dce6e4', text: 'I am setting up this outdoor lab to create cells from aether-dust. Cell creation is not available yet.' },
+  { id: 'cell-researcher', name: 'Cell researcher', position: [32, 3, 3.5], color: '#dce6e4', text: 'I can craft cells from aether-dust and upgrade matching pairs.' },
   { id: 'donation', name: 'Settlement donation', position: [23, 3, 0], color: '#dfbb71', text: '' },
   { id: 'extractor', name: 'Extractor', position: [36, 3, 3.5], color: '#72dfec', text: '' },
   { id: 'arena-travel', name: 'Arena travel', position: [0, 0, 24], color: '#96e3f4', text: 'Choose where to travel. Enter the hunting grounds for Behemoth encounters, or visit Open Range to practice.' },
