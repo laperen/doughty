@@ -1,9 +1,14 @@
-import { cellBonus, embeddedCellLevel, createCell, createCellCombatState, recordRecycleHit, activateEvasiveFury } from './cells.js';
+import { chestplateAbility, createChestplateAbilityState, stepChestplateAbility, activateChestplateAbility } from './chestplate-abilities.js';
+import { ARMOR, equipArmor, craftArmor, armorDefense, mitigateDamage } from './armor.js';
+import { cellBonus, embeddedCellLevel, createCell, createCellCombatState, recordRecycleHit, syncCellStats, beginCellDodge, activateDodgeCells, recordCellDamage } from './cells.js';
+import { consumeResource, stepShields } from './resource-shields.js';
+import { equipCell, equipmentCellLevels } from './equipment-cells.js';
+import { familyAbility, createFamilyAbilityState, stepFamilyAbility, activateEmbermane, executeFamilyAttack } from './weapon-family-abilities.js';
 import { selectRepeaterRayHit } from './repeater-targeting.js';
 import { createCellView } from './cell-view.js';
 import { EQUIPMENT, createEquipmentState, equipItem, craftWeapon, canChangeEquipment } from './equipment.js';
 import { createEquipmentView } from './equipment-view.js';
-import { resolveWeaponEvents } from './weapon-damage.js';
+import { resolveWeaponEvents, resolveAttackDamage } from './weapon-damage.js';
 import { loadMapAsset } from './map-loader.js';
 import { loadInventory, saveInventory, collectDefeatLoot, bankLoot } from './inventory.js';
 import { createInventoryView } from './inventory-view.js';
@@ -339,6 +344,7 @@ async function interactSettlement() {
     return;
   }
   settlementPanel.querySelector('p').hidden = false;
+  if (station.id === 'armorer') { openEquipment('armorer'); return; }
   if (binding) {
     dialogueRevision++;
     dialogueStation = station;
@@ -510,16 +516,40 @@ registerProjectileTarget({
   onDamage: (damage, details) => damageTrainingTarget(damage, details),
 });
 let cellCombat = createCellCombatState();
+let familyCombat = createFamilyAbilityState();
+let chestplateCombat = createChestplateAbilityState();
+const currentChestplateAbility = () => {
+  const item = ARMOR[materialInventory.armor.equipped.chestplate];
+  return chestplateAbility(item, materialInventory.armor.owned[item?.id]);
+};
+const clearChestplateCombat = () => {
+  chestplateCombat = createChestplateAbilityState();
+  playerState.statModifiers = playerState.statModifiers.filter(m => m.source !== 'embermane-chestplate');
+};
+const currentFamilyAbility = () => {
+  const item = EQUIPMENT[materialInventory.equipment.equipped];
+  return familyAbility(item, materialInventory.equipment.owned[item?.id]);
+};
+const launchFamilyAttack = () => {
+  for (const quill of executeFamilyAttack(familyCombat, currentFamilyAbility(), equipment?.state.action, playerState.facingYaw)) launchProjectile(quill);
+};
 const currentEmbeddedCell = () => {
   const item = EQUIPMENT[materialInventory.equipment.equipped];
   return { id: item?.embeddedCell, level: item?.embeddedCell ? embeddedCellLevel(materialInventory.equipment.owned[item.id]) : 0 };
 };
+const currentCellLevels = () => {
+  return equipmentCellLevels(materialInventory);
+};
 const clearCellCombat = () => {
   cellCombat = createCellCombatState();
+  familyCombat = createFamilyAbilityState();
+  playerState.familyAbility = null;
   playerState.cellStatus = null;
-  playerState.statModifiers = playerState.statModifiers.filter(m => m.source !== 'evasive-fury');
+  playerState.shields = {};
+  playerState.statModifiers = playerState.statModifiers.filter(m => !['evasive-fury', 'wild-frenzy', 'embermane-movement'].includes(m.source));
+  syncCellStats(playerState, currentCellLevels());
 };
-const damageBehemoth = (damage, { part = 'body', stagger = 0, wound = 0, interrupt = false, periodic = false, damageModifiers = [] } = {}) => {
+const damageBehemoth = (damage, { part = 'body', stagger = 0, wound = 0, interrupt = false, periodic = false, melee = false, damageModifiers = [] } = {}) => {
   if (selectedArena !== 'island' || !encounterTouchable(behemothState)) return { outcome: 'ignored' };
   if (selectedArena === 'island' && !inTerritory(islandEncounter.arena, playerState.position, 1)) return { outcome: 'ignored' };
   if (selectedArena === 'island' && !periodic) alertEncounter(islandEncounter, playerState.position);
@@ -534,7 +564,11 @@ const damageBehemoth = (damage, { part = 'body', stagger = 0, wound = 0, interru
   }
   const multiplier = getEffectiveStat(1, 'coreDamage', modifiers);
   damage *= multiplier; stagger *= multiplier; wound *= multiplier;
+  const healthBefore = behemothState.health;
   const result = hitBehemoth(behemothState, { damage, stagger, wound, part, interrupt, attackerModifiers: periodic ? undefined : playerState.statModifiers });
+  recordCellDamage(playerState, currentCellLevels(), { brokenPart: result.brokenPart,
+    coreDamage: healthBefore - behemothState.health, melee, periodic, hasPart: Boolean(BEHEMOTH.parts[part]),
+    growth: BEHEMOTH.parts[part]?.growth === true || BEHEMOTH.parts[part]?.quills === true });
   if (result.outcome === 'defeated') {
     collectDefeatLoot(materialInventory, behemothState);
     persistMaterials();
@@ -574,6 +608,8 @@ crescentGeometry.translate(0, 0.06, 0);
 const crescentMaterial = new THREE.MeshStandardMaterial({ color: '#dbe6ed', metalness: 0.78, roughness: 0.2, emissive: '#256370', emissiveIntensity: 0.35, side: THREE.DoubleSide });
 const crescentEdgeMaterial = new THREE.LineBasicMaterial({ color: '#f0fbff', transparent: true, opacity: 0.95 });
 const projectileCollisionMaterial = new THREE.LineBasicMaterial({ color: '#d9ff69', transparent: true, opacity: 0.92 });
+const weaponQuillGeometry = new THREE.ConeGeometry(.075, .65, 6);
+const weaponQuillMaterial = new THREE.MeshStandardMaterial({ color: '#b4e4e8', emissive: '#386b77', emissiveIntensity: .7 });
 const attackVolume = new THREE.Group();
 const attackVolumeMaterial = new THREE.MeshBasicMaterial({ color: '#d9ff69', transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide });
 const attackOutlineMaterial = new THREE.LineBasicMaterial({ color: '#f3ffca', transparent: true, opacity: 0.92 });
@@ -892,6 +928,7 @@ window.equipWeapon = (definition = STRIKER_SWORD) => {
   definition.cancelAction?.(nextState);
   definition.setSheathed(nextState, true);
   equipment = { definition, state: nextState };
+  clearCellCombat();
   persistMaterials();
   updateWeaponSettings();
   equippedWeapon = definition;
@@ -908,6 +945,7 @@ window.unequipWeapon = () => {
   if (equipment) { equipment.definition.cancelAction?.(equipment.state); weaponStates.set(equipment.definition, equipment.state); }
 
   equipment = null;
+  clearCellCombat();
   updateWeaponSettings();
   equippedWeapon = null;
   saveWeaponSelection('');
@@ -1030,6 +1068,8 @@ function stepRangedEffects(dt) {
   }
 }
 const renderCombatHud = () => {
+  playerState.familyAbility = { ...currentFamilyAbility(), charge: familyCombat.charge };
+  playerState.chestplateAbility = { ...currentChestplateAbility(), ...chestplateCombat };
   const ranged = equipment?.definition.kind === 'ranged';
   combatMantraDots?.parentElement.classList.toggle('hidden', equipment?.definition !== STRIKER_SWORD);
   document.querySelector('#repeaterHelp').classList.toggle('hidden', !ranged);
@@ -1044,11 +1084,12 @@ const renderCombatHud = () => {
 
   playerHud.update(playerState, equipment);
   if (staminaFill && staminaBar && staminaValue) {
-    const stamina = Math.max(0, Math.min(100, playerState.stamina));
-    staminaFill.style.width = `${stamina}%`;
+    const stamina = Math.max(0, Math.min(playerState.maxStamina, playerState.stamina));
+    staminaFill.style.width = `${stamina / playerState.maxStamina * 100}%`;
+    staminaBar.setAttribute('aria-valuemax', String(playerState.maxStamina));
     staminaBar.setAttribute('aria-valuenow', String(Math.round(stamina)));
-    staminaValue.textContent = `${Math.round(stamina)} / 100`;
-    staminaBar.classList.toggle('low', stamina <= 25);
+    staminaValue.textContent = `${Math.round(stamina)} / ${playerState.maxStamina}`;
+    staminaBar.classList.toggle('low', stamina <= playerState.maxStamina * .25);
   }
   if (!combatStatus) return;
   updateSettlementHud();
@@ -1098,7 +1139,7 @@ const renderCombatHud = () => {
       : behemothState.mode === 'observe' ? 'WATCHING THE HUNTER'
       : behemothState.mode === 'circle' ? 'CIRCLING'
       : behemothState.mode === 'retreat' ? 'CREATING SPACE' : '';
-    behemothHud.innerHTML = `<div>${BEHEMOTH.name ?? 'Embermane'}</div><div>${selectedArena === 'island' ? islandEncounter.arena.name.toUpperCase() + ' / ' + (behemothState.lifecycle === 'alive' ? islandEncounter.awareness : behemothState.lifecycle).toUpperCase() : 'FIRST BEHEMOTH'}</div><div>${behemothState.mode === 'defeated' ? '' : enrageLabel}</div><div class="meter"><span style="width:${health}%"></span></div><div>STAGGER ${Math.ceil(behemothState.stagger)} / ${Math.ceil(behemothState.staggerThreshold)}</div><div class="meter stagger"><span style="width:${stagger}%"></span></div>${parts}<div class="player-health">HUNTER ${Math.ceil(playerState.health)} / 100</div><div class="state">${stateLabel}</div>`;
+    behemothHud.innerHTML = `<div>${BEHEMOTH.name ?? 'Embermane'}</div><div>${selectedArena === 'island' ? islandEncounter.arena.name.toUpperCase() + ' / ' + (behemothState.lifecycle === 'alive' ? islandEncounter.awareness : behemothState.lifecycle).toUpperCase() : 'FIRST BEHEMOTH'}</div><div>${behemothState.mode === 'defeated' ? '' : enrageLabel}</div><div class="meter"><span style="width:${health}%"></span></div><div>STAGGER ${Math.ceil(behemothState.stagger)} / ${Math.ceil(behemothState.staggerThreshold)}</div><div class="meter stagger"><span style="width:${stagger}%"></span></div>${parts}<div class="player-health">HUNTER ${Math.ceil(playerState.health)} / ${playerState.maxHealth}</div><div class="state">${stateLabel}</div>`;
   }
 };
 const targetInMove = (move) => {
@@ -1165,13 +1206,20 @@ const stepEncounter = (dt, resolveContacts = () => {}) => {
     if (meleeHit) behemothState.attackHit = true;
     const incomingDamage = meleeHit ? BEHEMOTH.moves[behemothState.move].damage : quillHit.damage;
     const rolling = playerState.movementAction === 'dodge' && playerState.actionTime > 0.08;
-    const cell = currentEmbeddedCell();
-    if (cell.id === 'evasive-fury') activateEvasiveFury(playerState.statModifiers, cell.level, {
+    activateEmbermane(playerState.statModifiers, currentFamilyAbility(), {
       contact: true, dodgeProtected: rolling, damage: incomingDamage,
       otherwiseProtected: equipment?.state.airHeight > 0 || isRecoveryProtected(playerState) || playerState.invulnerability > 0,
     });
+    const dodgeHit = activateDodgeCells(cellCombat, playerState, currentCellLevels(), {
+      contact: true, dodgeProtected: rolling, damage: incomingDamage,
+      otherwiseProtected: equipment?.state.airHeight > 0 || isRecoveryProtected(playerState) || playerState.invulnerability > 0,
+    }, resolveAttackDamage(equipment?.definition.basicAttack ?? {}, EQUIPMENT[materialInventory.equipment.equipped]?.damage ?? 0).stagger ?? 0);
+    if (dodgeHit) damageBehemoth(0, { part: 'head', stagger: dodgeHit.stagger, interrupt: dodgeHit.interrupt });
     if (!rolling && !(equipment?.state.airHeight > 0) && !isRecoveryProtected(playerState) && playerState.invulnerability === 0) {
-      playerState.health = Math.max(0, playerState.health - incomingDamage);
+      const damageTaken = mitigateDamage(incomingDamage, armorDefense(materialInventory.armor));
+      consumeResource(playerState, 'health', damageTaken);
+      chestplateCombat.pendingProjectile = null;
+      chestplateCombat.commitment = 0;
       equipment?.definition.cancelAction?.(equipment.state);
       // Keep an unfulfilled Q hold through hit recovery; release/blur still clears it.
       pressedKeys.clear();
@@ -1179,7 +1227,7 @@ const stepEncounter = (dt, resolveContacts = () => {}) => {
       playerState.recovery = null;
       startKnockdown(playerState, behemothState.position);
       feedback.impact([playerState.position[0], playerState.position[1] + 1.5, playerState.position[2]],
-        incomingDamage, { outcome: 'hurt' });
+        damageTaken, { outcome: 'hurt' });
       playerBodyMaterial.emissive.set('#a23e36');
       playerBodyMaterial.emissiveIntensity = 0.85;
       if (playerState.health <= 0) equipment?.definition.cancelAction?.(equipment.state);
@@ -1190,6 +1238,7 @@ const stepEncounter = (dt, resolveContacts = () => {}) => {
   playerState.position = corrected.position;
 };
 const processWeaponStep = (dt) => {
+  if (chestplateCombat.commitment > 0) return { locked: true, movementScale: 0, travelDelta: 0, events: [] };
   if (isTown()) return { locked: false, movementScale: 1, travelDelta: 0, events: [] };
   if (selectedArena === 'island' && playerState.health <= 0) return { locked: true, movementScale: 0, travelDelta: 0 };
   for (const [definition, state] of weaponStates) {
@@ -1205,7 +1254,9 @@ const processWeaponStep = (dt) => {
     if (basicFireHeld && !pressedKeys.has('dodge') && !state.action) handleAttackInput('light');
   }
   const attackSpeedMultiplier = getEffectiveStat(1, 'attackSpeed', playerState.statModifiers);
+  launchFamilyAttack();
   const result = equipment.definition.step(state, dt, { attackSpeedMultiplier, spend: (amount) => spendStamina(playerState, amount) });
+  launchFamilyAttack();
   result.events = resolveWeaponEvents(result.events, EQUIPMENT[materialInventory.equipment.equipped]?.damage ?? 20);
   for (const event of result.events) {
     if (event.type === 'empowered-reload') { absorbEmpoweredReload(new THREE.Vector3().fromArray(event.origin)); continue; }
@@ -1218,7 +1269,7 @@ const processWeaponStep = (dt) => {
     const attackEvent = event.type === 'attack-hit';
     const bossPart = selectedArena === 'island' && attackEvent ? behemothInMove(event.move, event.interrupt) : null;
     if (attackEvent && (selectedArena === 'island' ? bossPart : targetInMove(event.move))) {
-      if (selectedArena === 'island') damageBehemoth(event.move.damage, { part: bossPart, stagger: event.move.stagger, wound: event.move.wound, interrupt: event.interrupt });
+      if (selectedArena === 'island') damageBehemoth(event.move.damage, { part: bossPart, stagger: event.move.stagger, wound: event.move.wound, interrupt: event.interrupt, melee: equipment.definition.kind === 'melee' });
       else damageTrainingTarget(event.move.damage, { stagger: event.move.stagger, wound: event.move.wound });
       const confirmedEvent = event;
       if (equipment.definition.onHit?.(state, confirmedEvent) && event.ability === 'karma-breaker') state.lastEvent = 'Karma Breaker Â· damage over time';
@@ -1245,7 +1296,7 @@ const resolveContinuousContacts = (events, from, to, bossFrom = behemothState.po
     }
     if (!part) continue;
     event.action.hitRegistered = true;
-    if (selectedArena === 'island') damageBehemoth(event.move.damage, { part, stagger: event.move.stagger, wound: event.move.wound, interrupt: event.interrupt });
+    if (selectedArena === 'island') damageBehemoth(event.move.damage, { part, stagger: event.move.stagger, wound: event.move.wound, interrupt: event.interrupt, melee: equipment.definition.kind === 'melee' });
     else damageTrainingTarget(event.move.damage, { stagger: event.move.stagger, wound: event.move.wound });
     equipment.definition.onHit?.(equipment.state, { ...event, type: 'attack-hit' });
   }
@@ -1255,7 +1306,11 @@ const launchProjectile = (definition) => {
     ? new THREE.Vector3(...definition.direction).normalize()
     : new THREE.Vector3(-Math.sin(definition.attackYaw), 0, -Math.cos(definition.attackYaw)).normalize();
   const mesh = new THREE.Group();
-  const blade = new THREE.Mesh(crescentGeometry, crescentMaterial);
+  const blade = definition.kind === 'quill'
+    ? new THREE.Mesh(weaponQuillGeometry, weaponQuillMaterial)
+    : new THREE.Mesh(crescentGeometry, crescentMaterial);
+  if (definition.kind === 'quill') blade.rotation.x = Math.PI / 2;
+  else {
   blade.scale.set(definition.width / crescentDimensions.width, 1, definition.depth / crescentDimensions.depth);
   const cuttingEdgeCurve = new THREE.QuadraticBezierCurve3(
     new THREE.Vector3(-crescentHalfWidth, 0.071, -crescentHalfDepth),
@@ -1265,6 +1320,7 @@ const launchProjectile = (definition) => {
   blade.add(new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(cuttingEdgeCurve.getPoints(32)), crescentEdgeMaterial,
   ));
+  }
   const collisionVolume = new THREE.LineSegments(
     new THREE.EdgesGeometry(new THREE.BoxGeometry(definition.width, definition.height, definition.depth)), projectileCollisionMaterial,
   );
@@ -1273,6 +1329,8 @@ const launchProjectile = (definition) => {
   mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
   scene.add(mesh);
   const position = new THREE.Vector3(playerState.position[0], playerState.position[1] + definition.centerHeight, playerState.position[2]);
+  position.addScaledVector(new THREE.Vector3(-direction.z, 0, direction.x), definition.lateralOffset ?? 0);
+  mesh.position.copy(position);
   activeProjectiles.push({ ...definition, direction, position, travelled: 0, hitTargets: new Set(), mesh, collisionVolume });
 };
 const stepProjectiles = (dt) => {
@@ -1326,7 +1384,7 @@ const stepProjectiles = (dt) => {
         projectile.hitTargets.add(record.id);
         const damageRecord = interruptHead?.id === record.id ? interruptHead : record;
         damageRecord.onDamage?.(projectile.damage, { source: projectile.id, interrupt: projectile.interrupt === true });
-        if (record.sizeClass === 'large' && hit.dissipatingLane) { dissipate = true; break; }
+        if (projectile.kind === 'quill' || record.sizeClass === 'large' && hit.dissipatingLane) { dissipate = true; break; }
       }
       if (!dissipate) {
         projectile.position.addScaledVector(projectile.direction, distance);
@@ -1335,6 +1393,7 @@ const stepProjectiles = (dt) => {
     }
     if (dissipate || projectile.travelled >= projectile.range) {
       scene.remove(projectile.mesh);
+      projectile.collisionVolume.geometry.dispose();
       activeProjectiles.splice(index, 1);
     } else projectile.mesh.position.copy(projectile.position);
   }
@@ -1390,6 +1449,7 @@ const chainTarget = (yaw = equipment?.state.airElapsed != null ? getCameraYaw() 
   }).filter(t => t.angle < Math.PI / 3).sort((a, b) => a.distance - b.distance)[0] ?? null;
 };
 const handleAttackInput = (input) => {
+  if (chestplateCombat.commitment > 0) return;
   if (isTown()) return;
   if (isRecovering(playerState) || playerState.dodgeInputBlock > 0 || !equipment || playerState.movementAction === 'dodge' || playerState.movementAction === 'climb' || (selectedArena === 'island' && playerState.health <= 0)) return;
   const reloadSource = equipment.definition.kind === 'ranged'
@@ -1397,11 +1457,12 @@ const handleAttackInput = (input) => {
   const result = equipment.definition.handleAttack(equipment.state, input, { attackYaw: equipment.state.airElapsed != null ? getCameraYaw() : getAttackYaw(), target: equipment.definition.targetContext ? chainTarget() : null, autoReload: document.querySelector('#autoReload').checked,
     idealRange: Boolean(reloadSource), reloadOrigin: reloadSource?.end.toArray(), spend: (amount) => spendStamina(playerState, amount) });
   if (result.type === 'unsheathed') basicFireHeld = false;
+  launchFamilyAttack();
   if (result.type !== 'input-ignored') renderCombatHud();
 };
 weaponButton?.addEventListener('click', () => openEquipment());
 renderer.domElement.addEventListener('mousedown', (event) => {
-  if (arenaScreen.classList.contains('hidden') || mapTransitionActive || settingsOpen) return;
+  if (arenaScreen.classList.contains('hidden') || mapTransitionActive || settingsOpen || chestplateCombat.commitment > 0) return;
   if (event.button === 0) { basicFireHeld = true; handleAttackInput('light'); }
   if (event.button === 2) { event.preventDefault(); handleAttackInput('heavy'); }
 });
@@ -1506,6 +1567,22 @@ const equipmentView = createEquipmentView({ inventory: materialInventory, area: 
     if (id === null) window.unequipWeapon(); else window.equipWeapon(window.availableWeapons[EQUIPMENT[id].type]);
     return true;
   },
+  onEquipCell: (id, index, key) => {
+    if (!equipCell(materialInventory, id, index, key, selectedArena)) return false;
+    clearCellCombat(); renderCombatHud(); persistMaterials(); return true;
+  },
+  onEquipArmor: (id, slot) => {
+    const previous = materialInventory.armor.equipped[slot];
+    if (!equipArmor(materialInventory.armor, id, slot, selectedArena)) return false;
+    if (previous !== id) clearCellCombat();
+    if (slot === 'chestplate' && previous !== id) clearChestplateCombat();
+    renderCombatHud();
+    persistMaterials(); return true;
+  },
+  onCraftArmor: id => {
+    if (!craftArmor(materialInventory, id, selectedArena)) return false;
+    persistMaterials(); return true;
+  },
   onCraft: (id, crafter) => {
     if (!craftWeapon(materialInventory, id, crafter, selectedArena)) return false;
     persistMaterials(); return true;
@@ -1520,7 +1597,8 @@ document.querySelector('#openEquipmentButton').addEventListener('click', () => o
 
 const keyToAction = (event) => {
   const key = event.key.toLowerCase();
-  if (['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'f', ' ', 'q', 'x'].includes(key)) event.preventDefault();
+  if (chestplateCombat.commitment > 0) return;
+  if (['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'f', ' ', 'q', 'x', 'v'].includes(key)) event.preventDefault();
   if (arenaScreen.classList.contains('hidden') || mapTransitionActive) return;
   if (key === 'alt') {
     altCursorHeld = true;
@@ -1530,7 +1608,16 @@ const keyToAction = (event) => {
   }
   if (event.repeat || arenaScreen.classList.contains('hidden')) return;
   if (key === 'e' && isTown()) { interactSettlement(); return; }
-  if (isTown() && ['q', 'r', 'x'].includes(key)) return;
+  if (isTown() && ['q', 'r', 'x', 'v'].includes(key)) return;
+  if (key === 'v') {
+    if (playerState.health <= 0 || isRecovering(playerState) || playerState.dodgeInputBlock > 0
+      || ['dodge', 'climb'].includes(playerState.movementAction)) return;
+    if (currentChestplateAbility()?.species === 'quillshot' && equipment?.state.action) return;
+    const result = activateChestplateAbility(chestplateCombat, currentChestplateAbility(), playerState.statModifiers, playerState.facingYaw);
+    if (result.activated && chestplateCombat.commitment > 0) clearInput();
+    if (result.activated) { feedback.sound('reward'); renderCombatHud(); }
+    return;
+  }
   if (key === 'f') pressedKeys.add('jump');
   if (key === ' ') pressedKeys.add('dodge');
   if (key === 'x' && !isRecovering(playerState) && playerState.dodgeInputBlock <= 0 && equipment && equipment.state.action?.ability !== 'crescent-special') {
@@ -1559,6 +1646,7 @@ const resetEncounter = () => {
   trainingState = createTrainingState();
   updateTrainingTargetView(trainingView, trainingState);
   Object.assign(playerState, createPlayerState());
+  clearChestplateCombat();
   clearInput();
   const startingSpecies = ISLAND.roster[Math.floor(Math.random() * ISLAND.roster.length)];
   islandEncounter = createIslandEncounter(0, 1, startingSpecies);
@@ -1566,7 +1654,8 @@ const resetEncounter = () => {
   syncEncounterView();
   for (const record of projectileTargets) if (record.kind === 'first-behemoth') record.id = selectedArena === 'island' ? islandEncounter.id : 'first-behemoth';
   clearCellCombat();
-  playerState.health = 100;
+  playerState.health = playerState.maxHealth;
+  playerState.stamina = playerState.maxStamina;
   playerState.invulnerability = 0;
   playerState.position = isTown() ? [...currentTown().arrival] : selectedArena === 'island' ? [...ISLAND.arrival] : [0, -0.025, 1.5];
   playerState.lastGroundedPosition = [...playerState.position];
@@ -1836,6 +1925,7 @@ window.addEventListener('keydown', (event) => {
   }
   if (arenaScreen.classList.contains('hidden') || mapTransitionActive || settingsOpen) return;
   if (event.target.closest?.('button, input, select, textarea, a')) return;
+  if (chestplateCombat.commitment > 0) { event.preventDefault(); return; }
   keyToAction(event);
   heldKeys.add(event.key.toLowerCase());
 });
@@ -1910,10 +2000,16 @@ const animate = () => {
     movementAccumulator += settingsOpen || !settlementPanel.hidden ? 0 : delta;
     let consumedActionPress = false;
     while (movementAccumulator >= movementStep) {
+      const chestplateCommitted = chestplateCombat.commitment > 0;
       stepStatModifiers(playerState.statModifiers, movementStep);
+      syncCellStats(playerState, currentCellLevels());
+      stepShields(playerState, movementStep);
+      stepFamilyAbility(familyCombat, currentFamilyAbility(), movementStep);
+      const chestplateProjectile = stepChestplateAbility(chestplateCombat, currentChestplateAbility(), movementStep);
+      if (chestplateProjectile) launchProjectile(chestplateProjectile);
       stepRangedEffects(movementStep);
       if (selectedArena === 'range') stepTrainingTarget(trainingState, movementStep);
-      if (qHeldSince !== null && !qConsumed && performance.now() - qHeldSince >= 300 && equipment && playerState.health > 0 && !isRecovering(playerState) && playerState.dodgeInputBlock <= 0 && !['dodge', 'climb'].includes(playerState.movementAction)) {
+      if (!chestplateCommitted && qHeldSince !== null && !qConsumed && performance.now() - qHeldSince >= 300 && equipment && playerState.health > 0 && !isRecovering(playerState) && playerState.dodgeInputBlock <= 0 && !['dodge', 'climb'].includes(playerState.movementAction)) {
         const result = equipment.definition.useTechnique?.(equipment.state, {
           attackYaw: playerState.facingYaw,
           cameraYaw,
@@ -1940,17 +2036,17 @@ const animate = () => {
         : aimYaw;
       const previousMovementAction = playerState.movementAction;
       stepPlayer(playerState, {
-        moveX: moveX * weaponTick.movementScale,
-        moveY: moveY * weaponTick.movementScale,
-        attackLocked: weaponTick.locked && !weaponTick.allowMove,
-        sprintHeld: heldKeys.has('shift') && !weaponTick.locked,
+        moveX: chestplateCommitted ? 0 : moveX * weaponTick.movementScale,
+        moveY: chestplateCommitted ? 0 : moveY * weaponTick.movementScale,
+        attackLocked: chestplateCommitted || weaponTick.locked && !weaponTick.allowMove,
+        sprintHeld: !chestplateCommitted && heldKeys.has('shift') && !weaponTick.locked,
         sprintCostsStamina: Boolean(equipment && !equipment.state.sheathed),
         cameraYaw,
         aimYaw: attackYaw,
         facingMode: equipment?.state?.sheathed ? 'travel' : undefined,
-        facingYaw: equipment?.state?.action && Number.isFinite(equipment.state.attackYaw) ? equipment.state.attackYaw : undefined,
-        jumpPressed: !consumedActionPress && !weaponTick.locked && pressedKeys.has('jump'),
-        dodgePressed: !consumedActionPress && !weaponTick.locked && pressedKeys.has('dodge'),
+        facingYaw: chestplateCommitted ? chestplateCombat.yaw : equipment?.state?.action && Number.isFinite(equipment.state.attackYaw) ? equipment.state.attackYaw : undefined,
+        jumpPressed: !chestplateCommitted && !consumedActionPress && !weaponTick.locked && pressedKeys.has('jump'),
+        dodgePressed: !chestplateCommitted && !consumedActionPress && !weaponTick.locked && pressedKeys.has('dodge'),
       }, movementStep, {
         colliders: ARENA_COLLIDERS,
         collisionWorld: movementCollisionWorld,
@@ -1963,7 +2059,7 @@ const animate = () => {
       });
       if (playerState.movementAction !== previousMovementAction && ['dodge', 'climb'].includes(playerState.movementAction)) {
         equipment?.definition.cancelAction?.(equipment.state);
-        if (playerState.movementAction === 'dodge') feedback.sound('swing');
+        if (playerState.movementAction === 'dodge') { beginCellDodge(cellCombat); feedback.sound('swing'); }
       }
       if (weaponTick.travelDelta > 0) {
         const directionYaw = weaponTick.travelYaw ?? equipment?.state?.attackYaw ?? playerState.facingYaw;

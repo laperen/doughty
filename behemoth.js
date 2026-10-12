@@ -1,6 +1,7 @@
 import { applyPartDamage, applyCoreDamage, clearBehemothModes, advanceStaggerThreshold } from './behemoth-damage.js';
 import { createWoundMeter, resolveWound, stepWounds } from './wounds.js';
 import { createTimedMode, activatePendingMode, advanceTimedMode } from './behemoth-states.js';
+import { behemothPushOut } from './behemoth-collision.js';
 
 const SIZE_SCALE = 1.2;
 
@@ -328,6 +329,9 @@ export function stepBehemoth(state, playerPosition, dt, bounds = 68, { targetKno
 export function behemothAttackTouchesPlayer(state, playerPosition) {
   const move = BEHEMOTH.moves[state.move];
   if (!move || state.mode !== 'active' || state.attackHit) return false;
+  // Charge contact must reach the solid footprint, including the projecting
+  // head. A small margin catches players already separated by collision skin.
+  if (state.move === 'charge') return Boolean(behemothPushOut(state, playerPosition, 0.36 + 0.05, 1.72));
   const dx = playerPosition[0] - state.position[0];
   const dz = playerPosition[2] - state.position[2];
   const distance = Math.hypot(dx, dz);

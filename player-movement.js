@@ -1,5 +1,6 @@
 import { isRecovering, landKnockdown, stepRecovery } from './player-recovery.js';
 import { STAMINA, recoverStamina, spendStamina } from './stamina.js';
+import { getEffectiveStat } from './stat-modifiers.js';
 
 /**
  * Small, renderer-independent player movement simulation.
@@ -91,6 +92,9 @@ export function createPlayerState(position = [0, FLOOR.y, 1.5]) {
     dodgeDirection: [0, 0],
     stamina: STAMINA.max,
     health: 100,
+    maxHealth: 100,
+    maxStamina: STAMINA.max,
+    shields: {},
     invulnerability: 0,
     recovery: null,
     staminaRecoveryDelay: 0,
@@ -241,6 +245,9 @@ export function stepPlayer(state, input, delta, {
       return state;
     }
   }
+  const movementMultiplier = getEffectiveStat(1, 'movementSpeed', state.statModifiers ?? []);
+  config = { ...config, walkSpeed: config.walkSpeed * movementMultiplier, runSpeed: config.runSpeed * movementMultiplier,
+    airSpeed: config.airSpeed * movementMultiplier };
   const length = Math.hypot(input.moveX, input.moveY);
   const world = collisionWorld ?? colliders;
   const surfaces = Array.isArray(world) ? world.filter((box) => box.top !== undefined) : [];
@@ -250,7 +257,7 @@ export function stepPlayer(state, input, delta, {
   if (!input.sprintHeld) state.sprintExhausted = false;
   if (input.dodgePressed && state.dodgeCooldown <= 0
     && (!movement.dodge.groundedOnly || state.grounded) && state.movementAction !== 'dodge') {
-    if (!spendStamina(staminaState, STAMINA.dodgeCost)) return;
+    if (!spendStamina(staminaState, Math.max(0, getEffectiveStat(STAMINA.dodgeCost, 'dodgeCost', state.statModifiers)))) return;
     const directionLength = Math.hypot(moveX, moveY);
     const localX = directionLength > 0.05 ? moveX / directionLength : 0;
     const localY = directionLength > 0.05 ? moveY / directionLength : 0;

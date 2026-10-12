@@ -5,6 +5,18 @@
     "id": "39f52b5a-e913-41c9-a1b8-007880f94963",
     "scheduleBindingModelVersion": 1,
     "text": {
+      "1152aca6-c53e-43fd-ad7d-dd27c2354f36": {
+        "value": "Embermane movement"
+      },
+      "bd7bd926-fcf6-4413-83b1-81226c6b3716": {
+        "value": "Regrowing volley"
+      },
+      "01120e84-cda8-4a7b-a07e-4f24e4dfd849": {
+        "value": "Dodging through an attack grants movement speed for 20 seconds. Further qualifying evades refresh the timer. Tiers 1-3: 10%; tier 4: 20%; reforge 8+: 30%."
+      },
+      "007023cc-e310-4d17-acf4-2169cdeebb92": {
+        "value": "Charge for 12 seconds, including while sheathed. The next executed attack launches quills forward, even on a miss. Each quill deals 100% weapon base damage. Tiers 1-3: one quill; tier 4: two; reforge 8+: three. Launching restarts charging; one ready volley is retained until used."
+      },
       "39f52b5a-e913-41c9-a1b8-007880f94963": {
         "value": "Doughty"
       },
@@ -447,7 +459,7 @@
         "value": "Armorer greeting"
       },
       "a2d4aefa-1831-4913-8b0d-75e70b310dd3": {
-        "value": "The armorer will turn your gathered parts into armor and upgrades. Armor progression is not available in this mockup."
+        "value": "Bring gathered parts and currency to craft armor. Equip your armor to reduce incoming damage."
       },
       "763037bb-358e-4f3b-804f-0850281a4ecd": {
         "value": "Potion maker"
@@ -1504,6 +1516,186 @@
       },
       "5e353120-52a3-4161-b5f7-79d93af84566": {
         "value": "Craft repeaters"
+      },
+      "dd4d4b64-9a0a-4572-ae4c-9f4d57291b0e": {
+        "value": "Helmet"
+      },
+      "3603bec5-50fd-4dbe-87bf-43c68cbb7425": {
+        "value": "Chestplate"
+      },
+      "474b3e1b-a7f1-4922-a3dd-c472fc11e948": {
+        "value": "Gloves"
+      },
+      "32377d0d-4a0e-4399-aded-84afabb2e2b3": {
+        "value": "No armor equipped"
+      },
+      "60d3e4a5-a378-4611-b69f-4ff08aa80d81": {
+        "value": "Defense comparison"
+      },
+      "c671f5f0-e778-45a5-af7c-2b3c7172aa51": {
+        "value": "Change Armor"
+      },
+      "b017f3fb-9ffd-4179-a956-b85758446d43": {
+        "value": "Armor details"
+      },
+      "8935369a-8855-404e-bca7-1d038bf7b05f": {
+        "value": "Armor upgrades are not available yet."
+      },
+      "fbc63271-bc86-4580-ace0-1f66fba0fee5": {
+        "value": "Armor crafted. Select Equip to use it."
+      },
+      "9c35280e-785f-4e5a-8cd2-41a15dfa5819": {
+        "value": "Unable to craft this armor."
+      },
+      "54167195-2f9e-44e5-afd4-20e0368740ab": {
+        "value": "Craft one of each armor piece. Owned armor is reserved for future upgrades."
+      },
+      "2a872139-3311-4322-b61a-f6607d51eea0": {
+        "value": "Select equipment to inspect, equip, or unequip."
+      },
+      "50761d52-29f4-49d5-824e-f05efca46d7c": {
+        "value": "Equipment category"
+      },
+      "44d2df11-c626-4383-b350-f8355d67d4e5": {
+        "value": "Defense: {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}"
+      },
+      "baa76eb1-df15-468a-b70e-3077a58c474c": {
+        "value": "Total defense: {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}"
+      },
+      "181f62c3-3b8e-4243-957b-51de37048fae": {
+        "value": "Embermane Helmet"
+      },
+      "6744af75-7f4d-4461-9ba8-60db1091b859": {
+        "value": "Embermane Chestplate"
+      },
+      "c8771562-0d40-4709-96fa-d1580ac99742": {
+        "value": "Embermane Gloves"
+      },
+      "293128c1-2a93-4f0d-81a1-45bb9f29c36e": {
+        "value": "Embermane Legs"
+      },
+      "20e41ba2-ae3d-4999-927a-1f7ad0a58d6b": {
+        "value": "Quillshot Helmet"
+      },
+      "6c9649b5-c17f-49ab-aafc-87ba173b1835": {
+        "value": "Quillshot Chestplate"
+      },
+      "9288fb73-f2a3-4560-8d89-92d06c6282ba": {
+        "value": "Quillshot Gloves"
+      },
+      "1ad4ddf4-0d9d-4920-bef0-cdfc8a9421ff": {
+        "value": "Quillshot Legs"
+      },
+      "c1b4e356-cdce-4aee-8ae5-8d0a29d2a101": {
+        "value": "Kindled Fury"
+      },
+      "363b6a90-9b32-4470-af48-2c89bc869289": {
+        "value": "Quill Throw"
+      },
+      "afbabfba-216b-4d05-a326-68ff1d8d6de0": {
+        "value": "Tap V to gain attack speed for 20 seconds. Cooldown: 30 seconds. Base: 5%; tier 4 adds 5%; reforge 8 adds 5%, for a maximum of 15%."
+      },
+      "f08ed5fb-efc6-4e78-b733-da2edcab5580": {
+        "value": "Charge for 30 seconds, then tap V to throw one interrupting quill straight in your facing direction. Deals 60 base damage and travels up to the maximum repeater shooting range. One ready quill is retained until used."
+      },
+      "409adeae-a9ae-47f5-bbf4-c6432724de03": {
+        "value": "V / Ready"
+      },
+      "46d92f1c-2a6e-4ee5-9dc4-c56e3cbf199c": {
+        "value": "V / {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}s"
+      },
+      "54316e12-3bcd-45f3-bc5d-9c0882d0ee87": {
+        "value": "V / {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}} / 30s"
+      },
+      "747a0264-eeaa-452e-b3f6-e2b0ae85b8bb": {
+        "value": "Tough"
+      },
+      "1075c2e1-a5ee-42a1-818d-a1e9c2f62b5b": {
+        "value": "Increase maximum health by 25/30/35/40/45/50% at +1/+2/+3/+4/+5/+6."
+      },
+      "584ce70e-c1c5-4fbb-b6a6-3b688c4795c5": {
+        "value": "Counter Measures"
+      },
+      "8f4afdbe-cc0a-4feb-95b4-4c3368683eff": {
+        "value": "Dodging through a damaging attack with invulnerability grants 10/20/30/40/50/60 health shields at +1/+2/+3/+4/+5/+6, once per dodge. Shields accumulate without a cap and absorb damage before health. All remaining shields disappear after 60 seconds without gaining shields."
+      },
+      "f5c72dea-14e4-48ff-a0de-668e3a2ef6f5": {
+        "value": "Endurance"
+      },
+      "e1a094e7-870f-46f0-a5a7-15946d328fb7": {
+        "value": "Increase maximum stamina by 50/60/70/80/90/100% at +1/+2/+3/+4/+5/+6."
+      },
+      "86d46ce5-25ba-400a-bf12-544afe0d93d5": {
+        "value": "Discipline"
+      },
+      "e6f5b30e-3fe6-4d9f-9003-bb2e8dd3d883": {
+        "value": "Reduce maximum health by 30/40/50/60/70/80% and increase base power by 30/40/50/60/70/80% at +1/+2/+3/+4/+5/+6."
+      },
+      "3acf5453-65eb-46e1-8faa-e7202272c0f9": {
+        "value": "Stunning Grace"
+      },
+      "19b0b15f-a23a-4a28-904e-cda3bb1dfc12": {
+        "value": "Dodging through a damaging attack with invulnerability immediately deals 15/30/55/70/85/100% of the equipped weapon’s first basic attack stagger damage at +1/+2/+3/+4/+5/+6, once per dodge. At +3 and above, this hit can interrupt, even with a weapon that deals no stagger damage."
+      },
+      "1e01b68e-d5d5-4a16-8b67-a3f1e5405d7a": {
+        "value": "Wild Frenzy"
+      },
+      "bbd51852-85a4-4985-a851-64d960bde1bc": {
+        "value": "After personally breaking a Behemoth part, gain 10/12/14/16/18/20% attack speed at +1/+2/+3/+4/+5/+6 for 15 seconds. Further breaks refresh the duration without stacking."
+      },
+      "0594029d-c44a-4fb8-9e7f-36cd6d4b462d": {
+        "value": "Parasitic"
+      },
+      "930b4ff5-f638-4818-8ab8-5a95fe38ad0b": {
+        "value": "Direct melee hits on Behemoth parts other than growths heal for 10/12/14/16/18/20% of actual core health damage dealt at +1/+2/+3/+4/+5/+6. Already-broken parts qualify; periodic damage does not."
+      },
+      "cf4b231d-d551-41f1-9978-094f0eb7f8c9": {
+        "value": "Agility"
+      },
+      "db0ac43d-33b5-4f1f-9210-028110239045": {
+        "value": "Reduce dodge stamina cost by 25/30/35/40/45/50% at +1/+2/+3/+4/+5/+6."
+      },
+      "8e599172-9c2a-48aa-a992-f39a8504f38d": {
+        "value": "Health shields"
+      },
+      "ba676ae0-1fe7-4b53-a8ee-de2ec4f7155b": {
+        "value": "Cell rank"
+      },
+      "2feee9ef-6fe9-4a5e-b0f6-4a5753f05654": {
+        "value": "Cell slots"
+      },
+      "bd12c8f3-d9c5-404a-b0e1-3cfa157aac18": {
+        "value": "Prismatic"
+      },
+      "f9d83c80-6f5c-48b1-96d6-7aea9b933456": {
+        "value": "Summary"
+      },
+      "eb449421-af4d-4170-a166-ab3710b3b4b1": {
+        "value": "Abilities"
+      },
+      "2913dbd5-19b5-4b87-a3ae-f1e133a127d1": {
+        "value": "No abilities active."
+      },
+      "73404826-b302-474a-b834-e1bb2518c9f8": {
+        "value": "No cells active."
+      },
+      "0e01558a-8e17-42f7-95b2-f76bcdf93f9b": {
+        "value": "Select cell"
+      },
+      "151b71b9-a7c3-45f8-b87a-13ae41253b98": {
+        "value": "Select a cell for this slot."
+      },
+      "ec09fe1d-c6ed-46e6-a73f-3c2533f1d99e": {
+        "value": "Empty cell slot"
+      },
+      "6a568f77-2e15-460b-9c75-4c02edd42409": {
+        "value": "No compatible cells available."
+      },
+      "6d0f59af-5cd5-4be5-9742-c73117887ebc": {
+        "value": "Crafted cells can be equipped through cell slots in the equipment menu."
+      },
+      "f68f2228-2117-435d-9307-e893abe4a53d": {
+        "value": "Weapon"
       }
     },
     "stats": {

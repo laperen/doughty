@@ -10,5 +10,5 @@ export function spendStamina(state, amount) {
 
 export function recoverStamina(state, dt) {
   state.staminaRecoveryDelay = Math.max(0, state.staminaRecoveryDelay - dt);
-  if (state.staminaRecoveryDelay === 0) state.stamina = Math.min(STAMINA.max, state.stamina + STAMINA.recoveryPerSecond * dt);
+  if (state.staminaRecoveryDelay === 0) state.stamina = Math.min(state.maxStamina ?? STAMINA.max, state.stamina + STAMINA.recoveryPerSecond * dt);
 }

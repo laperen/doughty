@@ -134,6 +134,7 @@ export function stepChainblades(s, dt, { attackSpeedMultiplier = 1 } = {}) {
   return { events, locked: true, movementScale: 0, travelDelta, travelYaw: yaw + (m.retreat ? Math.PI : 0) };
 }
 export const CHAINBLADES = Object.freeze({
+  basicAttack: lights[0],
   id: 'chainblades', name: 'Chain Blades', kind: 'melee', abilityInput: 'press', resourceColumns: 4, targetContext: true,
   presentation: { weaponShape: 'chainblades', trailColor: '#75e5ff' },
   hudHint: 'L twin cuts / H wound or pull / LLHL spin / Q push-off / airborne L dash, H slam',

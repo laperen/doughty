@@ -9,7 +9,7 @@ export function createInventoryView({ state, onBack, onExtract = () => true }) {
   dialog.setAttribute('aria-labelledby', 'inventoryTitle');
   dialog.innerHTML = `<header class="inventory-heading"><h2 id="inventoryTitle"></h2><button class="menu-button" id="inventoryBack">Back to Gameplay</button></header>
     <nav id="inventoryTabs" role="tablist" aria-label="Inventory categories"><button class="menu-button" id="inventoryPartsTab" role="tab" aria-controls="inventoryPartsPanel">Parts</button><button class="menu-button" id="inventoryCellsTab" role="tab" aria-controls="inventoryCellsPanel">Cells</button></nav>
-    <p id="inventoryDescription"></p><p id="aetherDustBalance"></p><p id="currencyBalance"></p><section id="inventoryCellsPanel" role="tabpanel" aria-labelledby="inventoryCellsTab" class="inventory-layout" hidden><aside><details class="inventory-filter-section" id="inventoryCellTypes"><summary><span>Cell type</span><span class="filter-active-count">(0)</span></summary><div class="filter-options"></div></details><button class="menu-button" id="inventoryCellsClear">Clear filters</button></aside><div class="inventory-content"><div class="inventory-grid" id="inventoryCells"></div></div></section><div class="inventory-layout" id="inventoryPartsPanel" role="tabpanel" aria-labelledby="inventoryPartsTab"><aside>
+    <p id="inventoryDescription"></p><p id="aetherDustBalance"></p><p id="currencyBalance"></p><section id="inventoryCellsPanel" role="tabpanel" aria-labelledby="inventoryCellsTab" class="inventory-layout" hidden><aside><details class="inventory-filter-section" id="inventoryCellTypes"><summary><span>Cell type</span><span class="filter-active-count">(0)</span></summary><div class="filter-options"></div></details><details class="inventory-filter-section" id="inventoryCellRanks"><summary><span>Cell rank</span><span class="filter-active-count">(0)</span></summary><div class="filter-options"></div></details><button class="menu-button" id="inventoryCellsClear">Clear filters</button></aside><div class="inventory-content"><div class="inventory-grid" id="inventoryCells"></div></div></section><div class="inventory-layout" id="inventoryPartsPanel" role="tabpanel" aria-labelledby="inventoryPartsTab"><aside>
     <details class="inventory-filter-section" id="inventoryTypes"><summary><span>Part type</span><span class="filter-active-count">(0)</span></summary><div class="filter-options"></div></details>
     <details class="inventory-filter-section" id="inventorySpecies"><summary><span>Behemoth</span><span class="filter-active-count">(0)</span></summary><div class="filter-options"></div></details>
     <button class="menu-button" id="inventoryClear">Clear filters</button></aside>
@@ -65,8 +65,9 @@ export function createInventoryView({ state, onBack, onExtract = () => true }) {
     }
   }
   addFilters('#inventoryCellTypes', Object.entries(CELL_TYPES));
+  addFilters('#inventoryCellRanks', [1, 2, 3].map(rank => [String(rank), '+' + rank]));
   dialog.querySelector('#inventoryCellsClear').addEventListener('click', () => {
-    for (const input of dialog.querySelectorAll('#inventoryCellTypes input')) input.checked = false;
+    for (const input of dialog.querySelectorAll('#inventoryCellTypes input, #inventoryCellRanks input')) input.checked = false;
     render();
   });
   addFilters('#inventoryTypes', Object.entries(PART_TYPES));
@@ -82,11 +83,13 @@ export function createInventoryView({ state, onBack, onExtract = () => true }) {
     }
     const cellGrid = dialog.querySelector('#inventoryCells'); cellGrid.replaceChildren();
     const cellTypes = selected('#inventoryCellTypes');
+    const cellRanks = selected('#inventoryCellRanks');
+    dialog.querySelector('#inventoryCellRanks .filter-active-count').textContent = `(${cellRanks.length})`;
     dialog.querySelector('#inventoryCellTypes .filter-active-count').textContent = `(${cellTypes.length})`;
     if (cellsActive) {
       for (const [key, count] of Object.entries(state.cells || {}).sort(([a], [b]) => a.localeCompare(b))) {
         const [id, rank] = key.split(':');
-        if (!CELLS[id] || count <= 0 || (cellTypes.length && !cellTypes.includes(CELLS[id].type))) continue;
+        if (!CELLS[id] || count <= 0 || (cellTypes.length && !cellTypes.includes(CELLS[id].type)) || (cellRanks.length && !cellRanks.includes(rank))) continue;
         const card = document.createElement('article'); card.className = 'material-stack'; card.dataset.cellStack = key;
         const name = document.createElement('h3'); name.textContent = CELLS[id].name;
         const level = document.createElement('p'); level.textContent = '+' + rank;
@@ -169,7 +172,7 @@ export function createInventoryView({ state, onBack, onExtract = () => true }) {
   dialog.addEventListener('cancel', event => { event.preventDefault(); onBack(); });
   return {
     get open() { return dialog.open; },
-    show(nextMode) { mode = nextMode; category = 'parts'; dialog.querySelector('#inventoryCellTypes').open = false; selections = {}; dialog.querySelector('#extractionStatus').textContent = ''; render(); dialog.showModal(); dialog.querySelector('#inventoryBack').focus(); },
+    show(nextMode) { mode = nextMode; category = 'parts'; dialog.querySelector('#inventoryCellTypes').open = false; dialog.querySelector('#inventoryCellRanks').open = false; selections = {}; dialog.querySelector('#extractionStatus').textContent = ''; render(); dialog.showModal(); dialog.querySelector('#inventoryBack').focus(); },
     close() { selections = {}; dialog.close(); },
   };
 }

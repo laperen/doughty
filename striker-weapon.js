@@ -108,6 +108,7 @@ const COMBOS = Object.freeze([
 ]);
 
 export const STRIKER_SWORD = Object.freeze({
+  basicAttack: LIGHT_OPEN,
   id: 'striker-sword',
   name: 'Striker Sword (Prototype)',
   kind: 'melee',

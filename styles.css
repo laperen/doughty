@@ -285,13 +285,27 @@
 @media(max-width:900px){.equipment-menu .equipment-layout{gap:12px;grid-template-columns:minmax(150px,.8fr) minmax(180px,1fr) minmax(200px,1fr)}.equipment-sidebar,.equipment-summary{padding:8px}}
 @media(max-width:650px){.inventory-menu.equipment-menu[open]{overflow:auto}.equipment-menu .equipment-layout{display:flex;flex-direction:column;flex:none}.equipment-sidebar,.equipment-summary{overflow:visible}.equipment-preview{min-height:320px}#equipmentModel{height:240px;flex:none}.equipment-footer{flex-direction:column;gap:0;align-items:flex-start}.equipment-menu[data-page="picker"] #equipmentItems{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
-.cell-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 1rem; }
-.cell-card { padding: 1rem; border: 1px solid #667784; border-radius: .5rem; }
-.cell-rank { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; padding: .8rem 0; border-top: 1px solid #667784; }
-.cell-rank strong { margin-left: .4rem; }
+.cell-list { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: auto; gap: 1rem; padding: 0 4px 16px; }
+.cell-row { display: flex; flex: none; align-items: center; gap: 1.5rem; padding: 1rem; border: 1px solid #667784; border-radius: .5rem; }
+.cell-row-details { flex: 1; min-width: 0; }
+.cell-row-details h3 { margin-top: 0; }
+.cell-row-actions { flex: 0 0 210px; }
+.cell-row-actions strong { margin-left: .4rem; }
+.cell-row-actions button { width: 100%; }
+.cell-row-actions button:disabled { opacity: .45; cursor: not-allowed; }
+@media(max-width:650px){.cell-row{flex-direction:column;align-items:stretch;gap:.5rem}.cell-row-actions{flex:auto}}
+.health-shield .vital-track i { background: #77d5f4; }
+.health-shield output { color: #a5eaff; font-size: 12px; }
+.health-shield[hidden] { display: none; }
 .cell-balance strong { margin-left: .5rem; }
-.cell-rank button:disabled { opacity: .45; cursor: not-allowed; }
 
 #inventoryTabs { display: flex; gap: .6rem; margin: 1rem 0; }
 #inventoryTabs[hidden], #inventoryPartsPanel[hidden], #inventoryCellsPanel[hidden] { display: none; }
 #inventoryTabs [aria-selected="true"] { border-color: var(--acid); color: var(--acid); }
+.equipment-slot .equipment-cell-slot{position:relative;z-index:1;display:block;width:100%;margin-top:8px;text-align:left;white-space:normal}
+.equipment-slot .equipment-cell-slot::after{content:none}
+.equipment-menu[data-page="cells"] .equipment-cell-slot{display:block;width:100%;margin-top:8px;white-space:normal}
+.equipment-cell-summary{cursor:help}
+.equipment-cell-tooltip{display:none;padding:10px;margin-top:8px;border:1px solid #97d6e6;border-radius:8px;background:#101e29;color:#eaf5ff;font-size:14px;line-height:1.5;font-weight:normal}
+.equipment-cell-summary:hover .equipment-cell-tooltip,.equipment-cell-summary:focus .equipment-cell-tooltip{display:block}
+.equipment-cell-summary:focus-visible{outline:2px solid #97d6e6;outline-offset:3px}

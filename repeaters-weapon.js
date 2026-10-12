@@ -13,6 +13,7 @@ export function repeaterFalloff(distance) {
 }
 export function createRepeaters({ chamber = SCATTERSHOT, grip = CAPTAIN_GRIP } = {}) {
   const definition = {
+    basicAttack: { ...REPEATER_TUNING, stagger: 0 },
     id: 'repeaters', name: 'Repeaters', kind: 'ranged', aimSource: 'camera', presentation: { weaponShape: 'pistols' },
     movement: { facing: 'aim', camera: { distance: 5.5, height: 2, shoulder: .8 } },
     parts: { chamber, grip },
