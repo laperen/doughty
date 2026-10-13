@@ -2,8 +2,9 @@ import { CHESTPLATE_TEXT, CHESTPLATE_TUNING } from './chestplate-abilities.js';
 import { getStatModifierRemaining } from './stat-modifiers.js';
 import { FAMILY_TEXT, QUILL_TUNING } from './weapon-family-abilities.js';
 import { shieldAmount, shieldCapacity } from './resource-shields.js';
+import { COMBAT_TEXT } from './combat-text.js';
 /** Shared arena presentation. Weapon definitions own their resource descriptors. */
-export function createArenaHud(container) {
+export function createArenaHud(container, text = entry => entry.value) {
   const root = document.createElement('div');
   root.className = 'player-hud';
   root.setAttribute('aria-label', 'Player status');
@@ -50,6 +51,8 @@ export function createArenaHud(container) {
       root.classList.toggle('down', player.health <= 0);
       resources.style.gridTemplateColumns = `repeat(${equipment?.definition.resourceColumns ?? 3}, 1fr)`;
       const items = [...(equipment?.definition.getHudResources?.(equipment.state, player) ?? [])];
+      if (player.burning) items.push({ id: 'burning', label: text(COMBAT_TEXT.burning), kind: 'burning',
+        value: player.burning.remaining, max: 6, text: `${text(COMBAT_TEXT.burning)} ${Math.ceil(player.burning.remaining)}s` });
       const movement = player.statModifiers.find(m => m.source === 'embermane-movement');
       if (movement) items.push({ id: 'embermane-movement', label: FAMILY_TEXT.embermane, kind: 'status', value: movement.remaining, max: 20, text: `+${movement.percent}% / ${Math.ceil(movement.remaining)}s` });
       if (equipment && player.familyAbility?.species === 'quillshot') items.push({ id: 'weapon-quills', label: FAMILY_TEXT.quillshot, kind: 'status', value: player.familyAbility.charge, max: QUILL_TUNING.chargeTime, text: `${player.familyAbility.count} / ${player.familyAbility.charge.toFixed(1)}s` });

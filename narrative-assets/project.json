@@ -5,6 +5,21 @@
     "id": "39f52b5a-e913-41c9-a1b8-007880f94963",
     "scheduleBindingModelVersion": 1,
     "text": {
+      "f096df1d-32eb-4d66-a513-c182abe39311": {
+        "value": "AETHER CHARGED"
+      },
+      "f096df1d-32eb-4d66-a513-c182abe39312": {
+        "value": "BURNING"
+      },
+      "f096df1d-32eb-4d66-a513-c182abe39313": {
+        "value": "TARGETED FIREBALL VOLLEY"
+      },
+      "f096df1d-32eb-4d66-a513-c182abe39314": {
+        "value": "DEFENSIVE FIREBALL VOLLEY"
+      },
+      "f096df1d-32eb-4d66-a513-c182abe39315": {
+        "value": "SWEEPING FIREBALL STREAM"
+      },
       "1152aca6-c53e-43fd-ad7d-dd27c2354f36": {
         "value": "Embermane movement"
       },
@@ -459,7 +474,7 @@
         "value": "Armorer greeting"
       },
       "a2d4aefa-1831-4913-8b0d-75e70b310dd3": {
-        "value": "Bring gathered parts and currency to craft armor. Equip your armor to reduce incoming damage."
+        "value": "Bring gathered parts and currency to craft armor or upgrade owned pieces to tier 4. Equip your armor to reduce incoming damage."
       },
       "763037bb-358e-4f3b-804f-0850281a4ecd": {
         "value": "Potion maker"
@@ -1596,7 +1611,7 @@
         "value": "Tap V to gain attack speed for 20 seconds. Cooldown: 30 seconds. Base: 5%; tier 4 adds 5%; reforge 8 adds 5%, for a maximum of 15%."
       },
       "f08ed5fb-efc6-4e78-b733-da2edcab5580": {
-        "value": "Charge for 30 seconds, then tap V to throw one interrupting quill straight in your facing direction. Deals 60 base damage and travels up to the maximum repeater shooting range. One ready quill is retained until used."
+        "value": "Charge for 30 seconds, then tap V to fire interrupting quills centered on your facing direction, with 5 degrees between adjacent quills. Base: 1 quill; tier 4 adds 1; reforge 8 adds 1, for a maximum of 3. Each deals 60 base damage and travels up to the maximum repeater shooting range. One ready volley is retained until used."
       },
       "409adeae-a9ae-47f5-bbf4-c6432724de03": {
         "value": "V / Ready"
@@ -1696,6 +1711,102 @@
       },
       "f68f2228-2117-435d-9307-e893abe4a53d": {
         "value": "Weapon"
+      },
+      "8b69a546-2450-4bca-bdca-2fa73cc1a355": {
+        "value": "Craft armor"
+      },
+      "ef34a3e7-2a2a-42ee-9e69-ab9d3e573109": {
+        "value": "Goodbye"
+      },
+      "bfecd661-bd11-43a4-b889-75c85bb8005b": {
+        "value": "Armor upgraded."
+      },
+      "535af104-ee54-4401-84dc-13274f4b6c54": {
+        "value": "Unable to upgrade this armor."
+      },
+      "c5e12354-6954-4604-9f1a-6b10b96a135e": {
+        "value": "Upgrade preview"
+      },
+      "30f94a8e-01e0-47dc-8957-1f5792d18ed2": {
+        "value": "Upgrade requirements"
+      },
+      "cfd10e05-66fc-47fd-addb-76ddb07533ef": {
+        "value": "Maximum armor tier reached."
+      },
+      "bda94990-938e-465d-8a89-9431f7085d2f": {
+        "value": "Hold E or click to upgrade"
+      },
+      "d730e8bf-e988-4692-a107-f83de707ba50": {
+        "value": "Craft armor or upgrade owned pieces to tier 4."
+      },
+      "66af5f09-4944-41a0-bbf1-c9cfca2c7d70": {
+        "value": "Tier: {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}} → {{value:1db806ed-4e35-4eb2-b2dc-fc7adfa00645}}"
+      },
+      "c8a61f5a-4810-44a4-8703-cad8c06f0d3f": {
+        "value": "Defense: {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}} → {{value:1db806ed-4e35-4eb2-b2dc-fc7adfa00645}}"
+      },
+      "045ca287-9c25-4df5-9c4a-e56005c3d3f7": {
+        "value": "Embedded cell: +{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}} → +{{value:1db806ed-4e35-4eb2-b2dc-fc7adfa00645}}"
+      },
+      "4b338dbc-be62-418a-a0c7-08dc66c7ae15": {
+        "value": "Attack speed: {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}% → {{value:1db806ed-4e35-4eb2-b2dc-fc7adfa00645}}%"
+      },
+      "8f304f05-2703-4e31-a0c3-9c62c250d409": {
+        "value": "Quills: {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}} → {{value:1db806ed-4e35-4eb2-b2dc-fc7adfa00645}}"
+      },
+      "e9409e86-9c01-4c62-a15b-2a1e716d04e7": {
+        "value": "Brackenlight Reach"
+      },
+      "8330c264-7501-4db6-b11d-77d1ffcf4977": {
+        "value": "Thunderstep Highlands"
+      },
+      "8fbe5639-15cc-4dca-ad2c-7ab1c4c6524b": {
+        "value": "Rimewatch Expanse"
+      },
+      "f951c6c9-c2c4-4763-9758-fa0c8424f2fd": {
+        "value": "Cinderfall Crucible"
+      },
+      "324ec488-a47a-4fe1-b4eb-567d815aa55f": {
+        "value": "EXPLORATION ISLAND"
+      },
+      "6550ebe9-29d8-41aa-8fcf-33164b4ef97a": {
+        "value": "NO BEHEMOTHS"
+      },
+      "26f07522-5641-431b-b0bc-8d4ca174a236": {
+        "value": "Lesser Embermane"
+      },
+      "531a6e6b-bf67-49ec-9074-05c30c1470b2": {
+        "value": "Lesser Quillshot"
+      },
+      "83aab916-bc49-486b-8431-44a4bf9bdb93": {
+        "value": "Normal Embermane"
+      },
+      "f36ecea0-be3b-49d0-b2e6-0644aaadfd50": {
+        "value": "Normal Quillshot"
+      },
+      "d7cf1b30-6fc0-4c1b-97d4-8cf992dc3587": {
+        "value": "Greater Embermane"
+      },
+      "8c42804b-7155-453e-acc8-24709cfafa35": {
+        "value": "Greater Quillshot"
+      },
+      "30b331aa-9e97-4f08-a122-34d6c8eb301a": {
+        "value": "Alpha Embermane"
+      },
+      "6fa59671-59df-4c4a-bd73-1fee8615674f": {
+        "value": "Alpha Quillshot"
+      },
+      "2dcb33f2-195c-48cf-beeb-1e9642d908c7": {
+        "value": "Embermane Greater Heart"
+      },
+      "fcdb050c-8bce-4428-8fe5-d3929cd86645": {
+        "value": "Embermane Alpha Heart"
+      },
+      "0c2a35e8-e76a-4df7-9c46-88e839fefc64": {
+        "value": "Quillshot Greater Core"
+      },
+      "2e517a1f-e41c-46bf-a027-a923c011011a": {
+        "value": "Quillshot Alpha Core"
       }
     },
     "stats": {
@@ -2381,7 +2492,16 @@
       },
       "1faeb5ad-1e78-49b4-978e-d026c7b415ed": {
         "type": "dialogue",
-        "outputs": [],
+        "outputs": [
+          {
+            "target": "8b69a546-2450-4bca-bdca-2fa73cc1a355",
+            "condition": ""
+          },
+          {
+            "target": "ef34a3e7-2a2a-42ee-9e69-ab9d3e573109",
+            "condition": ""
+          }
+        ],
         "lines": [
           {
             "participantIndex": 0,
@@ -2656,6 +2776,16 @@
         "type": "command",
         "outputs": [],
         "command": "OpenRepeaterCrafting"
+      },
+      "8b69a546-2450-4bca-bdca-2fa73cc1a355": {
+        "type": "command",
+        "outputs": [],
+        "command": "OpenArmorCrafting"
+      },
+      "ef34a3e7-2a2a-42ee-9e69-ab9d3e573109": {
+        "type": "dialogue",
+        "outputs": [],
+        "lines": []
       }
     },
     "nodeTypes": {

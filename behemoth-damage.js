@@ -18,7 +18,7 @@ export function applyCoreDamage(state, definition, damage) {
   const core = Math.min(state.health, Math.max(0, damage));
   const enrage = state.states.enrage;
   // Fresh damage builds each inactive cycle; active-phase damage is not banked.
-  if (!enrage.active && !enrage.pending) {
+  if (definition.states.enrage.enabled && !enrage.active && !enrage.pending) {
     enrage.buildup += core;
     enrage.pending = enrage.buildup >= definition.maxHealth * definition.states.enrage.damageFraction;
   }

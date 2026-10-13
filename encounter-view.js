@@ -2,6 +2,19 @@ import * as THREE from 'three';
 import * as emberView from './behemoth-view.js';
 import * as quillView from './quillshot-view.js';
 export const createBehemothView = (scene, species) => species === 'quillshot' ? quillView.createQuillshotView(scene) : emberView.createBehemothView(scene);
+export function disposeBehemothView(view) {
+  const resources = new Set();
+  for (const root of [view.root, view.projectileRoot].filter(Boolean)) {
+    root.removeFromParent();
+    root.traverse(object => {
+      if (object.geometry) resources.add(object.geometry);
+      for (const material of Array.isArray(object.material) ? object.material : [object.material]) if (material) resources.add(material);
+    });
+  }
+  // Projectile geometry can exist even before its first mesh is released.
+  for (const value of Object.values(view)) if (value?.isBufferGeometry || value?.isMaterial) resources.add(value);
+  for (const resource of resources) resource.dispose();
+}
 export function updateBehemothView(view, s, ...args) {
   if (s.speciesId === 'quillshot') quillView.updateQuillshotView(view, s, ...args);
   else emberView.updateBehemothView(view, s, ...args);

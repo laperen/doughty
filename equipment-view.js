@@ -1,5 +1,5 @@
-import { CHESTPLATE_TEXT } from './chestplate-abilities.js';
-import { ARMOR, ARMOR_SLOTS, armorDefense, canCraftArmor } from './armor.js';
+import { CHESTPLATE_TEXT, chestplateAbility } from './chestplate-abilities.js';
+import { ARMOR, ARMOR_SLOTS, armorDefense, armorPieceDefense, armorUpgradeRecipe, canUpgradeArmor, canCraftArmor } from './armor.js';
 import { CELLS, CELL_TYPES, embeddedCellLevel } from './cells.js';
 import { cellFitsSlot, equipmentCellLevels, equipmentCellSlots } from './equipment-cells.js';
 import { FAMILY_TEXT } from './weapon-family-abilities.js';
@@ -17,7 +17,7 @@ const HOLD_MS = 900;
 const WEAPONS = { 'striker-sword': STRIKER_SWORD, repeaters: REPEATERS, chainblades: CHAINBLADES };
 
 /** NPC crafting and owned equipment share selection, but never implicitly equip on craft. */
-export function createEquipmentView({ inventory, area, onEquip, onCraft, onEquipArmor, onCraftArmor, onEquipCell, onBack }) {
+export function createEquipmentView({ inventory, area, onEquip, onCraft, onEquipArmor, onCraftArmor, onUpgradeArmor, onEquipCell, onBack }) {
   const dialog = document.createElement('dialog');
   dialog.id = 'equipmentMenu'; dialog.className = 'inventory-menu equipment-menu';
   dialog.setAttribute('aria-labelledby', 'equipmentTitle');
@@ -35,7 +35,9 @@ export function createEquipmentView({ inventory, area, onEquip, onCraft, onEquip
   const isArmor = () => Object.hasOwn(ARMOR_SLOTS, type);
   const catalog = () => isArmor() ? ARMOR : EQUIPMENT;
   const equipmentState = () => isArmor() ? { owned: inventory.armor.owned, equipped: inventory.armor.equipped[type] } : inventory.equipment;
-  const craftable = id => isArmor() ? canCraftArmor(inventory, id) : canCraft(inventory, id, crafter);
+  const craftable = id => isArmor()
+    ? (inventory.armor.owned[id] ? canUpgradeArmor(inventory, id) : canCraftArmor(inventory, id))
+    : canCraft(inventory, id, crafter);
   const q = id => dialog.querySelector(`#${id}`);
   const element = (tag, text, className = '') => { const node = document.createElement(tag); node.textContent = text; node.className = className; return node; };
   const button = (label, action, className = '') => {
@@ -73,7 +75,7 @@ export function createEquipmentView({ inventory, area, onEquip, onCraft, onEquip
   }
   function beginHold(source) {
     if (hold || !dialog.open || !crafter || area() !== 'old-town' || !craftable(selected)) return;
-    const craft = q('equipmentCraft'), id = selected;
+    const craft = q('equipmentCraft'), id = selected, upgrading = isArmor() && !!inventory.armor.owned[id];
     hold = { source, id, start: performance.now(), frame: 0 };
     craft.dataset.holding = 'true';
     const tick = now => {
@@ -84,9 +86,9 @@ export function createEquipmentView({ inventory, area, onEquip, onCraft, onEquip
       if (progress < 1) hold.frame = requestAnimationFrame(tick);
       else {
         cancelHold();
-        const success = isArmor() ? onCraftArmor(id) : onCraft(id, crafter);
+        const success = isArmor() ? upgrading ? onUpgradeArmor(id) : onCraftArmor(id) : onCraft(id, crafter);
         render();
-        q('equipmentStatus').textContent = success ? (isArmor() ? 'Armor crafted. Select Equip to use it.' : 'Weapon crafted. Select Equip to use it.') : (isArmor() ? 'Unable to craft this armor.' : 'Unable to craft this weapon.');
+        q('equipmentStatus').textContent = success ? (upgrading ? 'Armor upgraded.' : isArmor() ? 'Armor crafted. Select Equip to use it.' : 'Weapon crafted. Select Equip to use it.') : (upgrading ? 'Unable to upgrade this armor.' : isArmor() ? 'Unable to craft this armor.' : 'Unable to craft this weapon.');
         q(success ? 'equipmentEquip' : 'equipmentCraft')?.focus();
       }
     };
@@ -161,7 +163,7 @@ export function createEquipmentView({ inventory, area, onEquip, onCraft, onEquip
     if (item) details.append(element('p', item.species ? item.species === 'embermane' ? 'Embermane' : 'Quillshot' : 'Starter', 'equipment-origin'));
     details.append(element('h3', item?.name || (isArmor() ? 'No armor equipped' : 'Unarmed')));
     if (item) {
-      details.append(element('p', isArmor() ? `Defense: ${item.defense}` : `Damage: ${item.damage}`));
+      details.append(element('p', isArmor() ? `Defense: ${armorPieceDefense(item, state.owned[item.id])}` : `Damage: ${item.damage}`));
       const progress = state.owned[item.id];
       if (item.species && !isArmor()) {
         details.append(element('p', FAMILY_TEXT[item.species]));
@@ -188,7 +190,7 @@ export function createEquipmentView({ inventory, area, onEquip, onCraft, onEquip
     const summary = q('equipmentSummary'); summary.replaceChildren();
     if (crafter || page === 'picker') {
       summary.append(element('h3', isArmor() ? 'Defense comparison' : 'Damage comparison'));
-      summary.append(element('p', current?.name || (isArmor() ? 'No armor equipped' : 'Unarmed')), element('p', isArmor() ? `Defense: ${current?.defense || 0}` : `Damage: ${current?.damage || 0}`, 'equipment-current-damage'));
+      summary.append(element('p', current?.name || (isArmor() ? 'No armor equipped' : 'Unarmed')), element('p', isArmor() ? `Defense: ${armorPieceDefense(current, state.owned[current?.id])}` : `Damage: ${current?.damage || 0}`, 'equipment-current-damage'));
     } else {
       const weapon = EQUIPMENT[inventory.equipment.equipped];
       const chestplate = ARMOR[inventory.armor.equipped.chestplate];
@@ -209,19 +211,33 @@ export function createEquipmentView({ inventory, area, onEquip, onCraft, onEquip
         const row = element('p', CELLS[id].name);
         row.dataset.cellId = id; row.dataset.cellLevel = String(level);
         row.append(element('strong', ` +${level}`));
-        addCellTooltip(row, id); summary.append(row);
+        addCellDescription(row, id); summary.append(row);
       }
       if (!Object.keys(levels).length) summary.append(element('p', 'No cells active.'));
     }
     if (item && (crafter || page === 'picker')) {
-      const value = isArmor() ? item.defense : item.damage;
-      const delta = value - (isArmor() ? current?.defense || 0 : current?.damage || 0);
+      const value = isArmor() ? armorPieceDefense(item, state.owned[item.id]) : item.damage;
+      const delta = value - (isArmor() ? armorPieceDefense(current, state.owned[current?.id]) : current?.damage || 0);
       summary.append(element('p', item.name), element('p', `${value} (${delta > 0 ? '+' : ''}${delta})`, delta >= 0 ? 'requirement-met' : 'requirement-missing'));
     }
     if (crafter && item) {
-      const owned = !!state.owned[item.id], recipe = isArmor() ? item : RECIPES[item.id];
-      summary.append(element('h3', owned ? 'Owned' : 'Crafting requirements'));
-      if (owned) summary.append(element('p', isArmor() ? 'Armor upgrades are not available yet.' : 'Tier upgrades and reforging are not available yet.'));
+      const owned = !!state.owned[item.id], upgrading = isArmor() && owned;
+      const recipe = isArmor() ? upgrading ? armorUpgradeRecipe(inventory, item.id) : item : RECIPES[item.id];
+      if (upgrading && recipe) {
+        const progress = state.owned[item.id], next = { ...progress, tier: recipe.tier };
+        summary.append(element('h3', 'Upgrade preview'),
+          element('p', 'Tier: ' + progress.tier + ' \u2192 ' + next.tier),
+          element('p', 'Defense: ' + armorPieceDefense(item, progress) + ' \u2192 ' + armorPieceDefense(item, next)),
+          element('p', 'Embedded cell: +' + embeddedCellLevel(progress) + ' \u2192 +' + embeddedCellLevel(next)));
+        if (item.type === 'chestplate') {
+          const before = chestplateAbility(item, progress), after = chestplateAbility(item, next);
+          summary.append(element('p', item.species === 'embermane'
+            ? 'Attack speed: ' + before.percent + '% \u2192 ' + after.percent + '%'
+            : 'Quills: ' + before.quills + ' \u2192 ' + after.quills));
+        }
+      }
+      summary.append(element('h3', upgrading && recipe ? 'Upgrade requirements' : owned ? 'Owned' : 'Crafting requirements'));
+      if (owned && (!isArmor() || !recipe)) summary.append(element('p', isArmor() ? 'Maximum armor tier reached.' : 'Tier upgrades and reforging are not available yet.'));
       else {
         const requirement = (name, count, required) => {
           const row = element('p', '', `equipment-requirement ${count >= required ? 'requirement-met' : 'requirement-missing'}`);
@@ -229,7 +245,7 @@ export function createEquipmentView({ inventory, area, onEquip, onCraft, onEquip
         };
         requirement('Currency', inventory.currency, recipe.currency);
         for (const [id, count] of Object.entries(recipe.materials)) requirement(MATERIALS[id].name, inventory.player[id] || 0, count);
-        const craft = button('Hold E or click to craft', () => {} , 'equipment-hold'); craft.id = 'equipmentCraft';
+        const craft = button(upgrading ? 'Hold E or click to upgrade' : 'Hold E or click to craft', () => {} , 'equipment-hold'); craft.id = 'equipmentCraft';
         craft.disabled = area() !== 'old-town' || !craftable(item.id);
         craft.addEventListener('pointerdown', event => {
           if (event.button !== 0) return; event.preventDefault(); craft.focus(); beginHold('pointer');
@@ -244,11 +260,8 @@ export function createEquipmentView({ inventory, area, onEquip, onCraft, onEquip
     }
     updatePreview(item);
   }
-  function addCellTooltip(row, id) {
-    row.classList.add('equipment-cell-summary'); row.tabIndex = 0;
-    const tooltip = element('span', CELLS[id].description, 'equipment-cell-tooltip');
-    tooltip.id = `equipment-cell-effect-${id}`; tooltip.setAttribute('role', 'tooltip');
-    row.setAttribute('aria-describedby', tooltip.id); row.append(tooltip);
+  function addCellDescription(row, id) {
+    row.append(element('span', CELLS[id].description, 'equipment-cell-description'));
   }
   function appendCellSlots(parent, item) {
     if (!item) return;
@@ -294,7 +307,7 @@ export function createEquipmentView({ inventory, area, onEquip, onCraft, onEquip
     appendCellSlots(q('equipmentDetails'), item);
     q('equipmentSummary').replaceChildren(element('h3', 'Cells'));
     for (const [id, level] of Object.entries(equipmentCellLevels(inventory))) {
-      const row = element('p', CELLS[id].name); row.append(element('strong', ` +${level}`)); addCellTooltip(row, id); q('equipmentSummary').append(row);
+      const row = element('p', CELLS[id].name); row.append(element('strong', ` +${level}`)); addCellDescription(row, id); q('equipmentSummary').append(row);
     }
     updatePreview(item);
     q('equipmentBack').focus();
@@ -305,7 +318,7 @@ export function createEquipmentView({ inventory, area, onEquip, onCraft, onEquip
     const state = equipmentState(), editable = canChangeEquipment(area());
     dialog.dataset.page = crafter ? 'craft' : page;
     q('equipmentTitle').textContent = crafter === 'armorer' ? 'Armorer' : crafter === 'smith' ? 'Weapon smith' : crafter === 'repeaters' ? 'Repeaters master' : 'Equipment';
-    q('equipmentDescription').textContent = crafter === 'armorer' ? 'Craft one of each armor piece. Owned armor is reserved for future upgrades.' : crafter ? 'Craft one of each weapon. Owned weapons are reserved for future tier upgrades and reforging.' : editable ? 'Select equipment to inspect, equip, or unequip.' : 'Equipment can only be reviewed in combat areas.';
+    q('equipmentDescription').textContent = crafter === 'armorer' ? 'Craft armor or upgrade owned pieces to tier 4.' : crafter ? 'Craft one of each weapon. Owned weapons are reserved for future tier upgrades and reforging.' : editable ? 'Select equipment to inspect, equip, or unequip.' : 'Equipment can only be reviewed in combat areas.';
     q('equipmentBalance').textContent = `Currency: ${inventory.currency}`;
     const tabs = q('equipmentTabs'); tabs.replaceChildren();
     const browse = !!crafter || page === 'picker';
@@ -330,7 +343,7 @@ export function createEquipmentView({ inventory, area, onEquip, onCraft, onEquip
       label.addEventListener('pointerenter', () => { if (selected !== item.id) select(item.id); });
       label.addEventListener('focus', () => { if (selected !== item.id) select(item.id); });
       const mark = element('span', state.equipped === item.id ? '✓' : state.owned[item.id] ? '◆' : '+', 'equipment-marker'); mark.setAttribute('aria-hidden', 'true');
-      label.prepend(mark); row.append(label, element('p', isArmor() ? `Defense: ${item.defense}` : `Damage: ${item.damage}`), element('small', state.equipped === item.id ? 'Equipped' : state.owned[item.id] ? 'Owned' : 'Craft')); list.append(row);
+      label.prepend(mark); row.append(label, element('p', isArmor() ? `Defense: ${armorPieceDefense(item, state.owned[item.id])}` : `Damage: ${item.damage}`), element('small', state.equipped === item.id ? 'Equipped' : state.owned[item.id] ? 'Owned' : 'Craft')); list.append(row);
     } else {
       const row = element('article', '', 'equipment-slot'); row.dataset.equipmentId = state.equipped || '';
       row.append(element('h3', isArmor() ? 'Equipped' : 'Weapon'), element('p', catalog()[state.equipped]?.name || (isArmor() ? 'No armor equipped' : 'Unarmed')));

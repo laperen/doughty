@@ -148,7 +148,7 @@
 
 /* Peaceful settlement: proximity hints and accessible service descriptions. */
 .settlement-prompt { position:absolute; bottom:32px; left:50%; transform:translateX(-50%); padding:12px 20px; background:#202b29e8; color:#f3e7cf; border:1px solid #bba278; border-radius:5px; text-align:center; max-width:80vw; }
-.settlement-panel { position:absolute; top:25%; left:50%; transform:translateX(-50%); width:min(460px,85vw); padding:24px; background:#202b29f5; color:#f3e7cf; border:1px solid #bba278; border-radius:8px; pointer-events:auto; }
+.settlement-panel { position:absolute; top:25%; left:50%; transform:translateX(-50%); width:min(460px,85vw); max-height:70vh; overflow-y:auto; padding:24px; background:#202b29f5; color:#f3e7cf; border:1px solid #bba278; border-radius:8px; pointer-events:auto; }
 .settlement-panel h2 {font-size:22px; margin:0 0 14px;}.settlement-panel p {line-height:1.6; margin-bottom:20px;}
 .settlement-prompt[hidden], .settlement-panel[hidden] {display:none;}
 
@@ -305,7 +305,7 @@
 .equipment-slot .equipment-cell-slot{position:relative;z-index:1;display:block;width:100%;margin-top:8px;text-align:left;white-space:normal}
 .equipment-slot .equipment-cell-slot::after{content:none}
 .equipment-menu[data-page="cells"] .equipment-cell-slot{display:block;width:100%;margin-top:8px;white-space:normal}
-.equipment-cell-summary{cursor:help}
-.equipment-cell-tooltip{display:none;padding:10px;margin-top:8px;border:1px solid #97d6e6;border-radius:8px;background:#101e29;color:#eaf5ff;font-size:14px;line-height:1.5;font-weight:normal}
-.equipment-cell-summary:hover .equipment-cell-tooltip,.equipment-cell-summary:focus .equipment-cell-tooltip{display:block}
-.equipment-cell-summary:focus-visible{outline:2px solid #97d6e6;outline-offset:3px}
+.equipment-cell-description{display:block;padding:10px;margin-top:8px;border:1px solid #97d6e6;border-radius:8px;background:#101e29;color:#eaf5ff;font-size:14px;line-height:1.5;font-weight:normal}
+/* Burning is a shared player debuff, independent of the equipped weapon. */
+.weapon-resource.resource-burning i { background: #f46a28; }
+.weapon-resource.resource-burning { color: #ffd09d; }

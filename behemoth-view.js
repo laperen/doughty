@@ -3,14 +3,7 @@ import { createEnrageEffect, updateEnrageEffect } from './behemoth-enrage-view.j
 import { BEHEMOTH, isInterruptible } from './behemoth.js';
 
 const material = (color, emissive = '#000000') => new THREE.MeshStandardMaterial({ color, emissive, roughness: 0.72, metalness: 0.06, flatShading: true });
-const fur = material('#a95d37');
-const dark = material('#3b3030');
-const pale = material('#d5aa74');
-const mark = material('#685047');
-const eye = material('#f1e9c6', '#665d29');
-const warning = new THREE.MeshBasicMaterial({ color: '#ffde70', transparent: true, opacity: 0.9, depthWrite: false });
-const staggerColor = new THREE.MeshBasicMaterial({ color: '#93d8ff', transparent: true, opacity: 0.82, depthWrite: false });
-const breakColor = new THREE.MeshBasicMaterial({ color: '#ffa0ab', transparent: true, opacity: 0.75, depthWrite: false });
+
 
 function ellipsoid(parent, name, size, position, mat) {
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), mat);
@@ -40,6 +33,14 @@ function ring(parent, radius, mat) {
 
 /** Original mechanics-lab creature assembled from simple geometry. */
 export function createBehemothView(scene) {
+  const fur = material('#a95d37');
+  const dark = material('#3b3030');
+  const pale = material('#d5aa74');
+  const mark = material('#685047');
+  const eye = material('#f1e9c6', '#665d29');
+  const warning = new THREE.MeshBasicMaterial({ color: '#ffde70', transparent: true, opacity: 0.9, depthWrite: false });
+  const staggerColor = new THREE.MeshBasicMaterial({ color: '#93d8ff', transparent: true, opacity: 0.82, depthWrite: false });
+  const breakColor = new THREE.MeshBasicMaterial({ color: '#ffa0ab', transparent: true, opacity: 0.75, depthWrite: false });
   const root = new THREE.Group();
   root.name = 'Behemoth prototype';
   const bodyRig = new THREE.Group();
@@ -135,6 +136,18 @@ export function createBehemothView(scene) {
   for (const child of tellZone.children) child.material = tellMaterial;
   root.add(tellZone);
   const enrageEffect = createEnrageEffect(root, BEHEMOTH.moves.enrageBurst.reach);
+  const flames = new THREE.Group();
+  const flameMaterial = new THREE.MeshBasicMaterial({ color: '#ff8a26', transparent: true, opacity: 0.85, depthWrite: false });
+  for (let i = 0; i < 12; i++) {
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.7, 5), flameMaterial);
+    flame.position.set(Math.sin(i * 2.4) * 0.65, 2.3 + (i % 3) * 0.15, i < 9 ? -1.3 - (i % 3) * 0.6 : 2.2);
+    flames.add(flame);
+  }
+  bodyRig.add(flames);
+  const projectileRoot = new THREE.Group(); scene.add(projectileRoot);
+  const projectileMeshes = new Map();
+  const fireballGeometry = new THREE.SphereGeometry(0.3, 8, 6);
+  const landingGeometry = new THREE.RingGeometry(0.55, 0.8, 24);
   const burstSphere = enrageEffect.burst;
   const headOutline = outlines[0];
   headMarker.rotation.x = 0;
@@ -145,10 +158,11 @@ export function createBehemothView(scene) {
   root.add(arrivalMotes);
   root.userData.arrivalMotes = arrivalMotes;
   scene.add(root);
-  return { enrageEffect, burstSphere, hitboxes, outlines, partMeshes, horn, root, bodyRig, neck, head, tail, headHitbox, headOutline, headMarker, staggerRing, staggerCrown, breakRing, attackZone, tellZone, tellMaterial };
+  return { fur, staggerColor, flames, flameMaterial, projectileRoot, projectileMeshes, fireballGeometry, landingGeometry, enrageEffect, burstSphere, hitboxes, outlines, partMeshes, horn, root, bodyRig, neck, head, tail, headHitbox, headOutline, headMarker, staggerRing, staggerCrown, breakRing, attackZone, tellZone, tellMaterial };
 }
 
 const poseFor = (state) => {
+  if (['targetedVolley', 'defensiveVolley', 'fireballStream'].includes(state.move) && ['windup', 'active', 'recovery'].includes(state.mode)) return { bodyY: 1, bodyX: 0.04, neckX: state.move === 'fireballStream' ? 0.08 : -0.45, headX: -0.2, tailX: 0.15, foreX: -0.08, hindX: 0.1 };
   if (state.mode === 'run-out') return { bodyY: 1.02, bodyX: -0.13, neckX: -0.32, headX: -0.25, tailX: -0.15, foreX: 0.42, hindX: -0.38 };
   if (['run-out-turn', 'turn-back'].includes(state.mode)) return { bodyY: 0.9, bodyX: 0.08, neckX: 0.2, headX: -0.1, tailX: 0.3, foreX: -0.2, hindX: 0.2 };
   if (state.mode === 'defeated') return { bodyY: 0.78, bodyX: 0.23, neckX: 0.42, headX: 0.2, tailX: -0.35, foreX: 0.6, hindX: -0.55 };
@@ -176,6 +190,7 @@ const poseFor = (state) => {
 };
 
 export function updateBehemothView(view, state, dt, visibleCollision = false) {
+  view.root.scale.setScalar(state.definition?.sizeMultiplier ?? 1);
   const spawning = state.lifecycle === 'spawning';
   const death = state.mode === 'defeated' ? (state.lifecycleTime ?? state.deathTime ?? 0) : 0;
   const opacity = spawning ? Math.min(1, state.lifecycleTime / 2.4) : Math.max(0, 1 - Math.max(0, death - .8) / 2.4);
@@ -198,6 +213,24 @@ export function updateBehemothView(view, state, dt, visibleCollision = false) {
   view.root.position.y += spawning ? (1 - opacity) * 2 : death > .8 ? (1 - opacity) * .8 : 0;
 
   view.root.rotation.y = state.yaw;
+  view.flames.visible = state.states.aetherCharge.active && state.mode !== 'defeated';
+  view.flames.children.forEach((flame, i) => { flame.scale.y = 0.85 + Math.sin(performance.now() / 100 + i) * 0.25; });
+  view.projectileRoot.visible = view.root.visible;
+  const live = new Set((state.projectiles ?? []).map(q => q.id));
+  for (const [id, group] of view.projectileMeshes) if (!live.has(id)) { view.projectileRoot.remove(group); view.projectileMeshes.delete(id); }
+  for (const q of state.projectiles ?? []) {
+    let group = view.projectileMeshes.get(q.id);
+    if (!group) {
+      group = new THREE.Group();
+      group.add(new THREE.Mesh(view.fireballGeometry, view.flameMaterial));
+      const landing = new THREE.Mesh(view.landingGeometry, view.flameMaterial); landing.rotation.x = -Math.PI / 2;
+      group.add(landing); view.projectileRoot.add(group); view.projectileMeshes.set(q.id, group);
+    }
+    group.position.set(...q.position);
+    for (const child of group.children) child.scale.setScalar(q.sizeMultiplier ?? 1);
+    group.children[1].visible = q.kind === 'fall';
+    if (q.kind === 'fall') group.children[1].position.y = q.destination[1] + 0.05 - q.position[1];
+  }
   const p = poseFor(state);
   const blend = 1 - Math.exp(-dt * 16);
   const unconscious = state.mode === 'reaction' && ['true-stagger', 'interrupt'].includes(state.move);
@@ -210,6 +243,8 @@ export function updateBehemothView(view, state, dt, visibleCollision = false) {
   view.bodyRig.rotation.x = THREE.MathUtils.lerp(view.bodyRig.rotation.x, p.bodyX, blend);
   view.neck.rotation.x = THREE.MathUtils.lerp(view.neck.rotation.x, p.neckX, blend);
   view.head.rotation.x = THREE.MathUtils.lerp(view.head.rotation.x, p.headX, blend);
+  view.head.rotation.y = state.move === 'fireballStream' && state.mode === 'active'
+    ? (state.streamReturn ? (state.elapsed / state.streamDuration < 0.5 ? state.elapsed / state.streamDuration * 2 : 2 - state.elapsed / state.streamDuration * 2) - 0.5 : state.elapsed / state.streamDuration - 0.5) * Math.PI * 2 / 3 : 0;
   view.tail.rotation.x = THREE.MathUtils.lerp(view.tail.rotation.x, p.tailX, blend);
   view.horn.scale.y = state.parts.horn.broken ? 0.25 : 1;
   view.horn.position.y = state.parts.horn.broken ? 0.2 : 0.52;
@@ -250,7 +285,7 @@ export function updateBehemothView(view, state, dt, visibleCollision = false) {
   view.staggerRing.visible = state.mode === 'reaction' && ['interrupt', 'true-stagger'].includes(state.move);
   view.staggerRing.position.set(0, 0.1, 0);
   view.staggerRing.scale.setScalar(state.move === 'true-stagger' ? 1.15 + Math.sin(state.elapsed * 8) * 0.08 : 0.8);
-  staggerColor.opacity = state.move === 'true-stagger' ? 0.95 : 0.5;
+  view.staggerColor.opacity = state.move === 'true-stagger' ? 0.95 : 0.5;
   view.staggerCrown.visible = state.mode === 'reaction' && state.move === 'true-stagger';
   view.staggerCrown.rotation.y += dt * 2.2;
   view.staggerCrown.position.y = 2.75 + Math.sin(state.elapsed * 6) * 0.08;
@@ -261,6 +296,6 @@ export function updateBehemothView(view, state, dt, visibleCollision = false) {
   view.attackZone.visible = visibleCollision && state.mode === 'active';
   for (const child of view.attackZone.children) child.visible = child.name === state.move;
   for (const outline of view.outlines) outline.visible = visibleCollision;
-  fur.emissive.set(state.flash > 0 ? '#7d333c' : interrupt ? '#574214' : state.mode === 'reaction' && state.move === 'true-stagger' ? '#264c65' : state.states.enrage.active ? '#a51b28' : '#000000');
-  fur.emissiveIntensity = state.flash > 0 ? 0.8 : interrupt ? 0.5 : 0.32;
+  view.fur.emissive.set(state.flash > 0 ? '#7d333c' : interrupt ? '#574214' : state.mode === 'reaction' && state.move === 'true-stagger' ? '#264c65' : state.states.enrage.active ? '#a51b28' : '#000000');
+  view.fur.emissiveIntensity = state.flash > 0 ? 0.8 : interrupt ? 0.5 : 0.32;
 }

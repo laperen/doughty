@@ -53,10 +53,38 @@ export function craftArmor(inventory, id, area) {
   inventory.armor.owned[id] = { tier: 1, reforges: 0 };
   return true;
 }
+const DEFENSE_TIERS = { helmet: [1, 3, 4, 5], chestplate: [2, 3, 4, 5], gloves: [1, 2, 4, 5], legs: [1, 2, 3, 5] };
+export function armorPieceDefense(item, { tier = 1 } = {}) {
+  return DEFENSE_TIERS[item?.type]?.[tier - 1] ?? 0;
+}
+export function armorUpgradeRecipe(inventory, id) {
+  const item = Object.hasOwn(ARMOR, id) ? ARMOR[id] : null;
+  const progress = inventory.armor.owned[id];
+  if (!item || !progress || progress.tier >= 4) return null;
+  const tier = progress.tier + 1;
+  return { tier, currency: item.currency * tier,
+    materials: Object.fromEntries(Object.entries(item.materials).map(([part, count]) => [part, count * tier])) };
+}
+export function canUpgradeArmor(inventory, id) {
+  const recipe = armorUpgradeRecipe(inventory, id);
+  return !!recipe && inventory.currency >= recipe.currency
+    && Object.entries(recipe.materials).every(([part, count]) => (inventory.player[part] || 0) >= count);
+}
+export function upgradeArmor(inventory, id, area) {
+  if (area !== 'old-town' || !canUpgradeArmor(inventory, id)) return false;
+  const recipe = armorUpgradeRecipe(inventory, id);
+  inventory.currency -= recipe.currency;
+  for (const [part, count] of Object.entries(recipe.materials)) {
+    inventory.player[part] -= count;
+    if (!inventory.player[part]) delete inventory.player[part];
+  }
+  inventory.armor.owned[id].tier = recipe.tier;
+  return true;
+}
 export function armorDefense(state) {
   return Object.keys(ARMOR_SLOTS).reduce((total, slot) => {
     const id = state.equipped[slot];
-    return total + (Object.hasOwn(state.owned, id) && ARMOR[id]?.type === slot ? ARMOR[id].defense : 0);
+    return total + (Object.hasOwn(state.owned, id) && ARMOR[id]?.type === slot ? armorPieceDefense(ARMOR[id], state.owned[id]) : 0);
   }, 0);
 }
 export function mitigateDamage(damage, defense) { return Math.max(0, damage - Math.max(0, defense)); }

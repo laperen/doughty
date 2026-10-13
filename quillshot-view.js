@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createEnrageEffect, updateEnrageEffect } from './behemoth-enrage-view.js';
 import { QUARTERS, QUILLSHOT, isQuillshotInterruptible } from './quillshot.js';
+import { quillshotSidePose } from './quillshot-pose.js';
 
 export function createQuillshotView(scene) {
   const root = new THREE.Group(); root.name = 'Quillshot prototype'; scene.add(root);
@@ -27,6 +28,10 @@ export function createQuillshotView(scene) {
     blob(rig, 'Cloven paw', [x, 0.17, z - 0.12], [0.5, 0.2, 0.65]); hitbox(id, [x, 0.65, z], [0.9, 1.25, 1.05]);
   }
   parts.head = blob(rig, 'Head', [0, 1.1, -2.05], [0.94, 0.72, 0.95], armor);
+  for (const id of ['head', 'leftFore', 'rightFore', 'leftHind', 'rightHind']) {
+    parts[id].userData.originalMaterial = parts[id].material;
+    parts[id].material = parts[id].material.clone();
+  }
   blob(rig, 'Snout', [0, 0.88, -2.72], [0.63, 0.38, 0.43]);
   const eye = new THREE.MeshStandardMaterial({ color: '#fff1ac', emissive: '#b97713' });
   for (const side of [-1, 1]) {
@@ -88,7 +93,7 @@ export function updateQuillshotView(v, s, dt, collision = false) {
   const opacity = spawning ? Math.min(1, s.lifecycleTime / 2.4) : Math.max(0, 1 - Math.max(0, death - .8) / 2.4);
   v.root.visible = s.lifecycle !== 'absent' && (opacity > 0 || spawning);
   v.projectileRoot.visible = v.root.visible;
-  v.root.scale.setScalar(QUILLSHOT.sizeScale);
+  v.root.scale.setScalar(s.definition?.sizeScale ?? QUILLSHOT.sizeScale);
   v.root.position.y += spawning ? (1 - opacity) * 2 : death > .8 ? (1 - opacity) * .8 : 0;
   v.arrivalMotes.visible = spawning || (death > .8 && death < 3.2);
   v.arrivalMotes.children.forEach((mote, i) => {
@@ -105,12 +110,12 @@ export function updateQuillshotView(v, s, dt, collision = false) {
   let roll = 0, dip = 0;
   if (s.mode === 'defeated') { roll = 0.72; dip = -0.35; }
   else if (s.move === 'sideDrop') {
-    const t = s.mode === 'windup' ? Math.min(1, s.elapsed) : s.mode === 'recovery' ? Math.max(0, 1 - s.elapsed / 1.2) : 1;
-    roll = s.side * t * 1.15; dip = -0.4 * t;
+    ({ roll, dip } = quillshotSidePose(s));
   } else if (s.mode === 'reaction') { roll = s.move === 'part-break' ? 0.18 * Math.sin(s.elapsed * 9) : 1.15; dip = -0.35; }
   else if (['bombardment', 'intermittent'].includes(s.move)) dip = -0.25 + Math.sin(s.elapsed * 13) * 0.04;
   else if (s.mode === 'windup') dip = -0.2 * Math.min(1, s.elapsed / QUILLSHOT.moves[s.move].tell);
   v.rig.rotation.z = THREE.MathUtils.lerp(v.rig.rotation.z, roll, 1 - Math.exp(-dt * 16)); v.rig.position.y = dip;
+  if (s.move === 'sideDrop') v.rig.rotation.z = roll;
   v.rig.rotation.x = s.move === 'slam' && s.mode === 'windup' ? -0.35 * Math.sin(s.elapsed * Math.PI) : 0;
   v.rig.rotation.y = s.move === 'swipe' ? (s.mode === 'windup' ? -0.32 * Math.min(1, s.elapsed / 0.8)
     : s.mode === 'active' ? -0.32 + 0.9 * Math.min(1, s.elapsed / 0.3)
@@ -120,6 +125,7 @@ export function updateQuillshotView(v, s, dt, collision = false) {
   for (const [id, mesh] of Object.entries(v.parts)) {
     const broken = s.parts[id]?.broken;
     if (QUARTERS.includes(id) || id.includes('Tusk') || id === 'tail') mesh.visible = !broken;
+    else mesh.material.color.copy(broken ? new THREE.Color('#734456') : mesh.userData.originalMaterial.color);
     if (id.includes('Fore') || id.includes('Hind')) mesh.rotation.x = ['chase', 'charge', 'retreat', 'patrol'].includes(s.move ?? s.mode) ? Math.sin(s.elapsed * 12 + mesh.position.x * 2) * 0.24 : 0;
   }
   // Disable destroyed quill collision while leaving broken body parts hittable for core damage.
@@ -143,11 +149,12 @@ export function updateQuillshotView(v, s, dt, collision = false) {
     }
     group.position.set(...q.position);
     const mesh = group.children[0], landing = group.children[1];
-    if (q.kind === 'fall') { mesh.rotation.z = Math.PI; landing.visible = true; landing.position.y = q.destination[1] + 0.05 - q.position[1]; landing.scale.setScalar(q.age < QUILLSHOT.quills.tracking ? 0.7 : 1); }
+    mesh.scale.set(0.9, 1.7, 0.9).multiplyScalar(q.sizeMultiplier ?? 1);
+    if (q.kind === 'fall') { mesh.rotation.z = Math.PI; landing.visible = true; landing.position.y = q.destination[1] + 0.05 - q.position[1]; landing.scale.setScalar((q.age < QUILLSHOT.quills.tracking ? 0.7 : 1) * (q.sizeMultiplier ?? 1)); }
     else { landing.visible = false; mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(...q.direction)); }
   }
   v.tellZone.visible = s.mode === 'windup';
-  v.attackZone.visible = collision && s.mode === 'active' && (s.move !== 'sideDrop' || s.elapsed <= 0.2);
+  v.attackZone.visible = collision && s.mode === 'active' && (s.move !== 'sideDrop' || s.elapsed <= 0.2 || s.sideCombo?.phase === 'spin');
   for (const zone of [v.tellZone, v.attackZone]) {
     zone.rotation.y = s.move === 'sideDrop' ? s.side * Math.PI / 2 : 0;
     for (const child of zone.children) child.visible = child.name === s.move;

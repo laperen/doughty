@@ -1,7 +1,9 @@
+import { tierDefinition } from './behemoth-tiers.js';
 import { applyPartDamage, applyCoreDamage, clearBehemothModes, advanceStaggerThreshold } from './behemoth-damage.js';
 import { createWoundMeter, resolveWound, stepWounds } from './wounds.js';
 import { createTimedMode, activatePendingMode, advanceTimedMode } from './behemoth-states.js';
 import { behemothPushOut } from './behemoth-collision.js';
+import { AETHER_TUNING, advanceEmbermaneModes, isElementalMove, releaseEmbermaneVolley, releaseEmbermaneStream, stepEmbermaneProjectiles } from './embermane-aether.js';
 
 const SIZE_SCALE = 1.2;
 
@@ -15,8 +17,7 @@ export const BEHEMOTH = Object.freeze({
   partBreakDuration: 5,
   states: Object.freeze({
     enrage: Object.freeze({ enabled: true, damageFraction: 0.25, waitMultiplier: 0.85, durations: Object.freeze([20, 30, 40]) }),
-    // Reserved independently; no elemental trigger or behavior is wired yet.
-    aetherCharge: Object.freeze({ enabled: false, durations: Object.freeze([20, 30, 40]) }),
+    aetherCharge: Object.freeze({ enabled: true, interval: AETHER_TUNING.interval, durations: Object.freeze([AETHER_TUNING.duration]) }),
   }),
   parts: Object.freeze(Object.fromEntries([
     ['tail', 'Tail', 100], ['head', 'Head', 185],
@@ -33,6 +34,7 @@ export const BEHEMOTH = Object.freeze({
     afterSweep: 1.1,
     afterRetreat: 0.4,
     afterChase: 0.7,
+    maxChaseDuration: 3,
     circleDuration: 0.8,
     retreatDuration: 1.5,
     runOutEvery: 2,
@@ -40,6 +42,9 @@ export const BEHEMOTH = Object.freeze({
     runOutTurnSpeed: 6,
   }),
   moves: Object.freeze({
+    targetedVolley: Object.freeze({ tell: 1, active: 0.3, recovery: 0.8, damage: 0 }),
+    defensiveVolley: Object.freeze({ tell: 0.7, active: 0.3, recovery: 0.8, damage: 0 }),
+    fireballStream: Object.freeze({ tell: 1, active: 2, recovery: 0.8, damage: 0 }),
     enrageBurst: Object.freeze({ tell: 0.8, active: 0.25, recovery: 0.55, damage: 20, reach: 4 * SIZE_SCALE, arc: 360 }),
     charge: Object.freeze({ tell: 0.72, active: 1.08, recovery: 1.12, speed: 16, damage: 28, reach: 1.6 * SIZE_SCALE, arc: 80, interruptStart: 0.25, interruptEnd: 0.92, steeringSpeed: 80 * Math.PI / 180, steeringGain: 6, steeringCone: Math.PI / 3 }),
     claw: Object.freeze({ tell: 0.42, active: 0.22, recovery: 0.62, damage: 16, reach: 2.2 * SIZE_SCALE, arc: 95 }),
@@ -54,25 +59,27 @@ const angleDelta = (from, to) => Math.atan2(Math.sin(to - from), Math.cos(to - f
 const advanceTurn = (state, targetYaw, maximum) => { state.yaw += clamp(angleDelta(state.yaw, targetYaw), -maximum, maximum); };
 const horizontalDistance = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
 
-export function createBehemothState() {
-  return {
+export function createBehemothState(tier = 'normal') {
+  const definition = tierDefinition(BEHEMOTH, tier);
+  return { definition, tier, speciesId: 'first-behemoth',
     position: [0, -0.025, -12], yaw: Math.PI, mode: 'idle', move: null,
-    elapsed: 0, pause: 0.65, health: BEHEMOTH.maxHealth,
-    stagger: 0, staggerThreshold: BEHEMOTH.maxStagger, trueStaggerCount: 0,
+    elapsed: 0, pause: 0.65, health: definition.maxHealth,
+    stagger: 0, staggerThreshold: definition.maxStagger, trueStaggerCount: 0,
     states: { enrage: createTimedMode(), aetherCharge: createTimedMode() },
-    parts: Object.fromEntries(Object.keys(BEHEMOTH.parts).map(id => [id, { damage: 0, broken: false, ...createWoundMeter(BEHEMOTH.parts[id]) }])),
+    parts: Object.fromEntries(Object.keys(definition.parts).map(id => [id, { damage: 0, broken: false, ...createWoundMeter(definition.parts[id]) }])),
     chargeCount: 0, closeCount: 0, attackCount: 0, lastMove: null,
     lastRunOutAttackCount: 0, runOutGoal: null, returnCharge: false, chargeDuration: null,
     repositionedAfterAttack: false, lastRetreatAfterCloseCount: -1,
     canTargetKnockedDownPlayers: false,
     attackHit: false, flash: 0, lastOutcome: '',
+    projectiles: [], impactEvents: [], projectileSerial: 0, elementalCount: 0, afterElementalRetreat: false, followElemental: false,
   };
 }
 
 export function isInterruptible(state) {
   return state.mode === 'active' && state.move === 'charge'
-    && state.elapsed >= BEHEMOTH.moves.charge.interruptStart
-    && state.elapsed <= (state.returnCharge ? state.chargeDuration - 0.16 : BEHEMOTH.moves.charge.interruptEnd);
+    && state.elapsed >= (state.definition ?? BEHEMOTH).moves.charge.interruptStart
+    && state.elapsed <= (state.returnCharge ? state.chargeDuration - 0.16 : (state.definition ?? BEHEMOTH).moves.charge.interruptEnd);
 }
 
 function startMove(state, move) {
@@ -84,11 +91,14 @@ function startMove(state, move) {
   state.lastMove = move;
   state.attackCount += 1;
   state.repositionedAfterAttack = false;
+  state.followElemental = false;
+  if (isElementalMove(move)) state.elementalCount++;
   if (move === 'charge') state.chargeCount += 1;
-  else state.closeCount += 1;
+  else if (!['targetedVolley', 'fireballStream'].includes(move)) state.closeCount += 1;
 }
 
 function react(state, kind, duration) {
+  state.followElemental = false; state.afterElementalRetreat = false;
   state.runOutGoal = null; state.returnCharge = false; state.chargeDuration = null;
   state.mode = 'reaction';
   state.move = kind;
@@ -99,7 +109,7 @@ function react(state, kind, duration) {
 }
 
 function activateEnrage(state) {
-  if (!activatePendingMode(state.states.enrage, BEHEMOTH.states.enrage, ['windup', 'active', 'recovery', 'reaction', 'defeated'].includes(state.mode))) return false;
+  if (!activatePendingMode(state.states.enrage, (state.definition ?? BEHEMOTH).states.enrage, ['windup', 'active', 'recovery', 'reaction', 'defeated'].includes(state.mode))) return false;
   // Committed attacks and reactions finish before entry. Reactions can cancel the burst normally.
   state.runOutGoal = null; state.returnCharge = false; state.chargeDuration = null;
   state.mode = 'windup'; state.move = 'enrageBurst'; state.elapsed = 0; state.attackHit = false;
@@ -111,7 +121,7 @@ function observe(state, duration) {
   state.mode = 'observe';
   state.move = null;
   state.elapsed = 0;
-  state.pause = duration * (state.states.enrage.active ? BEHEMOTH.states.enrage.waitMultiplier : 1);
+  state.pause = duration * (state.states.enrage.active ? (state.definition ?? BEHEMOTH).states.enrage.waitMultiplier : 1);
 }
 
 function startRunOut(state, playerPosition, bounds) {
@@ -124,7 +134,7 @@ function startRunOut(state, playerPosition, bounds) {
   for (let i = 0; i < 32; i++) {
     const angle = awayYaw + i * Math.PI / 16;
     const [x, z] = facingVector(angle);
-    const goal = [playerPosition[0] + x * BEHEMOTH.pacing.runOutDistance, state.position[1], playerPosition[2] + z * BEHEMOTH.pacing.runOutDistance];
+    const goal = [playerPosition[0] + x * (state.definition ?? BEHEMOTH).pacing.runOutDistance, state.position[1], playerPosition[2] + z * (state.definition ?? BEHEMOTH).pacing.runOutDistance];
     if (Math.hypot(goal[0], goal[2]) > radius) continue;
     const score = Math.cos(angle - awayYaw);
     if (score > bestScore) { bestScore = score; state.runOutGoal = goal; }
@@ -132,7 +142,7 @@ function startRunOut(state, playerPosition, bounds) {
   // Smaller arenas may not fit the authored separation at all.
   if (bestScore === -Infinity) {
     const [x, z] = facingVector(awayYaw);
-    const goal = [playerPosition[0] + x * BEHEMOTH.pacing.runOutDistance, state.position[1], playerPosition[2] + z * BEHEMOTH.pacing.runOutDistance];
+    const goal = [playerPosition[0] + x * (state.definition ?? BEHEMOTH).pacing.runOutDistance, state.position[1], playerPosition[2] + z * (state.definition ?? BEHEMOTH).pacing.runOutDistance];
     const scale = Math.min(1, radius / Math.hypot(goal[0], goal[2]));
     state.runOutGoal = [goal[0] * scale, goal[1], goal[2] * scale];
   }
@@ -143,49 +153,56 @@ function startRunOut(state, playerPosition, bounds) {
 /** Breaks are recorded independently of the winning reaction, including on lethal hits. */
 export function hitBehemoth(state, { damage = 0, partDamage = damage, stagger = 0, wound = 0, attackerModifiers, part = 'body', interrupt = false } = {}) {
   if (state.mode === 'defeated') return { outcome: 'ignored' };
-  const woundResult = resolveWound(state.parts[part], BEHEMOTH.parts[part], wound, attackerModifiers);
+  const woundResult = resolveWound(state.parts[part], (state.definition ?? BEHEMOTH).parts[part], wound, attackerModifiers);
   let staggerDamage = 0;
   const trueStagger = state.mode === 'reaction' && state.move === 'true-stagger';
-  const { brokenPart, partDamage: appliedPartDamage } = applyPartDamage(state, BEHEMOTH, part, partDamage);
+  const { brokenPart, partDamage: appliedPartDamage } = applyPartDamage(state, (state.definition ?? BEHEMOTH), part, partDamage);
   const result = outcome => {
     if (state.mode !== 'defeated') activateEnrage(state);
     return { ...woundResult, staggerDamage, outcome, brokenPart, part, partDamage: appliedPartDamage };
   };
-  applyCoreDamage(state, BEHEMOTH, damage);
+  applyCoreDamage(state, (state.definition ?? BEHEMOTH), damage);
   state.flash = 0.16;
   if (state.health === 0) {
     state.mode = 'defeated'; state.move = null; state.elapsed = 0; state.lastOutcome = 'defeated';
     clearBehemothModes(state);
+    state.projectiles = []; state.impactEvents = [];
     return result('defeated');
   }
   if (!trueStagger) {
-    staggerDamage = Math.min(state.staggerThreshold - state.stagger, Math.max(0, stagger) * (BEHEMOTH.staggerMultipliers[part] ?? 0));
+    staggerDamage = Math.min(state.staggerThreshold - state.stagger, Math.max(0, stagger) * ((state.definition ?? BEHEMOTH).staggerMultipliers[part] ?? 0));
     state.stagger += staggerDamage;
   }
   // True stagger, interrupt, and part break each own a separate reaction.
   if (state.stagger >= state.staggerThreshold) {
-    advanceStaggerThreshold(state, BEHEMOTH.maxStagger, BEHEMOTH.staggerThresholdMultiplier);
-    react(state, 'true-stagger', BEHEMOTH.staggerDuration);
+    advanceStaggerThreshold(state, (state.definition ?? BEHEMOTH).maxStagger, (state.definition ?? BEHEMOTH).staggerThresholdMultiplier);
+    react(state, 'true-stagger', (state.definition ?? BEHEMOTH).staggerDuration);
     return result('true-stagger');
   }
   if (brokenPart && !trueStagger) {
-    react(state, 'part-break', BEHEMOTH.partBreakDuration);
+    react(state, 'part-break', (state.definition ?? BEHEMOTH).partBreakDuration);
     return result('part-break');
   }
   if (['head', 'horn'].includes(part) && interrupt && isInterruptible(state)) {
-    react(state, 'interrupt', BEHEMOTH.staggerDuration);
+    react(state, 'interrupt', (state.definition ?? BEHEMOTH).staggerDuration);
     return result('interrupt');
   }
   return result('hit');
 }
 
 /** Fixed-step AI. Attack events are resolved by the caller against the player. */
-export function stepBehemoth(state, playerPosition, dt, bounds = 68, { targetKnockedDown = false, canTargetKnockedDownPlayers = state.canTargetKnockedDownPlayers } = {}) {
+export function stepBehemoth(state, playerPosition, dt, bounds = 68, { targetKnockedDown = false, canTargetKnockedDownPlayers = state.canTargetKnockedDownPlayers, players = [{ id: 'local', position: playerPosition, knockedDown: targetKnockedDown }] } = {}) {
   stepWounds(state.parts, dt);
   const events = [];
   if (state.mode === 'defeated') return events;
-  for (const mode of Object.values(state.states)) advanceTimedMode(mode, dt);
+  advanceTimedMode(state.states.enrage, dt);
+  advanceEmbermaneModes(state, dt);
+  stepEmbermaneProjectiles(state, players, dt);
   state.flash = Math.max(0, state.flash - dt);
+  // Prefer the nearest eligible hunter for proximity-driven move selection.
+  const eligible = players.filter(p => !p.knockedDown || canTargetKnockedDownPlayers);
+  const nearest = eligible.reduce((best, p) => !best || horizontalDistance(state.position, p.position) < horizontalDistance(state.position, best.position) ? p : best, null);
+  if (nearest) { playerPosition = nearest.position; targetKnockedDown = Boolean(nearest.knockedDown); }
   const distance = horizontalDistance(state.position, playerPosition);
   const targetYaw = yawTo(state.position, playerPosition);
   if (state.mode === 'reaction') {
@@ -198,7 +215,7 @@ export function stepBehemoth(state, playerPosition, dt, bounds = 68, { targetKno
   }
   if (activateEnrage(state)) events.push({ type: 'enrage-start' });
   if (state.mode === 'windup' || state.mode === 'active' || state.mode === 'recovery') {
-    const move = BEHEMOTH.moves[state.move];
+    const move = (state.definition ?? BEHEMOTH).moves[state.move];
     state.elapsed += dt;
     if (state.mode === 'windup') {
       if (!targetKnockedDown || canTargetKnockedDownPlayers) advanceTurn(state, targetYaw, dt * (state.move === 'charge' ? 1.9 : 3.2));
@@ -208,6 +225,14 @@ export function stepBehemoth(state, playerPosition, dt, bounds = 68, { targetKno
           state.chargeDuration = clamp((distance + 4) / move.speed, move.active, (bounds * 2 + 4) / move.speed);
         }
         state.mode = 'active'; state.elapsed = 0; events.push({ type: 'attack-start', move: state.move });
+        if (isElementalMove(state.move)) {
+          if (state.move === 'fireballStream') {
+            state.streamYaw = state.yaw; state.nextFireball = 0;
+            state.streamReturn = state.states.enrage.active;
+            state.streamDuration = move.active * (state.streamReturn ? 2 : 1);
+            releaseEmbermaneStream(state, 0, bounds);
+          } else releaseEmbermaneVolley(state, players);
+        }
       }
     } else if (state.mode === 'active') {
       if (state.move === 'charge') {
@@ -222,14 +247,18 @@ export function stepBehemoth(state, playerPosition, dt, bounds = 68, { targetKno
         const nextX = clamp(state.position[0] + x * travel, -bounds, bounds);
         const nextZ = clamp(state.position[2] + z * travel, -bounds, bounds);
         state.position[0] = nextX; state.position[2] = nextZ;
-      } else if (!targetKnockedDown || canTargetKnockedDownPlayers) advanceTurn(state, targetYaw, dt * 1.0);
+      } else if (state.move === 'fireballStream') releaseEmbermaneStream(state, state.elapsed, bounds);
+      else if (!isElementalMove(state.move) && (!targetKnockedDown || canTargetKnockedDownPlayers)) advanceTurn(state, targetYaw, dt * 1.0);
       events.push({ type: 'attack-active', move: state.move });
-      if (state.elapsed >= (state.move === 'charge' ? state.chargeDuration ?? move.active : move.active)) { state.mode = 'recovery'; state.elapsed = 0; }
+      if (state.elapsed >= (state.move === 'charge' ? state.chargeDuration ?? move.active : state.move === 'fireballStream' ? state.streamDuration : move.active)) { state.mode = 'recovery'; state.elapsed = 0; }
     } else if (state.elapsed >= move.recovery) {
-      const basePause = state.move === 'enrageBurst' ? 0.5 : state.move === 'charge' ? BEHEMOTH.pacing.afterCharge
-        : state.move === 'claw' ? BEHEMOTH.pacing.afterClaw : BEHEMOTH.pacing.afterSweep;
+      const basePause = state.move === 'enrageBurst' ? 0.5 : state.move === 'charge' ? (state.definition ?? BEHEMOTH).pacing.afterCharge
+        : state.move === 'claw' ? (state.definition ?? BEHEMOTH).pacing.afterClaw : (state.definition ?? BEHEMOTH).pacing.afterSweep;
       // Alternating a little prevents the same attack-to-attack rhythm every time.
+      const followElemental = ['targetedVolley', 'fireballStream'].includes(state.move);
       observe(state, basePause + (state.attackCount % 2 === 0 ? 0.2 : 0));
+      state.followElemental = followElemental;
+      advanceEmbermaneModes(state, 0);
       if (activateEnrage(state)) events.push({ type: 'enrage-start' });
     }
     return events;
@@ -251,15 +280,16 @@ export function stepBehemoth(state, playerPosition, dt, bounds = 68, { targetKno
     const goal = state.runOutGoal;
     const desiredYaw = state.mode === 'turn-back' ? targetYaw : yawTo(state.position, goal);
     if (state.mode !== 'run-out') {
-      advanceTurn(state, desiredYaw, BEHEMOTH.pacing.runOutTurnSpeed * dt);
+      advanceTurn(state, desiredYaw, (state.definition ?? BEHEMOTH).pacing.runOutTurnSpeed * dt);
       if (Math.abs(angleDelta(state.yaw, desiredYaw)) < 0.03) {
         if (state.mode === 'turn-back') {
-          startMove(state, 'charge'); state.returnCharge = true;
+          if (state.states.aetherCharge.active) startMove(state, state.elementalCount % 2 === 0 ? 'targetedVolley' : 'fireballStream');
+          else { startMove(state, 'charge'); state.returnCharge = true; }
         } else { state.mode = 'run-out'; state.elapsed = 0; }
       }
     } else {
       const remaining = horizontalDistance(state.position, goal);
-      const travel = Math.min(remaining, BEHEMOTH.moves.charge.speed * dt);
+      const travel = Math.min(remaining, (state.definition ?? BEHEMOTH).moves.charge.speed * dt);
       state.yaw = desiredYaw;
       if (remaining > 0) for (const i of [0, 2]) state.position[i] += (goal[i] - state.position[i]) / remaining * travel;
       if (remaining <= travel + 0.01) { state.mode = 'turn-back'; state.elapsed = 0; }
@@ -288,7 +318,7 @@ export function stepBehemoth(state, playerPosition, dt, bounds = 68, { targetKno
     const [x, z] = facingVector(state.yaw);
     state.position[0] = clamp(state.position[0] - x * 4.8 * dt, -bounds, bounds);
     state.position[2] = clamp(state.position[2] - z * 4.8 * dt, -bounds, bounds);
-    if (distance >= 9 || state.pause === 0) observe(state, BEHEMOTH.pacing.afterRetreat);
+    if (distance >= 9 || state.pause === 0) { observe(state, (state.definition ?? BEHEMOTH).pacing.afterRetreat); state.afterElementalRetreat = true; }
     return events;
   }
   if (state.mode === 'chase') {
@@ -296,39 +326,57 @@ export function stepBehemoth(state, playerPosition, dt, bounds = 68, { targetKno
     const [x, z] = facingVector(state.yaw);
     state.position[0] = clamp(state.position[0] + x * 4.4 * dt, -bounds, bounds);
     state.position[2] = clamp(state.position[2] + z * 4.4 * dt, -bounds, bounds);
-    if (distance <= 11) observe(state, BEHEMOTH.pacing.afterChase);
+    if (horizontalDistance(state.position, playerPosition) <= 11) observe(state, (state.definition ?? BEHEMOTH).pacing.afterChase);
+    else if (state.elapsed >= (state.definition ?? BEHEMOTH).pacing.maxChaseDuration) {
+      // A fleeing hunter (or blocked approach) must not keep us walking forever.
+      startMove(state, 'charge');
+      state.returnCharge = true;
+    }
     return events;
   }
   if (state.pause > 0) return events;
-  if (state.attackCount - state.lastRunOutAttackCount >= BEHEMOTH.pacing.runOutEvery) {
+  if (state.afterElementalRetreat) {
+    state.afterElementalRetreat = false;
+    if (state.states.aetherCharge.active && distance > 5.5 * (state.definition ?? BEHEMOTH).sizeScale) {
+      startMove(state, state.elementalCount % 2 === 0 ? 'targetedVolley' : 'fireballStream'); return events;
+    }
+  }
+  if (state.followElemental) {
+    state.followElemental = false;
+    if (distance > 5.5 * (state.definition ?? BEHEMOTH).sizeScale) { startMove(state, 'charge'); state.returnCharge = true; return events; }
+  }
+  if (state.attackCount - state.lastRunOutAttackCount >= (state.definition ?? BEHEMOTH).pacing.runOutEvery) {
     startRunOut(state, playerPosition, bounds);
     return events;
   }
   if (distance > 19) { state.mode = 'chase'; state.elapsed = 0; return events; }
-  if (distance < 3.1 * BEHEMOTH.sizeScale) {
+  if (distance < 3.1 * (state.definition ?? BEHEMOTH).sizeScale) {
+    if (state.states.aetherCharge.active && state.closeCount % 3 === 2) {
+      startMove(state, 'defensiveVolley'); return events;
+    }
     if (!state.states.enrage.active && state.closeCount > 0 && state.closeCount % 2 === 0
       && state.closeCount !== state.lastRetreatAfterCloseCount && state.lastMove !== 'charge') {
       state.lastRetreatAfterCloseCount = state.closeCount;
-      state.mode = 'retreat'; state.pause = BEHEMOTH.pacing.retreatDuration; state.elapsed = 0;
+      state.mode = 'retreat'; state.pause = (state.definition ?? BEHEMOTH).pacing.retreatDuration; state.elapsed = 0;
       state.repositionedAfterAttack = true;
       return events;
     }
     // Enraged close rotation chooses the heavier sweep twice per three attacks.
     startMove(state, state.states.enrage.active ? (state.closeCount % 3 === 2 ? 'claw' : 'sweep') : (state.closeCount % 2 === 0 ? 'claw' : 'sweep'));
-  } else if (distance < 5.5 * BEHEMOTH.sizeScale) {
-    state.mode = 'retreat'; state.pause = BEHEMOTH.pacing.retreatDuration; state.elapsed = 0;
+  } else if (distance < 5.5 * (state.definition ?? BEHEMOTH).sizeScale) {
+    state.mode = 'retreat'; state.pause = (state.definition ?? BEHEMOTH).pacing.retreatDuration; state.elapsed = 0;
     state.repositionedAfterAttack = true;
   }
   else if (!state.states.enrage.active && state.lastMove === 'charge' && !state.repositionedAfterAttack) {
     state.repositionedAfterAttack = true;
-    state.mode = 'circle'; state.pause = BEHEMOTH.pacing.circleDuration; state.elapsed = 0;
+    state.mode = 'circle'; state.pause = (state.definition ?? BEHEMOTH).pacing.circleDuration; state.elapsed = 0;
   } else startMove(state, 'charge');
   return events;
 }
 
 export function behemothAttackTouchesPlayer(state, playerPosition) {
-  const move = BEHEMOTH.moves[state.move];
-  if (!move || state.mode !== 'active' || state.attackHit) return false;
+  const move = (state.definition ?? BEHEMOTH).moves[state.move];
+  if (!move || !move.damage || state.mode !== 'active' || state.attackHit) return false;
   // Charge contact must reach the solid footprint, including the projecting
   // head. A small margin catches players already separated by collision skin.
   if (state.move === 'charge') return Boolean(behemothPushOut(state, playerPosition, 0.36 + 0.05, 1.72));
@@ -336,6 +384,8 @@ export function behemothAttackTouchesPlayer(state, playerPosition) {
   const dz = playerPosition[2] - state.position[2];
   const distance = Math.hypot(dx, dz);
   if (state.move === 'enrageBurst') return Math.hypot(dx, dz, playerPosition[1] - state.position[1]) <= move.reach + 0.36;
+  if (playerPosition[1] >= state.position[1] + (state.definition ?? BEHEMOTH).bodyHeight
+    || playerPosition[1] + 1.72 <= state.position[1]) return false;
   if (distance > move.reach + 0.36) return false;
   const [x, z] = facingVector(state.yaw);
   return distance < 0.01 || (dx * x + dz * z) / distance >= Math.cos(move.arc * Math.PI / 360);

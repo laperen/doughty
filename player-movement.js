@@ -92,6 +92,7 @@ export function createPlayerState(position = [0, FLOOR.y, 1.5]) {
     dodgeDirection: [0, 0],
     stamina: STAMINA.max,
     health: 100,
+    burning: null,
     maxHealth: 100,
     maxStamina: STAMINA.max,
     shields: {},

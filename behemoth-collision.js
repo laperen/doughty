@@ -1,6 +1,7 @@
 // Stable compound footprints authored against the procedural models, in model
 // units. Rounded segments avoid snagging on corners during melee movement.
 // [x, startZ, endZ, radius, bottom, top, optional breakable part]
+import { quillshotSidePose } from './quillshot-pose.js';
 const EMBER = [
   [0, -.7, .65, 1.06, .65, 2.55],
   [0, -1.55, -1.1, .68, 1.1, 2.55],
@@ -21,18 +22,25 @@ const QUILL = [
 /** Deepest horizontal capsule contact; shared by travel and overlap queries. */
 export function behemothPushOut(state, position, radius, height) {
   const quill = state.speciesId === 'quillshot';
-  const scale = quill ? 1.5 : 1.2;
+  const scale = state.definition?.sizeScale ?? (quill ? 1.5 : 1.2);
   const c = Math.cos(state.yaw), s = Math.sin(state.yaw);
   const dx = position[0] - state.position[0], dz = position[2] - state.position[2];
   const x = c * dx - s * dz, z = s * dx + c * dz;
   const y = position[1] - state.position[1];
+  const pose = quill ? quillshotSidePose(state) : { roll: 0, dip: 0 };
+  const rollCos = Math.cos(pose.roll), rollSin = Math.sin(pose.roll);
   let best = null, deepest = 0;
   for (const [cx, start, end, r, bottom, top, part] of quill ? QUILL : EMBER) {
     if (part && state.parts?.[part]?.broken) continue;
-    if (y >= top * scale || y + height <= bottom * scale) continue;
-    const ox = x - cx * scale;
+    const midY = (bottom + top) / 2, halfY = (top - bottom) / 2;
+    const rolledX = cx * rollCos - midY * rollSin;
+    const rolledY = cx * rollSin + midY * rollCos + pose.dip;
+    const verticalRadius = halfY * Math.abs(rollCos) + r * Math.abs(rollSin);
+    if (y >= (rolledY + verticalRadius) * scale || y + height <= (rolledY - verticalRadius) * scale) continue;
+    const ox = x - rolledX * scale;
     const oz = z - Math.max(start * scale, Math.min(end * scale, z));
-    const distance = Math.hypot(ox, oz), depth = r * scale + radius - distance;
+    const horizontalRadius = r * Math.abs(rollCos) + halfY * Math.abs(rollSin);
+    const distance = Math.hypot(ox, oz), depth = horizontalRadius * scale + radius - distance;
     if (depth <= deepest) continue;
     // On the segment axis, the nearest exit is sideways.
     const nx = distance > 1e-8 ? ox / distance : (x < 0 ? -1 : 1);

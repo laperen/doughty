@@ -13,8 +13,12 @@ export const RARITIES = Object.freeze({ common: { name: 'Common', dust: 5, score
 export const MATERIALS = Object.freeze(Object.fromEntries(Object.entries(MATERIAL_SPECIES).flatMap(([speciesId, species]) => Object.entries(species.items).map(([part, type]) => {
   const id = `${speciesId}:${part}`;
   const rarity = type === 'cores' ? 'superior' : (speciesId === 'first-behemoth' ? ['horn', 'tail'] : ['head', 'tail']).includes(part) ? 'rare' : 'common';
-  return [id, { id, speciesId, type, rarity, rarityScore: RARITIES[rarity].score, dustYield: RARITIES[rarity].dust, name: `${species.name} ${part[0].toUpperCase()}${part.slice(1)}`, rare: rarity === 'rare' }];
-}))));
+  return [id, { id, speciesId, type, ...(type === 'cores' ? { tier: 'normal' } : {}), rarity, rarityScore: RARITIES[rarity].score, dustYield: RARITIES[rarity].dust, name: `${species.name} ${part[0].toUpperCase()}${part.slice(1)}`, rare: rarity === 'rare' }];
+})).concat(Object.entries(MATERIAL_SPECIES).flatMap(([speciesId, species]) => ['greater', 'alpha'].map(tier => {
+  const id = `${speciesId}:${tier}-${species.core}`;
+  return [id, { id, speciesId, tier, type: 'cores', rarity: 'superior', rarityScore: 3, dustYield: 20,
+    name: `${species.name} ${tier === 'greater' ? 'Greater' : 'Alpha'} ${species.core === 'heart' ? 'Heart' : 'Core'}`, rare: false }];
+})))));
 export const INVENTORY_STORAGE_KEY = 'doughty-material-inventory-v1';
 const validStacks = input => Object.fromEntries(Object.entries(input && typeof input === 'object' ? input : {}).filter(([id, count]) => MATERIALS[id] && Number.isSafeInteger(count) && count > 0));
 export function createInventoryState(saved = {}) {
@@ -31,7 +35,7 @@ export function saveInventory(state, storage) {
   catch { return false; }
 }
 /** Idempotent per encounter. Regrowth cannot erase or duplicate a physical part. */
-export function collectDefeatLoot(inventory, boss, random = Math.random) {
+export function collectDefeatLoot(inventory, boss) {
   if (boss.mode !== 'defeated' || boss.lootAwarded) return {};
   const speciesId = boss.speciesId ?? 'first-behemoth';
   const species = MATERIAL_SPECIES[speciesId];
@@ -44,7 +48,8 @@ export function collectDefeatLoot(inventory, boss, random = Math.random) {
       rewards[id] = (rewards[id] || 0) + 1;
     }
   }
-  if (random() < 0.5) rewards[`${speciesId}:${species.core}`] = 1;
+  const tier = boss.tier ?? 'normal';
+  if (tier !== 'lesser') rewards[`${speciesId}:${tier === 'normal' ? '' : `${tier}-`}${species.core}`] = 1;
   for (const [id, count] of Object.entries(rewards)) inventory.loot[id] = (inventory.loot[id] || 0) + count;
   boss.lootAwarded = true;
   return rewards;

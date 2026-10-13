@@ -11,7 +11,7 @@ export const CHESTPLATE_TUNING = Object.freeze({ buffDuration: 20, cooldown: 30,
 export function chestplateAbility(item, { tier = 1, reforges = 0 } = {}) {
   if (item?.type !== 'chestplate') return null;
   if (item.species === 'embermane') return { species: item.species, percent: 5 + (tier >= 4 ? 5 : 0) + (reforges >= 8 ? 5 : 0) };
-  if (item.species === 'quillshot') return { species: item.species, damage: CHESTPLATE_TUNING.damage };
+  if (item.species === 'quillshot') return { species: item.species, damage: CHESTPLATE_TUNING.damage, quills: 1 + (tier >= 4 ? 1 : 0) + (reforges >= 8 ? 1 : 0) };
   return null;
 }
 export function createChestplateAbilityState() { return { cooldown: 0, charge: 0, commitment: 0, yaw: 0, pendingProjectile: null }; }
@@ -38,8 +38,8 @@ export function activateChestplateAbility(state, ability, modifiers, yaw) {
     state.charge = 0;
     state.commitment = CHESTPLATE_TUNING.commitment;
     state.yaw = yaw;
-    state.pendingProjectile = { ...QUILL_TUNING, id: 'chestplate-quill', kind: 'quill', attackYaw: yaw,
-      damage: ability.damage, range: REPEATER_TUNING.maxRange, lateralOffset: 0, dissipateWidth: QUILL_TUNING.width, interrupt: true };
+    state.pendingProjectile = Array.from({ length: ability.quills }, (_, index) => ({ ...QUILL_TUNING, id: 'chestplate-quill', kind: 'quill', attackYaw: yaw + (index - (ability.quills - 1) / 2) * 5 * Math.PI / 180,
+      damage: ability.damage, range: REPEATER_TUNING.maxRange, lateralOffset: 0, dissipateWidth: QUILL_TUNING.width, interrupt: true }));
     return { activated: true, projectile: null };
   }
   return { activated: false, projectile: null };

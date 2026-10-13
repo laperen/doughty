@@ -2,9 +2,11 @@ import { stepWounds } from './wounds.js';
 import { createBehemothState, stepBehemoth } from './encounter-combat.js';
 import { advanceTimedMode } from './behemoth-states.js';
 import { advanceQuillshotTimers } from './quillshot.js';
+import { advanceEmbermaneModes } from './embermane-aether.js';
+import { BEHEMOTH_TIERS, SUMMON_HEALTH_FRACTION, SUMMON_REPLACEMENT_DELAY } from './behemoth-tiers.js';
 
 export const ISLAND = Object.freeze({
-  name: 'Cinderwild Isle', layoutScale: 2, arrival: [0, 0.25, 78], roster: ['first-behemoth', 'quillshot'], maxAlive: 1,
+  name: 'Cinderwild Isle', layoutScale: 2, arrival: [0, 0.25, 78], roster: ['first-behemoth', 'quillshot'], tier: 'normal', maxAlive: 1,
   spawnDuration: 2.4, deathDuration: 3.2, replacementDelay: 5, awarenessRadius: 20.25,
   patrolRadius: 8,
   arenas: [
@@ -15,22 +17,32 @@ export const ISLAND = Object.freeze({
 const distance = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
 export const inTerritory = (arena, position, margin = 0) => distance(arena.center, position) <= arena.radius + margin && Math.abs(position[1] - arena.center[1]) < 5;
 export const encounterTouchable = state => state.mode !== 'defeated' && (!state.lifecycle || state.lifecycle === 'alive');
-export function createIslandEncounter(index = 0, serial = 1, speciesId = ISLAND.roster[(serial - 1) % ISLAND.roster.length]) {
+export function createIslandEncounter(index = 0, serial = 1, speciesId = ISLAND.roster[(serial - 1) % ISLAND.roster.length], tier = ISLAND.tier) {
   const arena = ISLAND.arenas[index];
-  const boss = createBehemothState(speciesId);
+  const boss = createBehemothState(speciesId, tier);
   Object.assign(boss, { position: [...arena.center], lifecycle: 'spawning', lifecycleTime: 0 });
-  return { id: `island-${serial}`, speciesId, index, serial, arena, boss, awareness: 'dormant', clock: 0 };
+  return { id: `island-${serial}`, speciesId, tier, index, serial, arena, boss, summon: null, summonUnlocked: false, summonCooldown: 0, summonSerial: 0, awareness: 'dormant', clock: 0 };
 }
+export const encounterEnemies = encounter => [encounter.boss, encounter.summon?.boss].filter(Boolean);
 export function alertEncounter(encounter, position) {
   if (encounterTouchable(encounter.boss) && inTerritory(encounter.arena, position)) encounter.awareness = 'engaged';
 }
 export function stepIslandEncounter(encounter, players, dt) {
   let { boss, arena } = encounter;
   encounter.clock += dt;
+  if (encounter.summon?.boss.mode === 'defeated' && !encounter.summon.replacementWaitStarted) {
+    encounter.summon.replacementWaitStarted = true;
+    encounter.summonCooldown = SUMMON_REPLACEMENT_DELAY;
+  }
+  // Count from defeat, concurrently with disappearance, even outside engagement.
+  encounter.summonCooldown = Math.max(0, encounter.summonCooldown - dt);
   if (boss.mode === 'defeated') {
+    // The summon retains its own life and rewards; finish it before replacement.
+    stepSummon(encounter, players, dt);
     boss.lifecycleTime += dt;
     boss.lifecycle = boss.lifecycleTime < ISLAND.deathDuration ? 'dying' : 'absent';
     if (boss.lifecycleTime >= ISLAND.deathDuration + ISLAND.replacementDelay) {
+      if (encounter.summon) return encounter;
       const next = (encounter.index + 1) % ISLAND.arenas.length;
       // Defer materialization if a hunter is standing at the next spawn.
       if (players.some(p => distance(p.position, ISLAND.arenas[next].center) < 6)) return encounter;
@@ -63,9 +75,10 @@ export function stepIslandEncounter(encounter, players, dt) {
   } else {
     // Health, parts and stagger persist; timed combat states continue expiring.
     stepWounds(boss.parts, dt);
-    if (boss.speciesId === 'quillshot') advanceQuillshotTimers(boss, dt);
+    if (boss.speciesId === 'quillshot') advanceQuillshotTimers(boss, dt, false);
     else {
-      for (const mode of Object.values(boss.states)) advanceTimedMode(mode, dt);
+      advanceTimedMode(boss.states.enrage, dt);
+      advanceEmbermaneModes(boss, dt, false);
       boss.flash = Math.max(0, boss.flash - dt);
     }
     boss.elapsed += dt; boss.move = null;
@@ -82,5 +95,29 @@ export function stepIslandEncounter(encounter, players, dt) {
     }
     if (returning && d < 0.3) encounter.awareness = 'dormant';
   }
+  const summonTier = BEHEMOTH_TIERS[boss.tier ?? 'normal'].summon;
+  if (summonTier && boss.health < boss.definition.maxHealth * SUMMON_HEALTH_FRACTION) encounter.summonUnlocked = true;
+  if (summonTier && encounter.summonUnlocked && encounter.awareness === 'engaged' && !encounter.summon) {
+    if (encounter.summonCooldown <= 1e-8 && !['windup', 'active', 'recovery', 'reaction'].includes(boss.mode)) {
+      const summon = createIslandEncounter(encounter.index, encounter.serial, encounter.speciesId, summonTier);
+      summon.id = `${encounter.id}-summon-${++encounter.summonSerial}`;
+      summon.boss.position = [boss.position[0] + 7, boss.position[1], boss.position[2]];
+      if (!inTerritory(arena, summon.boss.position, -5)) summon.boss.position = [...arena.center];
+      summon.boss.summonerId = encounter.id;
+      summon.awareness = 'engaged'; encounter.summon = summon;
+    }
+  }
+  stepSummon(encounter, players, dt);
   return encounter;
+}
+function stepSummon(encounter, players, dt) {
+  const summon = encounter.summon;
+  if (!summon) return;
+  if (summon.boss.mode === 'defeated') {
+    summon.boss.lifecycleTime += dt;
+    summon.boss.lifecycle = 'dying';
+    if (summon.boss.lifecycleTime >= ISLAND.deathDuration) encounter.summon = null;
+    return;
+  }
+  stepIslandEncounter(summon, players, dt);
 }

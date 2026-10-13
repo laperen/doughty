@@ -1,5 +1,7 @@
+import { EXPLORATION_ISLANDS } from './exploration-islands.js';
+import { createExplorationIslandView } from './exploration-island-view.js';
 import { chestplateAbility, createChestplateAbilityState, stepChestplateAbility, activateChestplateAbility } from './chestplate-abilities.js';
-import { ARMOR, equipArmor, craftArmor, armorDefense, mitigateDamage } from './armor.js';
+import { ARMOR, equipArmor, craftArmor, upgradeArmor, armorDefense, mitigateDamage } from './armor.js';
 import { cellBonus, embeddedCellLevel, createCell, createCellCombatState, recordRecycleHit, syncCellStats, beginCellDodge, activateDodgeCells, recordCellDamage } from './cells.js';
 import { consumeResource, stepShields } from './resource-shields.js';
 import { equipCell, equipmentCellLevels } from './equipment-cells.js';
@@ -18,7 +20,7 @@ import { behemothPushOut } from './behemoth-collision.js';
 import { CHAINBLADES } from './chainblades-weapon.js';
 import { createEnvironment } from './environment.js';
 import { createSunShadows } from './sun-shadows.js';
-import { ISLAND, createIslandEncounter, stepIslandEncounter, alertEncounter, inTerritory, encounterTouchable } from './island-encounters.js';
+import { ISLAND, encounterEnemies, createIslandEncounter, stepIslandEncounter, alertEncounter, inTerritory, encounterTouchable } from './island-encounters.js';
 import { createIslandView } from './island-view.js';
 import { createRangeScenery } from './range-scenery.js';
 import { createArenaHud } from './arena-hud.js';
@@ -34,8 +36,10 @@ import { sweptMeleeContact } from './swept-melee.js';
 import { spendStamina } from './stamina.js';
 import { addTimedStatModifier, getEffectiveStat, getStatModifierRemaining, stepStatModifiers } from './stat-modifiers.js';
 import { definitionFor, behemothAttackTouchesPlayer, createBehemothState, hitBehemoth, isInterruptible } from './encounter-combat.js';
-import { createBehemothView, updateBehemothView } from './encounter-view.js';
+import { createBehemothView, updateBehemothView, disposeBehemothView } from './encounter-view.js';
 import { quillImpactTouches } from './quillshot.js';
+import { applyBurning, dodgeBurning, stepBurning } from './burning.js';
+import { COMBAT_TEXT } from './combat-text.js';
 import { createPlayerView, updatePlayerView } from './player-view.js';
 import { createCombatFeedback } from './combat-feedback.js';
 import { TRAINING_TARGET, createTrainingState, hitTrainingTarget, stepTrainingTarget, trainingDps } from './training-target.js';
@@ -49,6 +53,11 @@ try {
       dialogueActionHandled = true;
       settlementPanel.hidden = true;
       openEquipment('smith');
+    },
+    OpenArmorCrafting() {
+      dialogueActionHandled = true;
+      settlementPanel.hidden = true;
+      openEquipment('armorer');
     },
     OpenRepeaterCrafting() {
       dialogueActionHandled = true;
@@ -71,7 +80,7 @@ const loading = document.querySelector('#loading');
 const fallback = document.querySelector('#webglFallback');
 const homeScreen = document.querySelector('#homeScreen');
 const arenaScreen = document.querySelector('#arenaScreen');
-const playerHud = createArenaHud(arenaScreen);
+const playerHud = createArenaHud(arenaScreen, entry => narrative?.text(entry.id) ?? entry.value);
 const islandStatus = document.createElement('div');
 islandStatus.className = 'island-status hidden';
 islandStatus.setAttribute('aria-label', 'Island encounter');
@@ -116,7 +125,7 @@ let selectedArena = 'range';
 try {
   const savedArena = localStorage.getItem(arenaStorageKey);
   if (savedArena === 'combat') selectedArena = 'island';
-  else if (['range', 'island', 'old-town'].includes(savedArena)) selectedArena = savedArena;
+  else if (['range', 'island', 'old-town', ...Object.keys(EXPLORATION_ISLANDS)].includes(savedArena)) selectedArena = savedArena;
 } catch { /* Use the current range when storage is unavailable. */ }
 let pendingArena = selectedArena;
 const materialInventory = loadInventory({ getItem: key => localStorage.getItem(key) });
@@ -200,13 +209,15 @@ const islandView = new THREE.Group(); islandView.visible = false;
 scene.add(islandView);
 const oldTownView = { root: new THREE.Group(), stations: [] }; oldTownView.root.visible = false;
 scene.add(oldTownView.root);
+const explorationViews = new Map(Object.keys(EXPLORATION_ISLANDS).map(id => { const view = new THREE.Group(); view.visible = false; scene.add(view); return [id, view]; }));
+const currentExplorationIsland = () => EXPLORATION_ISLANDS[selectedArena];
 const mapLoads = new Map();
 const preparedMapCollision = new Map();
 const ensureMapLoaded = (mode) => {
   if (mode === 'range') return Promise.resolve();
   if (!mapLoads.has(mode)) mapLoads.set(mode, (async () => {
-    const view = await loadMapAsset(mode, mode === 'old-town' ? createOldTownView : createIslandView);
-    const destination = mode === 'old-town' ? oldTownView.root : islandView;
+    const view = await loadMapAsset(mode, EXPLORATION_ISLANDS[mode] ? () => createExplorationIslandView(EXPLORATION_ISLANDS[mode]) : mode === 'old-town' ? createOldTownView : createIslandView);
+    const destination = explorationViews.get(mode) ?? (mode === 'old-town' ? oldTownView.root : islandView);
     destination.add(...[...view.root.children]);
     destination.name = view.root.name;
     destination.position.copy(view.root.position);
@@ -243,11 +254,15 @@ settlementTravelControls.innerHTML = `<div class="camera-settings arena-selectio
   <div class="settings-heading"><span class="settings-rule"></span><span id="huntingBoardDestinationTitle">MAP SELECTION</span></div>
   <label class="arena-option"><input type="radio" name="hunting-board-arena" value="island" checked><span><strong>Cinderwild Isle</strong></span></label>
   <label class="arena-option"><input type="radio" name="hunting-board-arena" value="range"><span><strong>Open Range</strong></span></label>
+<label class="arena-option"><input type="radio" name="hunting-board-arena" value="brackenlight"><span><strong>Brackenlight Reach</strong></span></label>
+<label class="arena-option"><input type="radio" name="hunting-board-arena" value="thunderstep"><span><strong>Thunderstep Highlands</strong></span></label>
+<label class="arena-option"><input type="radio" name="hunting-board-arena" value="rimewatch"><span><strong>Rimewatch Expanse</strong></span></label>
+<label class="arena-option"><input type="radio" name="hunting-board-arena" value="cinderfall"><span><strong>Cinderfall Crucible</strong></span></label>
 </div><button type="button" class="primary-button">Go to selected location</button>`;
 settlementPanel.append(settlementTravelControls);
 settlementTravelControls.querySelector('button').addEventListener('click', async () => {
   const destination = settlementTravelControls.querySelector('input:checked')?.value;
-  if (!['range', 'island'].includes(destination)) return;
+  if (!['range', 'island', ...Object.keys(EXPLORATION_ISLANDS)].includes(destination)) return;
   settlementPanel.hidden = true;
   altCursorHeld = false;
   clearInput();
@@ -344,7 +359,6 @@ async function interactSettlement() {
     return;
   }
   settlementPanel.querySelector('p').hidden = false;
-  if (station.id === 'armorer') { openEquipment('armorer'); return; }
   if (binding) {
     dialogueRevision++;
     dialogueStation = station;
@@ -361,6 +375,7 @@ async function interactSettlement() {
     return;
   }
   // Retain service access if narrative assets could not be loaded.
+  if (station.id === 'armorer') { openEquipment('armorer'); return; }
   if (station.id === 'repeaters') { openEquipment(station.id); return; }
   if (station.id === 'cell-researcher') { openCells(); return; }
   settlementTravelControls.hidden = station.id !== 'arena-travel';
@@ -500,6 +515,8 @@ let behemothState = createBehemothState();
 let BEHEMOTH = definitionFor(behemothState);
 let behemothView = createBehemothView(scene);
 const encounterViews = new Map([['first-behemoth', behemothView]]);
+const summonViews = new Map();
+const enemyRecords = () => [{ boss: behemothState, view: behemothView }, ...[...summonViews.values()].filter(r => r.boss === islandEncounter.summon?.boss)];
 behemothView.root.visible = false;
 const projectileTargets = [];
 const registerProjectileTarget = ({ id, mesh, sizeClass = 'small', onDamage }) => {
@@ -549,7 +566,8 @@ const clearCellCombat = () => {
   playerState.statModifiers = playerState.statModifiers.filter(m => !['evasive-fury', 'wild-frenzy', 'embermane-movement'].includes(m.source));
   syncCellStats(playerState, currentCellLevels());
 };
-const damageBehemoth = (damage, { part = 'body', stagger = 0, wound = 0, interrupt = false, periodic = false, melee = false, damageModifiers = [] } = {}) => {
+const damageBehemoth = (damage, { part = 'body', stagger = 0, wound = 0, interrupt = false, periodic = false, melee = false, damageModifiers = [], targetBoss = behemothState, targetView = behemothView } = {}) => {
+  const behemothState = targetBoss, behemothView = targetView, BEHEMOTH = definitionFor(targetBoss);
   if (selectedArena !== 'island' || !encounterTouchable(behemothState)) return { outcome: 'ignored' };
   if (selectedArena === 'island' && !inTerritory(islandEncounter.arena, playerState.position, 1)) return { outcome: 'ignored' };
   if (selectedArena === 'island' && !periodic) alertEncounter(islandEncounter, playerState.position);
@@ -585,12 +603,36 @@ const syncEncounterView = () => {
   if (!encounterViews.has(species)) encounterViews.set(species, createBehemothView(scene, species));
   behemothView = encounterViews.get(species);
   BEHEMOTH = definitionFor(behemothState);
+  updateBehemothView(behemothView, behemothState, 0, collisionVisibilityToggle.checked);
   for (let i = projectileTargets.length - 1; i >= 0; i--) if (projectileTargets[i].kind === 'first-behemoth') projectileTargets.splice(i, 1);
   for (const [part, mesh] of Object.entries(behemothView.hitboxes)) registerProjectileTarget({
     id: 'first-behemoth', mesh, sizeClass: 'large',
     onDamage: (damage, details) => damageBehemoth(damage, { part, stagger: details?.stagger ?? 22, interrupt: details?.interrupt === true, damageModifiers: details?.damageModifiers }),
   });
   behemothView.root.visible = selectedArena === 'island';
+};
+const syncSummonView = () => {
+  const summon = islandEncounter.summon;
+  for (const [id, record] of summonViews) if (id !== summon?.id) {
+    disposeBehemothView(record.view);
+    for (let i = projectileTargets.length - 1; i >= 0; i--) if (projectileTargets[i].id === id) projectileTargets.splice(i, 1);
+    summonViews.delete(id);
+    equipment?.definition.onTargetRemoved?.(equipment.state, id);
+  }
+  if (summon && !summonViews.has(summon.id)) {
+    const view = createBehemothView(scene, summon.speciesId);
+    summonViews.set(summon.id, { boss: summon.boss, view });
+    for (const [part, mesh] of Object.entries(view.hitboxes)) {
+      registerProjectileTarget({ id: summon.id, mesh, sizeClass: 'large',
+        onDamage: (damage, details) => damageBehemoth(damage, { ...details, part, targetBoss: summon.boss, targetView: view }) });
+      const record = projectileTargets.at(-1); record.kind = 'first-behemoth'; record.boss = summon.boss;
+    }
+  }
+  for (const record of summonViews.values()) {
+    updateBehemothView(record.view, record.boss, 0, collisionVisibilityToggle.checked);
+    record.view.root.visible &&= selectedArena === 'island';
+    if (record.view.projectileRoot) record.view.projectileRoot.visible &&= selectedArena === 'island';
+  }
 };
 syncEncounterView();
 let projectileObstacleMeshes = [];
@@ -635,7 +677,7 @@ const rebuildArenaCollision = () => {
     projectileObstacleMeshes = movementMeshes;
     return;
   }
-  const mapRoot = isTown() ? currentTownView().root : selectedArena === 'island' ? islandView : arena;
+  const mapRoot = explorationViews.get(selectedArena) ?? (isTown() ? currentTownView().root : selectedArena === 'island' ? islandView : arena);
   mapRoot.updateMatrixWorld(true);
   movementGeometry = new THREE.Group();
   movementMeshes = [];
@@ -707,8 +749,8 @@ const movementCollisionWorld = {
           corrected = true;
           moved = true;
         }
-        if (!phaseEnemies && selectedArena === 'island' && encounterTouchable(behemothState)) {
-          const push = behemothPushOut(behemothState, [capsule.start.x, capsule.start.y - radius, capsule.start.z], radius, height);
+        for (const enemy of selectedArena === 'island' && !phaseEnemies ? encounterEnemies(islandEncounter).filter(encounterTouchable) : []) {
+          const push = behemothPushOut(enemy, [capsule.start.x, capsule.start.y - radius, capsule.start.z], radius, height);
           if (push) {
             const length = Math.hypot(...push);
             capsule.translate(new THREE.Vector3(push[0] * (1 + skin / length), 0, push[1] * (1 + skin / length)));
@@ -747,8 +789,7 @@ const movementCollisionWorld = {
       .find((hit) => hit && hit.depth > 1e-4 && !isWalkableSlope(hit.normal.toArray()));
     // A capsule resting on a floor or platform is expected to touch it. Treat
     // only penetration into a wall/ceiling as a blocked movement candidate.
-    return Boolean(contact) || dummyBlocked || (selectedArena === 'island' && encounterTouchable(behemothState)
-      && Boolean(behemothPushOut(behemothState, position, radius, height)));
+    return Boolean(contact) || dummyBlocked || (selectedArena === 'island' && encounterEnemies(islandEncounter).some(enemy => encounterTouchable(enemy) && Boolean(behemothPushOut(enemy, position, radius, height))));
   },
   raycast(origin, direction, distance) {
     movementRaycaster.set(new THREE.Vector3(...origin), new THREE.Vector3(...direction).normalize());
@@ -765,6 +806,9 @@ const playerState = createPlayerState();
 const playerView = createPlayerView();
 const player = playerView.root;
 const playerBodyMaterial = playerView.armor;
+const burningEffect = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.065, 6, 24), new THREE.MeshBasicMaterial({ color: '#ff8b24', transparent: true, opacity: 0.8, depthWrite: false }));
+burningEffect.rotation.x = Math.PI / 2; burningEffect.position.y = 0.18; burningEffect.visible = false;
+player.add(burningEffect);
 const feedback = createCombatFeedback(scene, appShell);
 const feedbackControls = document.createElement('div');
 feedbackControls.className = 'feedback-controls';
@@ -959,8 +1003,8 @@ window.registerProjectileTarget = registerProjectileTarget;
 // Camera aim chooses a point; the muzzle ray enforces range and nearby occlusion.
 function repeaterAim(yawOffset = 0, pitchOffset = 0) {
   scene.updateMatrixWorld(true);
-  const records = projectileTargets.filter(record => selectedArena === 'range'
-    ? record.kind !== 'first-behemoth' : record.kind !== 'training-dummy' && encounterTouchable(behemothState));
+  const records = projectileTargets.filter(record => !currentExplorationIsland() && (selectedArena === 'range'
+    ? record.kind !== 'first-behemoth' : record.kind !== 'training-dummy' && encounterTouchable(record.boss ?? behemothState)));
   const objects = [...projectileObstacleMeshes, ...records.map(record => record.mesh)];
   const ray = new THREE.Raycaster();
   ray.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -978,12 +1022,13 @@ function repeaterAim(yawOffset = 0, pitchOffset = 0) {
     distance: hit?.distance ?? Infinity, record: hit && records.find(record => record.mesh === hit.object) };
 }
 function repeaterReloadSource() {
+  if (currentExplorationIsland()) return null;
   scene.updateMatrixWorld(true);
   const origin = new THREE.Vector3(playerState.position[0], playerState.position[1] + 1.3, playerState.position[2]);
   let nearest = null;
   for (const record of projectileTargets) {
     if (selectedArena === 'range' ? record.kind === 'first-behemoth'
-      : record.kind === 'training-dummy' || !encounterTouchable(behemothState)) continue;
+      : record.kind === 'training-dummy' || !encounterTouchable(record.boss ?? behemothState)) continue;
     const end = new THREE.Box3().setFromObject(record.mesh).clampPoint(origin, new THREE.Vector3());
     const distance = origin.distanceTo(end);
     if (distance <= REPEATER_TUNING.idealRange && (!nearest || distance < nearest.distance)) nearest = { end, distance };
@@ -1096,11 +1141,13 @@ const renderCombatHud = () => {
   islandStatus.classList.toggle('hidden', selectedArena !== 'island');
   if (selectedArena === 'island') {
     const e = islandEncounter;
-    const waiting = e.boss.mode === 'defeated';
+    const livingBoss = e.boss.mode === 'defeated' && e.summon ? e.summon.boss : e.boss;
+    const waiting = e.boss.mode === 'defeated' && !e.summon;
     const destination = waiting ? ISLAND.arenas[(e.index + 1) % ISLAND.arenas.length] : e.arena;
     const distance = Math.round(Math.hypot(playerState.position[0] - destination.center[0], playerState.position[2] - destination.center[2]));
-    const activity = waiting ? 'Defeated / a new hunt is forming' : e.boss.lifecycle === 'spawning' ? 'Behemoth arriving' : e.awareness === 'engaged' ? 'Behemoth alerted' : e.awareness === 'returning' ? 'Returning to its territory' : 'Behemoth roaming / approach to engage';
-    islandStatus.textContent = `${BEHEMOTH.name ?? 'Embermane'} / CINDERWILD ISLE\n${destination.name} / ${distance} m\n${activity}`;
+    const activity = waiting ? 'Defeated / a new hunt is forming' : livingBoss.lifecycle === 'spawning' ? 'Behemoth arriving' : e.awareness === 'engaged' ? 'Behemoth alerted' : e.awareness === 'returning' ? 'Returning to its territory' : 'Behemoth roaming / approach to engage';
+    islandStatus.textContent = `${definitionFor(livingBoss).name ?? 'Embermane'} / CINDERWILD ISLE\n${destination.name} / ${distance} m\n${activity}`;
+    if (livingBoss.states.aetherCharge.active) islandStatus.textContent += `\n${narrative?.text(COMBAT_TEXT.aetherCharge.id) ?? COMBAT_TEXT.aetherCharge.value} ${Math.ceil(livingBoss.states.aetherCharge.remaining)}s`;
   }
   const state = equipment?.state;
   combatStatus.textContent = !state ? 'NO WEAPON EQUIPPED' : state.sheathed ? 'SHEATHED Â· ATTACK TO DRAW' : (state.lastEvent ?? equipment.definition.name).toUpperCase();
@@ -1116,7 +1163,7 @@ const renderCombatHud = () => {
   if (!equipment) combatResources.textContent = '';
   const woundBuff = getStatModifierRemaining(playerState.statModifiers, 'wound-haste');
   if (woundBuff > 0) combatResources.textContent += ` | WOUND HASTE +15% ${woundBuff.toFixed(1)}s`;
-  combatTargetStatus.textContent = selectedArena === 'island' ? '' :
+  combatTargetStatus.textContent = selectedArena !== 'range' ? '' :
     `TRAINING DUMMY / INDESTRUCTIBLE\nCORE ${Math.round(trainingState.core)} / PART ${Math.round(trainingState.part)} / STAGGER ${Math.round(trainingState.stagger)} / WOUND ${Math.round(trainingState.wound)}\nDPS ${trainingDps(trainingState).toFixed(1)} / LAST ${Math.round(trainingState.lastHit)} / HITS ${trainingState.hits}`;
   behemothHud.classList.toggle('hidden', selectedArena !== 'island');
   if (selectedArena === 'island') {
@@ -1127,7 +1174,11 @@ const renderCombatHud = () => {
       return `<div>${definition.label.toUpperCase()} ${definition.woundable ? (meter.woundRemaining > 0 ? `WOUNDED ${meter.woundRemaining.toFixed(1)}s / ` : meter.woundSpent ? 'WOUND SPENT / ' : `WOUND HP ${Math.ceil(meter.woundHp)} / `) : ''}${meter.broken ? 'BROKEN' : `${Math.ceil(meter.damage)} / ${definition.health}`}</div><div class="meter part"><span style="width:${meter.damage / definition.health * 100}%"></span></div>`;
     }).join('');
     const enrage = behemothState.states.enrage;
-    const enrageLabel = enrage.active ? `ENRAGED ${Math.ceil(enrage.remaining)}s` : enrage.pending ? 'ENRAGE PENDING' : `ENRAGE ${Math.ceil(enrage.buildup)} / ${BEHEMOTH.maxHealth * BEHEMOTH.states.enrage.damageFraction}`;
+    const enrageLabel = !BEHEMOTH.states.enrage.enabled ? '' : enrage.active ? `ENRAGED ${Math.ceil(enrage.remaining)}s` : enrage.pending ? 'ENRAGE PENDING' : `ENRAGE ${Math.ceil(enrage.buildup)} / ${BEHEMOTH.maxHealth * BEHEMOTH.states.enrage.damageFraction}`;
+    const combatText = key => narrative?.text(COMBAT_TEXT[key].id) ?? COMBAT_TEXT[key].value;
+    const charge = behemothState.states.aetherCharge;
+    const elementalLabel = COMBAT_TEXT[behemothState.move] ? combatText(behemothState.move) : null;
+    const statusLabels = `${charge.active ? `<div>${combatText('aetherCharge')} ${Math.ceil(charge.remaining)}s</div>` : ''}${playerState.burning ? `<div>${combatText('burning')} ${Math.ceil(playerState.burning.remaining)}s</div>` : ''}`;
     const stateLabel = behemothState.mode === 'defeated' ? 'BEHEMOTH DEFEATED'
       : playerState.health <= 0 ? 'HUNTER DOWN'
       : behemothState.mode === 'reaction' ? behemothState.move.replaceAll('-', ' ').toUpperCase()
@@ -1135,26 +1186,32 @@ const renderCombatHud = () => {
       : behemothState.mode === 'run-out-turn' ? 'PREPARING TO RUN OUT'
       : behemothState.mode === 'run-out' ? 'RUNNING TO THE PERIMETER'
       : behemothState.mode === 'turn-back' ? 'TURNING â€” CHARGE INCOMING'
+      : elementalLabel && ['windup', 'active', 'recovery'].includes(behemothState.mode) ? elementalLabel
       : behemothState.mode === 'windup' ? `${behemothState.move.toUpperCase()} WINDUP`
       : behemothState.mode === 'observe' ? 'WATCHING THE HUNTER'
       : behemothState.mode === 'circle' ? 'CIRCLING'
       : behemothState.mode === 'retreat' ? 'CREATING SPACE' : '';
-    behemothHud.innerHTML = `<div>${BEHEMOTH.name ?? 'Embermane'}</div><div>${selectedArena === 'island' ? islandEncounter.arena.name.toUpperCase() + ' / ' + (behemothState.lifecycle === 'alive' ? islandEncounter.awareness : behemothState.lifecycle).toUpperCase() : 'FIRST BEHEMOTH'}</div><div>${behemothState.mode === 'defeated' ? '' : enrageLabel}</div><div class="meter"><span style="width:${health}%"></span></div><div>STAGGER ${Math.ceil(behemothState.stagger)} / ${Math.ceil(behemothState.staggerThreshold)}</div><div class="meter stagger"><span style="width:${stagger}%"></span></div>${parts}<div class="player-health">HUNTER ${Math.ceil(playerState.health)} / ${playerState.maxHealth}</div><div class="state">${stateLabel}</div>`;
+    const summon = islandEncounter.summon?.boss;
+    const summonLabel = summon ? `<div><span>${definitionFor(summon).name}</span> ${Math.ceil(summon.health)} / ${Math.ceil(definitionFor(summon).maxHealth)}</div>` : '';
+    behemothHud.innerHTML = `<div>${BEHEMOTH.name ?? 'Embermane'}</div><div>${selectedArena === 'island' ? islandEncounter.arena.name.toUpperCase() + ' / ' + (behemothState.lifecycle === 'alive' ? islandEncounter.awareness : behemothState.lifecycle).toUpperCase() : 'FIRST BEHEMOTH'}</div><div>${behemothState.mode === 'defeated' ? '' : enrageLabel}</div>${statusLabels}<div class="meter"><span style="width:${health}%"></span></div>${summonLabel}<div>STAGGER ${Math.ceil(behemothState.stagger)} / ${Math.ceil(behemothState.staggerThreshold)}</div><div class="meter stagger"><span style="width:${stagger}%"></span></div>${parts}<div class="player-health">HUNTER ${Math.ceil(playerState.health)} / ${playerState.maxHealth}</div><div class="state">${stateLabel}</div>`;
   }
 };
 const targetInMove = (move) => {
+  if (selectedArena !== 'range') return false;
   const yaw = equipment?.state?.attackYaw ?? playerState.facingYaw;
   return sweptMeleeContact(move, yaw, playerState.position, playerState.position,
     [target.position.x, target.position.y, target.position.z], undefined, TRAINING_TARGET.radius, 1.2);
 };
-const behemothInMove = (move, interrupt = false) => {
+const behemothInMove = (move, interrupt = false, targetBoss = behemothState, targetView = behemothView) => {
+  const behemothState = targetBoss;
   if (!encounterTouchable(behemothState)) return null;
   const yaw = equipment?.state?.action && Number.isFinite(equipment.state.attackYaw)
     ? equipment.state.attackYaw : playerState.facingYaw;
-  return selectBehemothPart(move, yaw, playerState.position, playerState.position, behemothState.position, interrupt);
+  return selectBehemothPart(move, yaw, playerState.position, playerState.position, behemothState.position, interrupt, targetBoss, targetView);
 };
 // Use the animated target volumes for every attack path. Broken parts stay eligible.
-const selectBehemothPart = (move, yaw, from, to, bossFrom = behemothState.position, interrupt = false) => {
+const selectBehemothPart = (move, yaw, from, to, bossFrom = behemothState.position, interrupt = false, targetBoss = behemothState, targetView = behemothView) => {
+  const behemothState = targetBoss, behemothView = targetView, BEHEMOTH = definitionFor(targetBoss);
   behemothView.root.position.set(...behemothState.position);
   behemothView.root.rotation.y = behemothState.yaw;
   behemothView.root.updateMatrixWorld(true);
@@ -1182,55 +1239,81 @@ const selectBehemothPart = (move, yaw, from, to, bossFrom = behemothState.positi
 
 const stepEncounter = (dt, resolveContacts = () => {}) => {
   if (selectedArena !== 'island') return;
+  const burningDamage = stepBurning(playerState, dt);
+  if (burningDamage) {
+    consumeResource(playerState, 'health', burningDamage);
+    feedback.impact([playerState.position[0], playerState.position[1] + 1.5, playerState.position[2]], burningDamage, { outcome: 'hurt' });
+    if (playerState.health <= 0) { playerState.burning = null; equipment?.definition.cancelAction?.(equipment.state); }
+  }
   playerState.invulnerability = Math.max(0, playerState.invulnerability - dt);
-  if (playerState.health <= 0 && behemothState.mode !== 'defeated') return;
+  if (playerState.health <= 0 && encounterEnemies(islandEncounter).some(enemy => enemy.mode !== 'defeated')) return;
   const previousMode = behemothState.mode;
   const previousPosition = [...behemothState.position];
+  const previousEnemyPositions = new Map(enemyRecords().map(r => [r.boss, [...r.boss.position]]));
   const previousId = islandEncounter.id;
   islandEncounter = stepIslandEncounter(islandEncounter, [{ position: playerState.position, knockedDown: isRecovering(playerState) }], dt);
   behemothState = islandEncounter.boss;
+  syncSummonView();
   if (previousId !== islandEncounter.id) {
     clearCellCombat();
     syncEncounterView();
-    for (const record of projectileTargets) if (record.kind === 'first-behemoth') record.id = islandEncounter.id;
+    for (const record of projectileTargets) if (record.kind === 'first-behemoth' && !record.boss) record.id = islandEncounter.id;
     for (const projectile of activeProjectiles) scene.remove(projectile.mesh);
     activeProjectiles.length = 0;
     equipment?.definition.onTargetRemoved?.(equipment.state, previousId);
   }
   // Player contact always resolves before damage from the newly moved enemy.
-  resolveContacts(previousPosition);
+  resolveContacts(previousPosition, previousEnemyPositions);
   if (behemothState.mode === 'windup' && previousMode !== 'windup') feedback.sound('cue');
-  const meleeHit = behemothAttackTouchesPlayer(behemothState, playerState.position);
-  const quillHit = behemothState.impactEvents?.find(q => quillImpactTouches(q, playerState.position));
-  if (meleeHit || quillHit) {
-    if (meleeHit) behemothState.attackHit = true;
-    const incomingDamage = meleeHit ? BEHEMOTH.moves[behemothState.move].damage : quillHit.damage;
-    const rolling = playerState.movementAction === 'dodge' && playerState.actionTime > 0.08;
-    activateEmbermane(playerState.statModifiers, currentFamilyAbility(), {
-      contact: true, dodgeProtected: rolling, damage: incomingDamage,
-      otherwiseProtected: equipment?.state.airHeight > 0 || isRecoveryProtected(playerState) || playerState.invulnerability > 0,
-    });
-    const dodgeHit = activateDodgeCells(cellCombat, playerState, currentCellLevels(), {
-      contact: true, dodgeProtected: rolling, damage: incomingDamage,
-      otherwiseProtected: equipment?.state.airHeight > 0 || isRecoveryProtected(playerState) || playerState.invulnerability > 0,
-    }, resolveAttackDamage(equipment?.definition.basicAttack ?? {}, EQUIPMENT[materialInventory.equipment.equipped]?.damage ?? 0).stagger ?? 0);
-    if (dodgeHit) damageBehemoth(0, { part: 'head', stagger: dodgeHit.stagger, interrupt: dodgeHit.interrupt });
-    if (!rolling && !(equipment?.state.airHeight > 0) && !isRecoveryProtected(playerState) && playerState.invulnerability === 0) {
-      const damageTaken = mitigateDamage(incomingDamage, armorDefense(materialInventory.armor));
-      consumeResource(playerState, 'health', damageTaken);
-      chestplateCombat.pendingProjectile = null;
-      chestplateCombat.commitment = 0;
-      equipment?.definition.cancelAction?.(equipment.state);
-      // Keep an unfulfilled Q hold through hit recovery; release/blur still clears it.
-      pressedKeys.clear();
-      // A hit during vulnerable get-up can start a new reaction.
-      playerState.recovery = null;
-      startKnockdown(playerState, behemothState.position);
-      feedback.impact([playerState.position[0], playerState.position[1] + 1.5, playerState.position[2]],
-        damageTaken, { outcome: 'hurt' });
-      playerBodyMaterial.emissive.set('#a23e36');
-      playerBodyMaterial.emissiveIntensity = 0.85;
-      if (playerState.health <= 0) equipment?.definition.cancelAction?.(equipment.state);
+  for (const { boss: enemy } of enemyRecords()) {
+    if (!encounterTouchable(enemy)) continue;
+    const behemothState = enemy, BEHEMOTH = definitionFor(enemy);
+    const meleeHit = behemothAttackTouchesPlayer(behemothState, playerState.position);
+    // Stream fireballs stop at arena geometry before player contact is resolved.
+    const blocked = new Set();
+    for (const q of behemothState.impactEvents ?? []) if (q.kind === 'stream') {
+      const delta = q.position.map((v, i) => v - q.previous[i]);
+      const length = Math.hypot(...delta);
+      if (length && movementCollisionWorld.raycast(q.previous, delta.map(v => v / length), length)) blocked.add(q.id);
+    }
+    if (blocked.size) {
+      behemothState.projectiles = behemothState.projectiles.filter(q => !blocked.has(q.id));
+      behemothState.impactEvents = behemothState.impactEvents.filter(q => !blocked.has(q.id));
+    }
+    const quillHit = behemothState.impactEvents?.find(q => quillImpactTouches(q, playerState.position));
+    const contactingStreams = new Set((behemothState.impactEvents ?? []).filter(q => q.kind === 'stream' && quillImpactTouches(q, playerState.position)).map(q => q.id));
+    if (contactingStreams.size) behemothState.projectiles = behemothState.projectiles.filter(q => !contactingStreams.has(q.id));
+    if (meleeHit || quillHit) {
+      if (meleeHit) behemothState.attackHit = true;
+      const incomingDamage = meleeHit ? BEHEMOTH.moves[behemothState.move].damage : quillHit.damage;
+      const rolling = playerState.movementAction === 'dodge' && playerState.actionTime > 0.08;
+      activateEmbermane(playerState.statModifiers, currentFamilyAbility(), {
+        contact: true, dodgeProtected: rolling, damage: incomingDamage,
+        otherwiseProtected: equipment?.state.airHeight > 0 || isRecoveryProtected(playerState) || playerState.invulnerability > 0,
+      });
+      const dodgeHit = activateDodgeCells(cellCombat, playerState, currentCellLevels(), {
+        contact: true, dodgeProtected: rolling, damage: incomingDamage,
+        otherwiseProtected: equipment?.state.airHeight > 0 || isRecoveryProtected(playerState) || playerState.invulnerability > 0,
+      }, resolveAttackDamage(equipment?.definition.basicAttack ?? {}, EQUIPMENT[materialInventory.equipment.equipped]?.damage ?? 0).stagger ?? 0);
+      if (dodgeHit) damageBehemoth(0, { part: 'head', stagger: dodgeHit.stagger, interrupt: dodgeHit.interrupt, targetBoss: enemy, targetView: enemyRecords().find(r => r.boss === enemy).view });
+      if (!rolling && !(equipment?.state.airHeight > 0) && !isRecoveryProtected(playerState) && playerState.invulnerability === 0) {
+        const damageTaken = mitigateDamage(incomingDamage, armorDefense(materialInventory.armor));
+        consumeResource(playerState, 'health', damageTaken);
+        if (playerState.health > 0 && (meleeHit ? behemothState.speciesId !== 'quillshot' && behemothState.states.aetherCharge.active : quillHit.burning)) applyBurning(playerState);
+        chestplateCombat.pendingProjectile = null;
+        chestplateCombat.commitment = 0;
+        equipment?.definition.cancelAction?.(equipment.state);
+        // Keep an unfulfilled Q hold through hit recovery; release/blur still clears it.
+        pressedKeys.clear();
+        // A hit during vulnerable get-up can start a new reaction.
+        playerState.recovery = null;
+        startKnockdown(playerState, behemothState.position);
+        feedback.impact([playerState.position[0], playerState.position[1] + 1.5, playerState.position[2]],
+          damageTaken, { outcome: 'hurt' });
+        playerBodyMaterial.emissive.set('#a23e36');
+        playerBodyMaterial.emissiveIntensity = 0.85;
+        if (playerState.health <= 0) equipment?.definition.cancelAction?.(equipment.state);
+      }
     }
   }
   // The enemy moved after the player step; separate any new overlap before the next frame.
@@ -1267,9 +1350,10 @@ const processWeaponStep = (dt) => {
     if (event.type === 'special-launch') { launchProjectile(event.projectile); feedback.sound('reward'); }
     if (event.type === 'attack-hit') feedback.sound('swing');
     const attackEvent = event.type === 'attack-hit';
-    const bossPart = selectedArena === 'island' && attackEvent ? behemothInMove(event.move, event.interrupt) : null;
+    const bossHits = selectedArena === 'island' && attackEvent ? enemyRecords().map(r => ({ ...r, part: behemothInMove(event.move, event.interrupt, r.boss, r.view) })).filter(r => r.part) : [];
+    const bossPart = bossHits[0]?.part;
     if (attackEvent && (selectedArena === 'island' ? bossPart : targetInMove(event.move))) {
-      if (selectedArena === 'island') damageBehemoth(event.move.damage, { part: bossPart, stagger: event.move.stagger, wound: event.move.wound, interrupt: event.interrupt, melee: equipment.definition.kind === 'melee' });
+      if (selectedArena === 'island') for (const hit of bossHits) damageBehemoth(event.move.damage, { part: hit.part, stagger: event.move.stagger, wound: event.move.wound, interrupt: event.interrupt, melee: equipment.definition.kind === 'melee', targetBoss: hit.boss, targetView: hit.view });
       else damageTrainingTarget(event.move.damage, { stagger: event.move.stagger, wound: event.move.wound });
       const confirmedEvent = event;
       if (equipment.definition.onHit?.(state, confirmedEvent) && event.ability === 'karma-breaker') state.lastEvent = 'Karma Breaker Â· damage over time';
@@ -1282,21 +1366,25 @@ const processWeaponStep = (dt) => {
   renderCombatHud();
   return result;
 };
-const resolveContinuousContacts = (events, from, to, bossFrom = behemothState.position) => {
+const resolveContinuousContacts = (events, from, to, bossFrom = behemothState.position, enemyFrom = new Map()) => {
+  if (selectedArena !== 'range' && selectedArena !== 'island') return;
   for (const event of events ?? []) {
     if (event.type !== 'attack-active' || event.action.hitRegistered) continue;
     const touches = (a, b, radius, height) => sweptMeleeContact(event.move, event.yaw, from, to, a, b, radius, height);
-    let part = null;
+    let part = null, selectedEnemy = null;
     if (selectedArena === 'island') {
-      if (!encounterTouchable(behemothState)) continue;
-      part = selectBehemothPart(event.move, event.yaw, from, to, bossFrom, event.interrupt);
+      for (const record of enemyRecords()) {
+        if (!encounterTouchable(record.boss)) continue;
+        part = selectBehemothPart(event.move, event.yaw, from, to, enemyFrom.get(record.boss) ?? (record.boss === behemothState ? bossFrom : record.boss.position), event.interrupt, record.boss, record.view);
+        if (part) { selectedEnemy = record; break; }
+      }
     } else {
       const center = [target.position.x, target.position.y + 0.14, target.position.z];
       if (touches(center, center, TRAINING_TARGET.radius, 1.2)) part = 'body';
     }
     if (!part) continue;
     event.action.hitRegistered = true;
-    if (selectedArena === 'island') damageBehemoth(event.move.damage, { part, stagger: event.move.stagger, wound: event.move.wound, interrupt: event.interrupt, melee: equipment.definition.kind === 'melee' });
+    if (selectedArena === 'island') damageBehemoth(event.move.damage, { part, stagger: event.move.stagger, wound: event.move.wound, interrupt: event.interrupt, melee: equipment.definition.kind === 'melee', targetBoss: selectedEnemy.boss, targetView: selectedEnemy.view });
     else damageTrainingTarget(event.move.damage, { stagger: event.move.stagger, wound: event.move.wound });
     equipment.definition.onHit?.(equipment.state, { ...event, type: 'attack-hit' });
   }
@@ -1334,8 +1422,8 @@ const launchProjectile = (definition) => {
   activeProjectiles.push({ ...definition, direction, position, travelled: 0, hitTargets: new Set(), mesh, collisionVolume });
 };
 const stepProjectiles = (dt) => {
-  const currentTargets = projectileTargets.filter((record) => selectedArena === 'island'
-    ? record.kind !== 'training-dummy' && encounterTouchable(behemothState) : record.kind !== 'first-behemoth');
+  const currentTargets = projectileTargets.filter((record) => !currentExplorationIsland() && (selectedArena === 'island'
+    ? record.kind !== 'training-dummy' && encounterTouchable(record.boss ?? behemothState) : record.kind !== 'first-behemoth'));
   for (let index = activeProjectiles.length - 1; index >= 0; index -= 1) {
     const projectile = activeProjectiles[index];
     const distance = Math.min(projectile.speed * dt, projectile.range - projectile.travelled);
@@ -1366,9 +1454,14 @@ const stepProjectiles = (dt) => {
       // Crescent spans several rays; resolve its intersected head before another
       // part consumes the single hit allowed against this large target.
       const obstacleDistance = rayHits.find(hit => !currentTargets.some(r => r.mesh === hit.object))?.distance ?? Infinity;
-      const interruptHead = projectile.interrupt && behemothState.speciesId === 'quillshot' && isInterruptible(behemothState)
-        && rayHits.some(hit => hit.object === behemothView.hitboxes.head && hit.distance < obstacleDistance)
-        ? currentTargets.find(r => r.mesh === behemothView.hitboxes.head) : null;
+      const interruptHeads = new Map();
+      if (projectile.interrupt) for (const { boss, view } of enemyRecords()) {
+        if (boss.speciesId === 'quillshot' && isInterruptible(boss)
+          && rayHits.some(hit => hit.object === view.hitboxes.head && hit.distance < obstacleDistance)) {
+          const head = currentTargets.find(r => r.mesh === view.hitboxes.head);
+          if (head) interruptHeads.set(head.id, head);
+        }
+      }
       const hitThisStep = new Set();
       for (const hit of rayHits) {
         const record = currentTargets.find((candidate) => candidate.mesh === hit.object);
@@ -1382,7 +1475,7 @@ const stepProjectiles = (dt) => {
         }
         hitThisStep.add(record.id);
         projectile.hitTargets.add(record.id);
-        const damageRecord = interruptHead?.id === record.id ? interruptHead : record;
+        const damageRecord = interruptHeads.get(record.id) ?? record;
         damageRecord.onDamage?.(projectile.damage, { source: projectile.id, interrupt: projectile.interrupt === true });
         if (projectile.kind === 'quill' || record.sizeClass === 'large' && hit.dissipatingLane) { dissipate = true; break; }
       }
@@ -1434,8 +1527,8 @@ const updateAttackVolume = () => {
 };
 const chainTarget = (yaw = equipment?.state.airElapsed != null ? getCameraYaw() : getAttackYaw()) => {
   if (isTown()) return null;
-  if (selectedArena === 'island' && !encounterTouchable(behemothState)) return null;
-  const meshes = selectedArena === 'range' ? [targetCore] : Object.entries(behemothView.hitboxes).filter(([part]) => !BEHEMOTH.parts[part]?.quills || !behemothState.parts[part].broken).map(([, mesh]) => mesh);
+  if (currentExplorationIsland()) return null;
+  const meshes = selectedArena === 'range' ? [targetCore] : enemyRecords().filter(r => encounterTouchable(r.boss)).flatMap(r => Object.entries(r.view.hitboxes).filter(([part]) => !definitionFor(r.boss).parts[part]?.quills || !r.boss.parts[part].broken).map(([, mesh]) => mesh));
   const origin = new THREE.Vector3(...playerState.position);
   return meshes.map(mesh => {
     mesh.updateWorldMatrix(true, false);
@@ -1579,6 +1672,12 @@ const equipmentView = createEquipmentView({ inventory: materialInventory, area: 
     renderCombatHud();
     persistMaterials(); return true;
   },
+  onUpgradeArmor: id => {
+    if (!upgradeArmor(materialInventory, id, selectedArena)) return false;
+    syncCellStats(playerState, currentCellLevels());
+    renderCombatHud();
+    persistMaterials(); return true;
+  },
   onCraftArmor: id => {
     if (!craftArmor(materialInventory, id, selectedArena)) return false;
     persistMaterials(); return true;
@@ -1608,7 +1707,7 @@ const keyToAction = (event) => {
   }
   if (event.repeat || arenaScreen.classList.contains('hidden')) return;
   if (key === 'e' && isTown()) { interactSettlement(); return; }
-  if (isTown() && ['q', 'r', 'x', 'v'].includes(key)) return;
+  if (isTown() && ['q', 'r', 'x', 'v', ' '].includes(key)) return;
   if (key === 'v') {
     if (playerState.health <= 0 || isRecovering(playerState) || playerState.dodgeInputBlock > 0
       || ['dodge', 'climb'].includes(playerState.movementAction)) return;
@@ -1650,6 +1749,7 @@ const resetEncounter = () => {
   clearInput();
   const startingSpecies = ISLAND.roster[Math.floor(Math.random() * ISLAND.roster.length)];
   islandEncounter = createIslandEncounter(0, 1, startingSpecies);
+  syncSummonView();
   behemothState = selectedArena === 'island' ? islandEncounter.boss : createBehemothState();
   syncEncounterView();
   for (const record of projectileTargets) if (record.kind === 'first-behemoth') record.id = selectedArena === 'island' ? islandEncounter.id : 'first-behemoth';
@@ -1657,7 +1757,7 @@ const resetEncounter = () => {
   playerState.health = playerState.maxHealth;
   playerState.stamina = playerState.maxStamina;
   playerState.invulnerability = 0;
-  playerState.position = isTown() ? [...currentTown().arrival] : selectedArena === 'island' ? [...ISLAND.arrival] : [0, -0.025, 1.5];
+  playerState.position = currentExplorationIsland() ? [...currentExplorationIsland().arrival] : isTown() ? [...currentTown().arrival] : selectedArena === 'island' ? [...ISLAND.arrival] : [0, -0.025, 1.5];
   playerState.lastGroundedPosition = [...playerState.position];
   playerState.velocity = [0, 0, 0];
   playerBodyMaterial.emissive.set('#000000');
@@ -1675,16 +1775,17 @@ resetArenaButton.addEventListener('click', () => {
 let arenaLoadRequest = 0;
 const applyArenaMode = async (mode, persist = true) => {
   const request = ++arenaLoadRequest;
-  const destination = ['island', 'old-town'].includes(mode) ? mode : 'range';
+  const destination = ['island', 'old-town', ...Object.keys(EXPLORATION_ISLANDS)].includes(mode) ? mode : 'range';
   await ensureMapLoaded(destination);
   if (request !== arenaLoadRequest) return;
-  selectedArena = ['island', 'old-town'].includes(mode) ? mode : 'range';
+  selectedArena = ['island', 'old-town', ...Object.keys(EXPLORATION_ISLANDS)].includes(mode) ? mode : 'range';
   if (isTown() && !arenaScreen.classList.contains('hidden')) { bankLoot(materialInventory); persistMaterials(); }
   arenaScreen.classList.toggle('safe-area', isTown());
 
   arena.visible = selectedArena === 'range';
   oldTownView.root.visible = selectedArena === 'old-town';
   islandView.visible = selectedArena === 'island';
+  for (const [id, view] of explorationViews) view.visible = id === selectedArena;
   const scale = ARENA_SCALE;
   arena.scale.set(scale, 1, scale);
 
@@ -1692,19 +1793,19 @@ const applyArenaMode = async (mode, persist = true) => {
   collisionVisuals.visible = selectedArena === 'range' && collisionVisibilityToggle.checked;
   target.visible = selectedArena === 'range';
   behemothView.root.visible = selectedArena === 'island';
-  selectedArenaName.textContent = isTown() ? currentTown().name : selectedArena === 'island' ? 'Cinderwild Isle' : 'Open Range';
+  selectedArenaName.textContent = currentExplorationIsland()?.name ?? (isTown() ? currentTown().name : selectedArena === 'island' ? 'Cinderwild Isle' : 'Open Range');
   settlementPanel.hidden = true;
-  arenaModeBadge.textContent = isTown() ? currentTown().name.toUpperCase() : selectedArena === 'island' ? 'CINDERWILD ISLE' : 'TRAINING RANGE';
-  arenaCaption.innerHTML = isTown() ? 'SURVIVORS AND SHELTER<br />E TO TALK' : selectedArena === 'island' ? 'TWO TERRITORIES<br />FOLLOW THE STONE PATHS' : 'ENCLOSED RANGE<br />OPEN APPROACH';
+  arenaModeBadge.textContent = currentExplorationIsland()?.name ?? (isTown() ? currentTown().name.toUpperCase() : selectedArena === 'island' ? 'CINDERWILD ISLE' : 'TRAINING RANGE');
+  arenaCaption.innerHTML = currentExplorationIsland() ? 'EXPLORATION ISLAND<br />NO BEHEMOTHS' : isTown() ? 'SURVIVORS AND SHELTER<br />E TO TALK' : selectedArena === 'island' ? 'TWO TERRITORIES<br />FOLLOW THE STONE PATHS' : 'ENCLOSED RANGE<br />OPEN APPROACH';
   controls.maxDistance = selectedArena !== 'range' ? 260 : 24;
   controls.minDistance = selectedArena === 'island' ? 16 : 4;
   controls.target.set(0, 1.2, 0);
-  const previewDistance = selectedArena === 'old-town' ? 145 : selectedArena === 'island' ? 176 : 18;
+  const previewDistance = currentExplorationIsland() ? 235 : selectedArena === 'old-town' ? 145 : selectedArena === 'island' ? 176 : 18;
   // Distant previews need more depth precision for the closely layered paths.
   camera.near = arenaScreen.classList.contains('hidden') ? 2 : 0.1;
   camera.far = selectedArena === 'range' ? 120 : 400;
   camera.updateProjectionMatrix();
-  environment.setArena(isTown() ? 'island' : selectedArena);
+  environment.setArena(isTown() || currentExplorationIsland() ? 'island' : selectedArena);
   camera.position.set(previewDistance * 0.67, previewDistance * 0.53, previewDistance * 0.75);
   controls.update();
   controls.saveState();
@@ -1750,7 +1851,7 @@ const withFullscreenMapTransition = async (changeScreen) => {
 };
 const setArenaMode = async (mode, persist = true) => {
   if (mapTransitionActive) return;
-  const destination = ['island', 'old-town'].includes(mode) ? mode : 'range';
+  const destination = ['island', 'old-town', ...Object.keys(EXPLORATION_ISLANDS)].includes(mode) ? mode : 'range';
   if (arenaScreen.classList.contains('hidden') || destination === selectedArena) {
     return applyArenaMode(destination, persist);
   }
@@ -1779,7 +1880,7 @@ const homeMapFade = document.createElement('div');
 homeMapFade.className = 'home-map-fade';
 homeMapFade.setAttribute('aria-hidden', 'true');
 root.append(homeMapFade);
-const homeMaps = ['range', 'island', 'old-town'];
+const homeMaps = ['range', 'island', 'old-town', ...Object.keys(EXPLORATION_ISLANDS)];
 const homeMapInterval = 20000;
 const homeMapFadeDuration = 800;
 let homeMapDeadline = performance.now() + homeMapInterval;
@@ -2006,7 +2107,7 @@ const animate = () => {
       stepShields(playerState, movementStep);
       stepFamilyAbility(familyCombat, currentFamilyAbility(), movementStep);
       const chestplateProjectile = stepChestplateAbility(chestplateCombat, currentChestplateAbility(), movementStep);
-      if (chestplateProjectile) launchProjectile(chestplateProjectile);
+      if (chestplateProjectile) for (const projectile of chestplateProjectile) launchProjectile(projectile);
       stepRangedEffects(movementStep);
       if (selectedArena === 'range') stepTrainingTarget(trainingState, movementStep);
       if (!chestplateCommitted && qHeldSince !== null && !qConsumed && performance.now() - qHeldSince >= 300 && equipment && playerState.health > 0 && !isRecovering(playerState) && playerState.dodgeInputBlock <= 0 && !['dodge', 'climb'].includes(playerState.movementAction)) {
@@ -2046,11 +2147,11 @@ const animate = () => {
         facingMode: equipment?.state?.sheathed ? 'travel' : undefined,
         facingYaw: chestplateCommitted ? chestplateCombat.yaw : equipment?.state?.action && Number.isFinite(equipment.state.attackYaw) ? equipment.state.attackYaw : undefined,
         jumpPressed: !chestplateCommitted && !consumedActionPress && !weaponTick.locked && pressedKeys.has('jump'),
-        dodgePressed: !chestplateCommitted && !consumedActionPress && !weaponTick.locked && pressedKeys.has('dodge'),
+        dodgePressed: !isTown() && !chestplateCommitted && !consumedActionPress && !weaponTick.locked && pressedKeys.has('dodge'),
       }, movementStep, {
         colliders: ARENA_COLLIDERS,
         collisionWorld: movementCollisionWorld,
-        fallResetPosition: isTown() ? currentTown().arrival : null,
+        fallResetPosition: currentExplorationIsland()?.arrival ?? (isTown() ? currentTown().arrival : null),
         floorBounds: selectedArena !== 'range'
           ? { minX: -75, maxX: 75, minZ: -75, maxZ: 75, y: -0.025 }
           : undefined,
@@ -2059,7 +2160,7 @@ const animate = () => {
       });
       if (playerState.movementAction !== previousMovementAction && ['dodge', 'climb'].includes(playerState.movementAction)) {
         equipment?.definition.cancelAction?.(equipment.state);
-        if (playerState.movementAction === 'dodge') { beginCellDodge(cellCombat); feedback.sound('swing'); }
+        if (playerState.movementAction === 'dodge') { dodgeBurning(playerState); beginCellDodge(cellCombat); feedback.sound('swing'); }
       }
       if (weaponTick.travelDelta > 0) {
         const directionYaw = weaponTick.travelYaw ?? equipment?.state?.attackYaw ?? playerState.facingYaw;
@@ -2078,8 +2179,8 @@ const animate = () => {
         playerState.position = resolved.position;
       }
       resolveTravel(playerState.position, playerState.position);
-      stepEncounter(movementStep, (bossFrom) => resolveContinuousContacts(
-        weaponTick.events, playerState.position, playerState.position, bossFrom,
+      stepEncounter(movementStep, (bossFrom, enemyFrom) => resolveContinuousContacts(
+        weaponTick.events, playerState.position, playerState.position, bossFrom, enemyFrom,
       ));
       if (selectedArena === 'island' && equipment?.state?.action?.move?.phaseEnemies !== true) {
         playerState.position = movementCollisionWorld.moveCapsule(playerState.position, [0, 0, 0], 0.36, 1.72).position;
@@ -2095,6 +2196,8 @@ const animate = () => {
     if (consumedActionPress) pressedKeys.clear();
 
     updatePlayerView(playerView, playerState, equipment, delta);
+    burningEffect.visible = Boolean(playerState.burning && playerState.health > 0);
+    burningEffect.scale.setScalar(1 + Math.sin(performance.now() / 90) * 0.12);
     const tempestAction = equipment?.state?.action?.ability === 'tempest-form' ? equipment.state.action : null;
     const castProgress = tempestAction ? THREE.MathUtils.clamp(equipment.state.elapsed / tempestAction.move.recovery, 0, 1) : 0;
     tempestCastRing.visible = Boolean(tempestAction);
@@ -2105,6 +2208,11 @@ const animate = () => {
     } else tempestCastMaterial.opacity = 0.9;
     updateAttackVolume();
     if (selectedArena === 'island') updateBehemothView(behemothView, behemothState, delta, collisionVisibilityToggle.checked);
+    for (const record of summonViews.values()) {
+      updateBehemothView(record.view, record.boss, delta, collisionVisibilityToggle.checked);
+      record.view.root.visible &&= selectedArena === 'island';
+      if (record.view.projectileRoot) record.view.projectileRoot.visible &&= selectedArena === 'island';
+    }
     if (playerState.invulnerability < 0.48 && playerBodyMaterial.emissiveIntensity > 0) {
       playerBodyMaterial.emissiveIntensity = Math.max(0, playerBodyMaterial.emissiveIntensity - delta * 2);
     }
