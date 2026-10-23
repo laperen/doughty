@@ -1,3 +1,9 @@
+import { OnlineConnection } from './online-connection.js';
+import { OnlinePresentation, motionKey } from './online-presentation.js';
+import { createOnlineMenu } from './online-menu.js';
+import { ONLINE_TEXT } from './online-text.js';
+import { plainState, restoreEncounter, contactKey, networkLoadout } from './online-state.js';
+import { createInventoryState } from './inventory.js';
 import { EXPLORATION_ISLANDS } from './exploration-islands.js';
 import { createExplorationIslandView } from './exploration-island-view.js';
 import { chestplateAbility, createChestplateAbilityState, stepChestplateAbility, activateChestplateAbility } from './chestplate-abilities.js';
@@ -45,6 +51,37 @@ import { createCombatFeedback } from './combat-feedback.js';
 import { TRAINING_TARGET, createTrainingState, hitTrainingTarget, stepTrainingTarget, trainingDps } from './training-target.js';
 import { createTrainingTargetView, updateTrainingTargetView } from './training-target-view.js';
 
+let remoteHunter = null;
+let online = null;
+let onlineMenu = null;
+let onlineStarting = false;
+let pendingWorld = null;
+let latestConfirmedWorld = null;
+let lastOnlineAimYaw = 0;
+let huntEpoch = 0;
+let lastOnlineEpoch = null;
+const remoteHunters = new Map();
+const onlinePresentation = new OnlinePresentation();
+const onlineMotionKeys = new Map();
+const latestOnlineBosses = new Map();
+let onlineEventSequence = 0;
+let onlineEventAck = 0;
+const onlineEventHistory = [];
+const confirmedEventHistory = [];
+const confirmedRewardHistory = [];
+const onlineEventSeen = new Set();
+let pendingCombatEvents = [];
+let lastWorldTime = -Infinity;
+const presentImpact = (point, damage, details) => {
+  feedback.impact(point, damage, details);
+  if (online?.host) {
+    const event = { sequence: ++onlineEventSequence, epoch: huntEpoch, time: performance.now(), point, damage, details,
+      attacker: remoteHunter?.id ?? online.id };
+    onlineEventHistory.push(event);
+    if (onlineEventHistory.length > 256) onlineEventHistory.shift();
+    online.broadcast('combat', event);
+  }
+};
 let narrative = null;
 let dialogueActionHandled = false;
 try {
@@ -128,12 +165,13 @@ try {
   else if (['range', 'island', 'old-town', ...Object.keys(EXPLORATION_ISLANDS)].includes(savedArena)) selectedArena = savedArena;
 } catch { /* Use the current range when storage is unavailable. */ }
 let pendingArena = selectedArena;
-const materialInventory = loadInventory({ getItem: key => localStorage.getItem(key) });
+let materialInventory = loadInventory({ getItem: key => localStorage.getItem(key) });
 try {
   const saved = JSON.parse(localStorage.getItem('doughty-material-inventory-v1') || '{}');
   materialInventory.equipment = createEquipmentState(saved.equipment, localStorage.getItem('doughty-selected-weapon') ?? 'striker-sword');
 } catch {}
 const persistMaterials = () => {
+  if (remoteHunter) return true;
   const saved = saveInventory(materialInventory, { setItem: (key, value) => localStorage.setItem(key, value) });
   document.querySelector('#inventorySaveWarning').hidden = saved;
   return saved;
@@ -252,7 +290,7 @@ const settlementTravelControls = document.createElement('div');
 settlementTravelControls.hidden = true;
 settlementTravelControls.innerHTML = `<div class="camera-settings arena-selection" role="group" aria-labelledby="huntingBoardDestinationTitle">
   <div class="settings-heading"><span class="settings-rule"></span><span id="huntingBoardDestinationTitle">MAP SELECTION</span></div>
-  <label class="arena-option"><input type="radio" name="hunting-board-arena" value="island" checked><span><strong>Cinderwild Isle</strong></span></label>
+  <label class="arena-option"><input type="radio" name="hunting-board-arena" value="island"><span><strong>Cinderwild Isle</strong></span></label>
   <label class="arena-option"><input type="radio" name="hunting-board-arena" value="range"><span><strong>Open Range</strong></span></label>
 <label class="arena-option"><input type="radio" name="hunting-board-arena" value="brackenlight"><span><strong>Brackenlight Reach</strong></span></label>
 <label class="arena-option"><input type="radio" name="hunting-board-arena" value="thunderstep"><span><strong>Thunderstep Highlands</strong></span></label>
@@ -260,6 +298,40 @@ settlementTravelControls.innerHTML = `<div class="camera-settings arena-selectio
 <label class="arena-option"><input type="radio" name="hunting-board-arena" value="cinderfall"><span><strong>Cinderfall Crucible</strong></span></label>
 </div><button type="button" class="primary-button">Go to selected location</button>`;
 settlementPanel.append(settlementTravelControls);
+const huntingBoardOptions = document.createElement('div');
+huntingBoardOptions.className = 'hunting-board-options';
+huntingBoardOptions.hidden = true;
+settlementTravelControls.append(huntingBoardOptions);
+const leaveHuntingBoard = () => {
+  settlementPanel.hidden = true;
+  altCursorHeld = false;
+  clearInput();
+  document.activeElement?.blur();
+};
+const boardButton = (key, parent, action) => {
+  const entry = ONLINE_TEXT[key];
+  const button = document.createElement('button');
+  button.type = 'button'; button.className = 'menu-button';
+  button.dataset.textId = entry.id;
+  button.textContent = narrative?.text(entry.id) ?? entry.value;
+  button.addEventListener('click', action); parent.append(button);
+};
+for (const action of ['privatePlay', 'quickJoin', 'chooseRoom', 'createRoom']) boardButton(action, huntingBoardOptions, () => {
+  const map = settlementTravelControls.querySelector('input:checked')?.value;
+  if (map !== 'island' && !EXPLORATION_ISLANDS[map]) return;
+  leaveHuntingBoard(); onlineMenu.open(map, action);
+});
+const huntingBoardCode = document.createElement('div');
+huntingBoardCode.className = 'hunting-board-code';
+settlementTravelControls.append(huntingBoardCode);
+boardButton('enterCode', huntingBoardCode, () => { leaveHuntingBoard(); onlineMenu.openCode(); });
+const updateHuntingBoardOptions = () => {
+  const map = settlementTravelControls.querySelector('input:checked')?.value;
+  huntingBoardOptions.hidden = !map || map === 'range';
+  settlementTravelControls.querySelector('.primary-button').hidden = map !== 'range';
+};
+settlementTravelControls.addEventListener('change', updateHuntingBoardOptions);
+updateHuntingBoardOptions();
 settlementTravelControls.querySelector('button').addEventListener('click', async () => {
   const destination = settlementTravelControls.querySelector('input:checked')?.value;
   if (!['range', 'island', ...Object.keys(EXPLORATION_ISLANDS)].includes(destination)) return;
@@ -267,6 +339,8 @@ settlementTravelControls.querySelector('button').addEventListener('click', async
   altCursorHeld = false;
   clearInput();
   document.activeElement?.blur();
+  if (destination === 'island' || EXPLORATION_ISLANDS[destination]) { onlineMenu.open(destination); return; }
+  await leaveOnlineHunt();
   await setArenaMode(destination);
   requestCameraPointerLock();
 });
@@ -352,6 +426,8 @@ async function interactSettlement() {
     settlementPanel.querySelector('p').textContent = '';
     settlementPanel.querySelector('p').hidden = true;
     settlementTravelControls.hidden = false;
+    for (const input of settlementTravelControls.querySelectorAll('input[name="hunting-board-arena"]')) input.checked = false;
+    updateHuntingBoardOptions();
     settlementPanel.hidden = false;
     clearInput();
     altCursorHeld = true;
@@ -508,7 +584,7 @@ const damageTrainingTarget = (damage, { stagger = 0, wound = 0, periodic = false
   const multiplier = getEffectiveStat(1, 'coreDamage', [...playerState.statModifiers, ...damageModifiers]);
   damage *= multiplier; stagger *= multiplier; wound *= multiplier;
   hitTrainingTarget(trainingState, { damage, stagger, wound, periodic });
-  feedback.impact([target.position.x, 1.5, target.position.z + 1.2], damage, { periodic, part: 'head', woundDamage: Math.max(0, wound), staggerDamage: Math.max(0, stagger) });
+  presentImpact([target.position.x, 1.5, target.position.z + 1.2], damage, { periodic, part: 'head', woundDamage: Math.max(0, wound), staggerDamage: Math.max(0, stagger) });
 };
 scene.add(target);
 let behemothState = createBehemothState();
@@ -567,6 +643,7 @@ const clearCellCombat = () => {
   syncCellStats(playerState, currentCellLevels());
 };
 const damageBehemoth = (damage, { part = 'body', stagger = 0, wound = 0, interrupt = false, periodic = false, melee = false, damageModifiers = [], targetBoss = behemothState, targetView = behemothView } = {}) => {
+  if (online?.guest) return { outcome: 'pending' };
   const behemothState = targetBoss, behemothView = targetView, BEHEMOTH = definitionFor(targetBoss);
   if (selectedArena !== 'island' || !encounterTouchable(behemothState)) return { outcome: 'ignored' };
   if (selectedArena === 'island' && !inTerritory(islandEncounter.arena, playerState.position, 1)) return { outcome: 'ignored' };
@@ -588,12 +665,11 @@ const damageBehemoth = (damage, { part = 'body', stagger = 0, wound = 0, interru
     coreDamage: healthBefore - behemothState.health, melee, periodic, hasPart: Boolean(BEHEMOTH.parts[part]),
     growth: BEHEMOTH.parts[part]?.growth === true || BEHEMOTH.parts[part]?.quills === true });
   if (result.outcome === 'defeated') {
-    collectDefeatLoot(materialInventory, behemothState);
-    persistMaterials();
+    awardOnlineLoot(targetBoss === islandEncounter.boss ? islandEncounter.id : islandEncounter.summon?.id, behemothState);
   }
   const point = behemothView.hitboxes[part]?.getWorldPosition(new THREE.Vector3())
     ?? new THREE.Vector3(...behemothState.position);
-  feedback.impact(point.toArray(), damage,
+  presentImpact(point.toArray(), damage,
     { outcome: result.outcome, part: result.partDamage > 0 ? part : 'body', periodic, brokenPart: result.brokenPart, wounded: result.wounded, woundDamage: result.woundDamage, staggerDamage: result.staggerDamage });
   return result;
 };
@@ -636,7 +712,7 @@ const syncSummonView = () => {
 };
 syncEncounterView();
 let projectileObstacleMeshes = [];
-const activeProjectiles = [];
+let activeProjectiles = [];
 const crescentDimensions = STRIKER_SWORD.specials.threeMantra;
 const crescentHalfWidth = crescentDimensions.width / 2;
 const crescentHalfDepth = crescentDimensions.depth / 2;
@@ -802,10 +878,10 @@ const movementCollisionWorld = {
 };
 
 // Gameplay state is plain data; Three.js objects below are presentation only.
-const playerState = createPlayerState();
-const playerView = createPlayerView();
-const player = playerView.root;
-const playerBodyMaterial = playerView.armor;
+let playerState = createPlayerState();
+let playerView = createPlayerView();
+let player = playerView.root;
+let playerBodyMaterial = playerView.armor;
 const burningEffect = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.065, 6, 24), new THREE.MeshBasicMaterial({ color: '#ff8b24', transparent: true, opacity: 0.8, depthWrite: false }));
 burningEffect.rotation.x = Math.PI / 2; burningEffect.position.y = 0.18; burningEffect.visible = false;
 player.add(burningEffect);
@@ -838,12 +914,12 @@ const cameraRaycaster = new THREE.Raycaster();
 const screenCenter = new THREE.Vector2(0, 0);
 const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0.025);
 const aimPoint = new THREE.Vector3();
-const heldKeys = new Set();
-const pressedKeys = new Set();
+let heldKeys = new Set();
+let pressedKeys = new Set();
 let equipment = { definition: STRIKER_SWORD, state: STRIKER_SWORD.createState() };
 let basicFireHeld = false;
-const weaponStates = new Map();
-const rangedEffects = [];
+let weaponStates = new Map();
+let rangedEffects = [];
 const buffCollectors = new Set();
 window.registerBuffCollector = collector => { buffCollectors.add(collector); return () => buffCollectors.delete(collector); };
 const repeatersSettings = document.querySelector('#repeatersSettings');
@@ -865,7 +941,7 @@ let relockOnFocus = false;
 let qHeldSince = null;
 let qConsumed = false;
 
-const getCameraYaw = () => cameraOrbit.azimuth;
+const getCameraYaw = () => remoteHunter ? remoteHunter.input.cameraYaw : cameraOrbit.azimuth;
 const getWeaponCamera = () => resolveWeaponMovement(
   equipment?.definition.kind === 'ranged' && equipment.state.sheathed ? null : equippedWeapon,
 ).camera;
@@ -908,7 +984,7 @@ const applyWeaponCamera = () => {
 };
 
 const requestCameraPointerLock = () => {
-  if (arenaScreen.classList.contains('hidden') || mapTransitionActive || settingsOpen || !settlementPanel.hidden || altCursorHeld || !document.hasFocus()) return;
+  if (onlineMenu?.openNow || arenaScreen.classList.contains('hidden') || mapTransitionActive || settingsOpen || !settlementPanel.hidden || altCursorHeld || !document.hasFocus()) return;
   try {
     const request = renderer.domElement.requestPointerLock();
     request?.catch(() => syncPointerLockHint());
@@ -944,7 +1020,7 @@ document.addEventListener('pointerlockchange', () => {
     clearTimeout(pointerUnlockSettingsTimer);
     pointerUnlockSettingsTimer = setTimeout(() => {
       pointerUnlockSettingsTimer = null;
-      if (performance.now() - lastSettingsEscape > 150 && !settingsOpen
+      if (performance.now() - lastSettingsEscape > 150 && !settingsOpen && !onlineMenu?.openNow
         && !arenaScreen.classList.contains('hidden') && !altCursorHeld
         && document.pointerLockElement !== renderer.domElement) setSettingsOpen(true);
     }, 80);
@@ -1007,7 +1083,10 @@ function repeaterAim(yawOffset = 0, pitchOffset = 0) {
     ? record.kind !== 'first-behemoth' : record.kind !== 'training-dummy' && encounterTouchable(record.boss ?? behemothState)));
   const objects = [...projectileObstacleMeshes, ...records.map(record => record.mesh)];
   const ray = new THREE.Raycaster();
-  ray.setFromCamera(new THREE.Vector2(0, 0), camera);
+  if (remoteHunter) {
+    const { cameraYaw, pitch } = remoteHunter.input;
+    ray.set(new THREE.Vector3(...playerState.position).add(new THREE.Vector3(0, 1.3, 0)), new THREE.Vector3(-Math.sin(cameraYaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(cameraYaw) * Math.cos(pitch)));
+  } else ray.setFromCamera(new THREE.Vector2(0, 0), camera);
   ray.far = 100;
   const cameraHit = selectRepeaterRayHit(ray.intersectObjects(objects, false), records);
   const aim = cameraHit?.point ?? ray.ray.at(100, new THREE.Vector3());
@@ -1051,7 +1130,7 @@ function fireRepeaters(event) {
 function dropBuffMine(definition) {
   const mesh = new THREE.Mesh(new THREE.CylinderGeometry(.24, .32, .14, 12),
     new THREE.MeshStandardMaterial({ color: '#58cfe1', emissive: '#187e91', emissiveIntensity: 1.5 }));
-  const direction = new THREE.Vector3(); camera.getWorldDirection(direction); direction.y = 0; direction.normalize();
+  const direction = new THREE.Vector3(-Math.sin(getCameraYaw()), 0, -Math.cos(getCameraYaw()));
   mesh.position.set(...playerState.position).addScaledVector(direction, 1);
   mesh.position.y += .1; scene.add(mesh);
   rangedEffects.push({ mesh, remaining: definition.lifetime, mine: definition, age: 0 });
@@ -1115,6 +1194,7 @@ function stepRangedEffects(dt) {
 const renderCombatHud = () => {
   playerState.familyAbility = { ...currentFamilyAbility(), charge: familyCombat.charge };
   playerState.chestplateAbility = { ...currentChestplateAbility(), ...chestplateCombat };
+  if (remoteHunter) return;
   const ranged = equipment?.definition.kind === 'ranged';
   combatMantraDots?.parentElement.classList.toggle('hidden', equipment?.definition !== STRIKER_SWORD);
   document.querySelector('#repeaterHelp').classList.toggle('hidden', !ranged);
@@ -1239,23 +1319,30 @@ const selectBehemothPart = (move, yaw, from, to, bossFrom = behemothState.positi
 
 const stepEncounter = (dt, resolveContacts = () => {}) => {
   if (selectedArena !== 'island') return;
+  if (online?.guest) return; // Incoming damage and AI are confirmed by the host.
   const burningDamage = stepBurning(playerState, dt);
   if (burningDamage) {
     consumeResource(playerState, 'health', burningDamage);
-    feedback.impact([playerState.position[0], playerState.position[1] + 1.5, playerState.position[2]], burningDamage, { outcome: 'hurt' });
+    presentImpact([playerState.position[0], playerState.position[1] + 1.5, playerState.position[2]], burningDamage, { outcome: 'hurt' });
     if (playerState.health <= 0) { playerState.burning = null; equipment?.definition.cancelAction?.(equipment.state); }
   }
   playerState.invulnerability = Math.max(0, playerState.invulnerability - dt);
-  if (playerState.health <= 0 && encounterEnemies(islandEncounter).some(enemy => enemy.mode !== 'defeated')) return;
+  if (!online?.room && playerState.health <= 0 && encounterEnemies(islandEncounter).some(enemy => enemy.mode !== 'defeated')) return;
   const previousMode = behemothState.mode;
   const previousPosition = [...behemothState.position];
   const previousEnemyPositions = new Map(enemyRecords().map(r => [r.boss, [...r.boss.position]]));
   const previousId = islandEncounter.id;
-  islandEncounter = stepIslandEncounter(islandEncounter, [{ position: playerState.position, knockedDown: isRecovering(playerState) }], dt);
+  if (!remoteHunter) {
+    const hunters = [{ id: online?.id ?? 'local', position: playerState.position, knockedDown: isRecovering(playerState), health: playerState.health },
+      ...[...remoteHunters.values()].map(h => ({ id: h.id, position: h.playerState.position, knockedDown: isRecovering(h.playerState), health: h.playerState.health }))].filter(h => h.health > 0);
+    // A defeated solo hunter still pauses their local encounter as before.
+    islandEncounter = stepIslandEncounter(islandEncounter, hunters, dt);
+  }
   behemothState = islandEncounter.boss;
   syncSummonView();
   if (previousId !== islandEncounter.id) {
     clearCellCombat();
+    if (online?.host) for (const h of remoteHunters.values()) withHunter(h, clearCellCombat);
     syncEncounterView();
     for (const record of projectileTargets) if (record.kind === 'first-behemoth' && !record.boss) record.id = islandEncounter.id;
     for (const projectile of activeProjectiles) scene.remove(projectile.mesh);
@@ -1268,6 +1355,12 @@ const stepEncounter = (dt, resolveContacts = () => {}) => {
   for (const { boss: enemy } of enemyRecords()) {
     if (!encounterTouchable(enemy)) continue;
     const behemothState = enemy, BEHEMOTH = definitionFor(enemy);
+    const contactOwner = remoteHunter?.id ?? online?.id ?? 'local';
+    if (online?.host) {
+      const key = contactKey(behemothState);
+      if (behemothState.onlineContactKey !== key) { behemothState.onlineContactKey = key; behemothState.onlineHits = []; }
+      behemothState.attackHit = behemothState.onlineHits.includes(contactOwner);
+    }
     const meleeHit = behemothAttackTouchesPlayer(behemothState, playerState.position);
     // Stream fireballs stop at arena geometry before player contact is resolved.
     const blocked = new Set();
@@ -1284,7 +1377,7 @@ const stepEncounter = (dt, resolveContacts = () => {}) => {
     const contactingStreams = new Set((behemothState.impactEvents ?? []).filter(q => q.kind === 'stream' && quillImpactTouches(q, playerState.position)).map(q => q.id));
     if (contactingStreams.size) behemothState.projectiles = behemothState.projectiles.filter(q => !contactingStreams.has(q.id));
     if (meleeHit || quillHit) {
-      if (meleeHit) behemothState.attackHit = true;
+      if (meleeHit) { behemothState.attackHit = true; if (online?.host) behemothState.onlineHits.push(contactOwner); }
       const incomingDamage = meleeHit ? BEHEMOTH.moves[behemothState.move].damage : quillHit.damage;
       const rolling = playerState.movementAction === 'dodge' && playerState.actionTime > 0.08;
       activateEmbermane(playerState.statModifiers, currentFamilyAbility(), {
@@ -1308,7 +1401,7 @@ const stepEncounter = (dt, resolveContacts = () => {}) => {
         // A hit during vulnerable get-up can start a new reaction.
         playerState.recovery = null;
         startKnockdown(playerState, behemothState.position);
-        feedback.impact([playerState.position[0], playerState.position[1] + 1.5, playerState.position[2]],
+        presentImpact([playerState.position[0], playerState.position[1] + 1.5, playerState.position[2]],
           damageTaken, { outcome: 'hurt' });
         playerBodyMaterial.emissive.set('#a23e36');
         playerBodyMaterial.emissiveIntensity = 0.85;
@@ -1331,9 +1424,11 @@ const processWeaponStep = (dt) => {
   const state = equipment.state;
   if (equipment.definition.kind === 'ranged') {
     const aim = repeaterAim();
-    const reticle = document.querySelector('#repeaterReticle');
-    reticle.dataset.tier = aim.record ? String(repeaterFalloff(aim.distance)) : '0';
-    reticle.textContent = aim.record ? (aim.distance <= 8 ? '\u25ce' : '+') : '+';
+    if (!remoteHunter) {
+      const reticle = document.querySelector('#repeaterReticle');
+      reticle.dataset.tier = aim.record ? String(repeaterFalloff(aim.distance)) : '0';
+      reticle.textContent = aim.record ? (aim.distance <= 8 ? '\u25ce' : '+') : '+';
+    }
     if (basicFireHeld && !pressedKeys.has('dodge') && !state.action) handleAttackInput('light');
   }
   const attackSpeedMultiplier = getEffectiveStat(1, 'attackSpeed', playerState.statModifiers);
@@ -1492,6 +1587,7 @@ const stepProjectiles = (dt) => {
   }
 };
 const getAttackYaw = () => {
+  if (remoteHunter) return remoteHunter.input.attackYaw;
   const moveX = Number(heldKeys.has('d') || heldKeys.has('arrowright')) - Number(heldKeys.has('a') || heldKeys.has('arrowleft'));
   const moveY = Number(heldKeys.has('w') || heldKeys.has('arrowup')) - Number(heldKeys.has('s') || heldKeys.has('arrowdown'));
   if (Math.hypot(moveX, moveY) < 0.05) return playerState.immediateFacingYaw;
@@ -1542,32 +1638,34 @@ const chainTarget = (yaw = equipment?.state.airElapsed != null ? getCameraYaw() 
   }).filter(t => t.angle < Math.PI / 3).sort((a, b) => a.distance - b.distance)[0] ?? null;
 };
 const handleAttackInput = (input) => {
-  if (chestplateCombat.commitment > 0) return;
-  if (isTown()) return;
-  if (isRecovering(playerState) || playerState.dodgeInputBlock > 0 || !equipment || playerState.movementAction === 'dodge' || playerState.movementAction === 'climb' || (selectedArena === 'island' && playerState.health <= 0)) return;
+  if (chestplateCombat.commitment > 0) return false;
+  if (isTown()) return false;
+  if (isRecovering(playerState) || playerState.dodgeInputBlock > 0 || !equipment || playerState.movementAction === 'dodge' || playerState.movementAction === 'climb' || (selectedArena === 'island' && playerState.health <= 0)) return false;
   const reloadSource = equipment.definition.kind === 'ranged'
     && (input === 'reload' || input === 'light' && equipment.state.ammo === 0) ? repeaterReloadSource() : null;
-  const result = equipment.definition.handleAttack(equipment.state, input, { attackYaw: equipment.state.airElapsed != null ? getCameraYaw() : getAttackYaw(), target: equipment.definition.targetContext ? chainTarget() : null, autoReload: document.querySelector('#autoReload').checked,
+  const result = equipment.definition.handleAttack(equipment.state, input, { attackYaw: equipment.state.airElapsed != null ? getCameraYaw() : getAttackYaw(), target: equipment.definition.targetContext ? chainTarget() : null, autoReload: remoteHunter ? remoteHunter.input.autoReload : document.querySelector('#autoReload').checked,
     idealRange: Boolean(reloadSource), reloadOrigin: reloadSource?.end.toArray(), spend: (amount) => spendStamina(playerState, amount) });
   if (result.type === 'unsheathed') basicFireHeld = false;
   launchFamilyAttack();
   if (result.type !== 'input-ignored') renderCombatHud();
+  return result.type !== 'input-ignored';
 };
 weaponButton?.addEventListener('click', () => openEquipment());
 renderer.domElement.addEventListener('mousedown', (event) => {
   if (arenaScreen.classList.contains('hidden') || mapTransitionActive || settingsOpen || chestplateCombat.commitment > 0) return;
-  if (event.button === 0) { basicFireHeld = true; handleAttackInput('light'); }
-  if (event.button === 2) { event.preventDefault(); handleAttackInput('heavy'); }
+  if (event.button === 0) { basicFireHeld = true; if (handleAttackInput('light')) sendOnlineAction({ attack: 'light' }); sendOnlineAction({ controls: true }); }
+  if (event.button === 2) { event.preventDefault(); if (handleAttackInput('heavy')) sendOnlineAction({ attack: 'heavy' }); }
 });
 renderer.domElement.addEventListener('contextmenu', (event) => event.preventDefault());
 
-window.addEventListener('mouseup', event => { if (event.button === 0) basicFireHeld = false; });
+window.addEventListener('mouseup', event => { if (event.button === 0 && basicFireHeld) { basicFireHeld = false; sendOnlineAction({ controls: true }); } });
 const clearInput = () => {
   basicFireHeld = false;
   heldKeys.clear();
   pressedKeys.clear();
   qHeldSince = null;
   qConsumed = false;
+  if (online?.guest && !remoteHunter) sendOnlineAction({ resetInput: true });
 };
 const menuTabs = [...document.querySelectorAll('.menu-tab')];
 const selectMenuTab = (id) => {
@@ -1694,8 +1792,21 @@ const openEquipment = (crafter = null) => {
 };
 document.querySelector('#openEquipmentButton').addEventListener('click', () => openEquipment());
 
+const releaseHunterQ = () => {
+    if (!qConsumed && equipment && playerState.health > 0 && !isRecovering(playerState) && playerState.dodgeInputBlock <= 0 && !['dodge', 'climb'].includes(playerState.movementAction)) {
+      const result = equipment.definition.useTapAbility?.(equipment.state, {
+        attackYaw: getAttackYaw(),
+        ability: equipment.definition.abilities?.tap,
+      });
+      if (result?.type !== 'unavailable') renderCombatHud();
+    }
+    qHeldSince = null;
+    qConsumed = false;
+
+};
 const keyToAction = (event) => {
   const key = event.key.toLowerCase();
+  if (!remoteHunter && !event.repeat && ['f', ' ', 'q', 'r', 'x', 'v'].includes(key)) sendOnlineAction({ key });
   if (chestplateCombat.commitment > 0) return;
   if (['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'f', ' ', 'q', 'x', 'v'].includes(key)) event.preventDefault();
   if (arenaScreen.classList.contains('hidden') || mapTransitionActive) return;
@@ -1739,6 +1850,7 @@ const keyToAction = (event) => {
 
 let targetRotationY = 0;
 const resetEncounter = () => {
+  huntEpoch++;
   feedback.clear();
   clearRangedEffects();
   weaponStates.clear();
@@ -1769,7 +1881,9 @@ const resetEncounter = () => {
   renderCombatHud();
 };
 resetArenaButton.addEventListener('click', () => {
+  if (online?.guest) { onlineMenu.notify('resetHostOnly'); return; }
   resetEncounter();
+  if (online?.host) resetRemoteHunters();
   setSettingsOpen(false);
 });
 let arenaLoadRequest = 0;
@@ -1863,10 +1977,14 @@ settingsArenaOptions.forEach((option) => option.addEventListener('change', () =>
 }));
 goToArenaButton.addEventListener('click', async () => {
   if (pendingArena === selectedArena) return;
-  await setArenaMode(pendingArena);
+  const destination = pendingArena;
+  if (destination === 'island' || EXPLORATION_ISLANDS[destination]) { setSettingsOpen(false, false); onlineMenu.open(destination); return; }
+  await leaveOnlineHunt();
+  await setArenaMode(destination);
   setSettingsOpen(false);
 });
 const returnToSettlement = async () => {
+  await leaveOnlineHunt();
   if (!isTown()) await setArenaMode('old-town');
   setSettingsOpen(false);
 };
@@ -1998,6 +2116,7 @@ fovSlider.addEventListener('input', () => {
   camera.updateProjectionMatrix();
 });
 window.addEventListener('keydown', (event) => {
+  if (onlineMenu?.openNow) return;
   if (event.key === 'Escape') {
     if (cellView.open) {
       event.preventDefault();
@@ -2029,6 +2148,7 @@ window.addEventListener('keydown', (event) => {
   if (chestplateCombat.commitment > 0) { event.preventDefault(); return; }
   keyToAction(event);
   heldKeys.add(event.key.toLowerCase());
+  if (!event.repeat) sendOnlineAction({ controls: true });
 });
 window.addEventListener('keyup', (event) => {
   if (event.key === 'Escape' && resumeCameraAfterEscape) {
@@ -2037,17 +2157,10 @@ window.addEventListener('keyup', (event) => {
     requestAnimationFrame(() => { if (!settingsOpen) requestCameraPointerLock(); });
   }
   const key = event.key.toLowerCase();
-  heldKeys.delete(key);
+  if (heldKeys.delete(key)) sendOnlineAction({ controls: true });
   if (key === 'q' && qHeldSince !== null) {
-    if (!qConsumed && equipment && playerState.health > 0 && !isRecovering(playerState) && playerState.dodgeInputBlock <= 0 && !['dodge', 'climb'].includes(playerState.movementAction)) {
-      const result = equipment.definition.useTapAbility?.(equipment.state, {
-        attackYaw: getAttackYaw(),
-        ability: equipment.definition.abilities?.tap,
-      });
-      if (result?.type !== 'unavailable') renderCombatHud();
-    }
-    qHeldSince = null;
-    qConsumed = false;
+    sendOnlineAction({ releaseQ: true });
+    releaseHunterQ();
   }
   if (key === 'alt' && altCursorHeld) {
     altCursorHeld = false;
@@ -2078,30 +2191,365 @@ const resize = () => {
 };
 window.addEventListener('resize', resize);
 
+// Explicit hunter contexts reuse the existing combat/movement path for every peer.
+// The synchronous try/finally boundary prevents a guest from changing local UI state.
+const captureHunter = () => ({ playerState, playerView, player, playerBodyMaterial, equipment, equippedWeapon,
+  materialInventory, cellCombat, familyCombat, chestplateCombat, heldKeys, pressedKeys,
+  weaponStates, rangedEffects, activeProjectiles, basicFireHeld, qHeldSince, qConsumed });
+const installHunter = h => {
+  ({ playerState, playerView, player, playerBodyMaterial, equipment, equippedWeapon,
+    materialInventory, cellCombat, familyCombat, chestplateCombat, heldKeys, pressedKeys,
+    weaponStates, rangedEffects, activeProjectiles, basicFireHeld, qHeldSince, qConsumed } = h);
+};
+const withHunter = (h, action) => {
+  const local = captureHunter(); remoteHunter = h;
+  try { installHunter(h); return action(); }
+  finally { Object.assign(h, captureHunter()); installHunter(local); remoteHunter = null; }
+};
+const localInventory = materialInventory;
+const receivedRewards = new Set();
+let rewardSequence = 0;
+const rewardHistory = [];
+const awardOnlineLoot = (id, boss) => {
+  if (boss.lootAwarded) return;
+  const reward = { sequence: ++rewardSequence, id, boss: plainState(boss) };
+  rewardHistory.push(reward); if (rewardHistory.length > 128) rewardHistory.shift();
+  collectDefeatLoot(localInventory, boss);
+  // Each hunter owns an independent inventory, with the same confirmed encounter rewards.
+  for (const h of remoteHunters.values()) collectDefeatLoot(h.materialInventory, { ...boss, lootAwarded: false });
+  if (!remoteHunter) persistMaterials();
+  else saveInventory(localInventory, { setItem: (key, value) => localStorage.setItem(key, value) });
+};
+const newRemoteHunter = (id, loadout) => {
+  const inventory = createInventoryState(loadout);
+  const definition = window.availableWeapons[EQUIPMENT[inventory.equipment.equipped]?.type];
+  const view = createPlayerView(); scene.add(view.root);
+  view.armor.color.set('#81d9ec'); view.root.name = `Online hunter ${id}`;
+  const state = createPlayerState([...(currentExplorationIsland()?.arrival ?? ISLAND.arrival)]);
+  const h = { id, playerState: state, playerView: view, player: view.root, playerBodyMaterial: view.armor,
+    materialInventory: inventory, equipment: definition ? { definition, state: definition.createState() } : null,
+    equippedWeapon: definition ?? null, cellCombat: createCellCombatState(), familyCombat: createFamilyAbilityState(),
+    chestplateCombat: createChestplateAbilityState(), heldKeys: new Set(), pressedKeys: new Set(),
+    weaponStates: new Map(), rangedEffects: [], activeProjectiles: [], basicFireHeld: false, qHeldSince: null, qConsumed: false,
+    input: { keys: [], cameraYaw: 0, attackYaw: 0, aimYaw: 0, pitch: 0, autoReload: true }, actions: [],
+    lastInput: performance.now(), rewardStart: rewardSequence, ackReward: rewardSequence, eventStart: onlineEventSequence, ackEvent: onlineEventSequence };
+  syncCellStats(state, equipmentCellLevels(inventory)); state.health = state.maxHealth; state.stamina = state.maxStamina;
+  buffCollectors.add(state); remoteHunters.set(id, h); return h;
+};
+const disposeRemoteHunter = id => {
+  const h = remoteHunters.get(id); if (!h) return;
+  onlinePresentation.remove(id); onlineMotionKeys.delete(id);
+  buffCollectors.delete(h.playerState);
+  scene.remove(h.player);
+  const geometries = new Set(), materials = new Set();
+  h.player.traverse(node => { if (node.geometry) geometries.add(node.geometry); if (node.material) for (const m of Array.isArray(node.material) ? node.material : [node.material]) materials.add(m); });
+  for (const geometry of geometries) geometry.dispose(); for (const material of materials) material.dispose();
+  for (const p of h.activeProjectiles) scene.remove(p.mesh);
+  withHunter(h, clearRangedEffects);
+  remoteHunters.delete(id);
+};
+const clearRemoteHunters = () => { for (const id of [...remoteHunters.keys()]) disposeRemoteHunter(id); };
+const resetRemoteHunters = () => {
+  for (const h of [...remoteHunters.values()]) {
+    const { id, materialInventory: loadout, rewardStart, ackReward } = h;
+    disposeRemoteHunter(id); const next = newRemoteHunter(id, loadout);
+    next.rewardStart = rewardStart; next.ackReward = ackReward;
+  }
+};
+const onlineInput = () => {
+  const direction = new THREE.Vector3(); camera.getWorldDirection(direction);
+  const paused = settingsOpen || onlineMenu?.openNow || document.hidden;
+  return { time: performance.now(), keys: paused ? [] : [...heldKeys], cameraYaw: getCameraYaw(), attackYaw: getAttackYaw(), aimYaw: lastOnlineAimYaw,
+    pitch: Math.asin(THREE.MathUtils.clamp(direction.y, -1, 1)), fire: !paused && basicFireHeld, autoReload: autoReloadToggle.checked };
+};
+const sendOnlineAction = action => {
+  if (online?.guest && !remoteHunter) online.send('action', { action, input: onlineInput() });
+};
+const acceptOnlineInput = (h, input) => {
+  const keys = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift']);
+  if (!input || !Array.isArray(input.keys) || input.keys.length > 16 || !['cameraYaw', 'attackYaw', 'aimYaw', 'pitch'].every(k => Number.isFinite(input[k]) && Math.abs(input[k]) < 100000)) return false;
+  if (Number.isFinite(input.time) && input.time < (h.input.time ?? -Infinity)) return true;
+  h.input = { ...input, keys: input.keys.filter(k => keys.has(k)), pitch: THREE.MathUtils.clamp(input.pitch, -1.5, 1.5) };
+  h.lastInput = performance.now(); return true;
+};
+const stepRemoteHunters = dt => {
+  for (const h of remoteHunters.values()) withHunter(h, () => {
+    const active = performance.now() - h.lastInput < 750;
+    heldKeys = new Set(active ? h.input.keys : []); basicFireHeld = active && h.input.fire;
+    if (!active) { qHeldSince = null; qConsumed = false; }
+    for (const action of h.actions.splice(0, 32)) {
+      if (action.resetInput) clearInput();
+      else if (action.attack === 'light' || action.attack === 'heavy') handleAttackInput(action.attack);
+      else if (['f', ' ', 'q', 'r', 'x', 'v'].includes(action.key)) keyToAction({ key: action.key, repeat: false, preventDefault() {} });
+      else if (action.releaseQ) releaseHunterQ();
+    }
+    const x = Number(heldKeys.has('d') || heldKeys.has('arrowright')) - Number(heldKeys.has('a') || heldKeys.has('arrowleft'));
+    const y = Number(heldKeys.has('w') || heldKeys.has('arrowup')) - Number(heldKeys.has('s') || heldKeys.has('arrowdown'));
+    simulateHunter(dt, x, y, h.input.cameraYaw, h.input.aimYaw);
+    pressedKeys.clear(); updatePlayerView(playerView, playerState, equipment, dt);
+  });
+};
+const applyOnlineWorld = data => {
+  if (!data?.encounter || !Array.isArray(data.hunters)) return;
+  if (!Number.isFinite(data.time) || data.time <= lastWorldTime) return;
+  if (lastOnlineEpoch !== data.epoch) {
+    lastOnlineEpoch = data.epoch;
+    onlinePresentation.clear();
+    clearCellCombat(); clearChestplateCombat(); clearInput();
+    if (equipment) equipment.state = equipment.definition.createState();
+    for (const p of activeProjectiles) scene.remove(p.mesh);
+    activeProjectiles.length = 0; clearRangedEffects();
+  }
+  lastWorldTime = data.time;
+  latestConfirmedWorld = plainState(data);
+  receiveOnlinePresentation(data, true);
+  receiveCombatEvents([...(data.events ?? []), ...pendingCombatEvents.splice(0)], data.eventStart);
+  const oldId = islandEncounter.id, oldSpecies = islandEncounter.speciesId;
+  islandEncounter = restoreEncounter(data.encounter, islandEncounter); behemothState = islandEncounter.boss;
+  if (oldId !== islandEncounter.id || oldSpecies !== islandEncounter.speciesId) {
+    if (oldId !== islandEncounter.id) onlinePresentation.remove(oldId);
+    syncEncounterView(); clearCellCombat();
+    for (const p of activeProjectiles) scene.remove(p.mesh); activeProjectiles.length = 0;
+  }
+  syncSummonView();
+  const ids = new Set();
+  for (const hunter of data.hunters) {
+    if (!hunter.player?.position || !hunter.player.position.every(Number.isFinite)) continue;
+    if (hunter.id === online.id) {
+      for (const key of ['health', 'maxHealth', 'maxStamina', 'stamina', 'shields', 'burning', 'recovery', 'invulnerability', 'statModifiers', 'cellStatus']) playerState[key] = hunter.player[key];
+      if (equipment && hunter.weapon) for (const key of ['ammo', 'empowered', 'mantras', 'surgeReady', 'surgeAvailabilityRemaining', 'resources', 'charge']) {
+        if (Object.hasOwn(hunter.weapon, key)) equipment.state[key] = hunter.weapon[key];
+      }
+      if (hunter.player.familyAbility) familyCombat.charge = hunter.player.familyAbility.charge;
+      // Prediction stays responsive; reconcile substantial divergence against host collision.
+      if (Math.hypot(...playerState.position.map((v, i) => v - hunter.player.position[i])) > 1.5) {
+        playerState.position = [...hunter.player.position]; playerState.velocity = [...hunter.player.velocity];
+      }
+      continue;
+    }
+    ids.add(hunter.id);
+    let h = remoteHunters.get(hunter.id);
+    if (!h) h = newRemoteHunter(hunter.id, hunter.loadout);
+    h.targetPlayer = hunter.player;
+    if (hunter.equipped !== h.materialInventory.equipment.equipped) {
+      h.materialInventory = createInventoryState(hunter.loadout);
+    }
+    const definition = window.availableWeapons[EQUIPMENT[hunter.equipped]?.type];
+    h.equipment = definition ? { definition, state: hunter.weapon } : null;
+  }
+  for (const id of remoteHunters.keys()) if (!ids.has(id)) disposeRemoteHunter(id);
+  for (const reward of data.rewards ?? []) {
+    const key = `${online.room.id}:${reward.sequence}`;
+    if (!receivedRewards.has(key)) {
+      collectDefeatLoot(localInventory, { ...reward.boss, lootAwarded: false }); persistMaterials(); receivedRewards.add(key);
+      confirmedRewardHistory.push(plainState(reward));
+      if (confirmedRewardHistory.length > 128) confirmedRewardHistory.shift();
+    }
+    onlineRewardAck = Math.max(onlineRewardAck, reward.sequence);
+  }
+  renderCombatHud();
+};
+let onlineRewardAck = 0;
+const receiveCombatEvents = (events, start = null) => {
+  if (Number.isSafeInteger(start)) onlineEventAck = Math.max(onlineEventAck, start);
+  for (const event of events) {
+    if (!Number.isSafeInteger(event.sequence) || event.sequence <= onlineEventAck || onlineEventSeen.has(event.sequence)) continue;
+    if (event.epoch > lastOnlineEpoch) { pendingCombatEvents.push(event); continue; }
+    if (!Array.isArray(event.point) || event.point.length !== 3 || !event.point.every(Number.isFinite) || !Number.isFinite(event.damage)) continue;
+    onlineEventSeen.add(event.sequence);
+    confirmedEventHistory.push(plainState(event));
+    if (confirmedEventHistory.length > 256) confirmedEventHistory.shift();
+    if (event.epoch === lastOnlineEpoch) feedback.impact(event.point, event.damage, event.details);
+  }
+  while (onlineEventSeen.has(onlineEventAck + 1)) onlineEventAck++;
+  // Retain a bounded window for deduplication, including snapshots arriving after events.
+  for (const id of onlineEventSeen) if (id < onlineEventAck - 512) onlineEventSeen.delete(id);
+};
+const receiveOnlinePresentation = (data, snapshot) => {
+  const receiveBoss = (id, boss) => {
+    onlinePresentation.receive(id, boss, null, data.time, { snapshot });
+    if (data.time >= (latestOnlineBosses.get(id)?.time ?? -Infinity)) latestOnlineBosses.set(id, { time: data.time, boss: plainState(boss) });
+  };
+  const visit = encounter => {
+    if (!encounter) return;
+    receiveBoss(encounter.id, encounter.boss);
+    visit(encounter.summon);
+  };
+  visit(data.encounter);
+  for (const entry of data.bosses ?? []) receiveBoss(entry.id, entry.boss);
+  for (const hunter of data.hunters ?? []) if (hunter.id !== online.id) {
+    onlinePresentation.receive(hunter.id, hunter.player, hunter.weapon, data.time, { snapshot });
+  }
+};
+const updateOnlinePresentation = dt => {
+  if (!online?.guest) return;
+  for (const h of remoteHunters.values()) {
+    const pose = onlinePresentation.sample(h.id); if (!pose) continue;
+    Object.assign(h.playerState, pose.state);
+    const equipment = h.equipment ? { ...h.equipment, state: pose.weapon ?? h.equipment.state } : null;
+    updatePlayerView(h.playerView, h.playerState, equipment, dt);
+  }
+};
+const onlineBossPose = (id, boss) => {
+  const pose = online?.guest ? onlinePresentation.sample(id)?.state : null;
+  return pose && pose.speciesId === boss.speciesId ? { ...pose, definition: boss.definition } : boss;
+};
+// Observe authoritative action changes every simulation tick, rather than waiting for a snapshot.
+const publishOnlineMotion = () => {
+  if (!online?.host) return;
+  const bosses = [], hunters = [];
+  const check = (id, state, weapon = null) => {
+    const key = motionKey(state, weapon), elapsed = weapon?.elapsed ?? state.elapsed;
+    const old = onlineMotionKeys.get(id);
+    const changed = !old || old.key !== key || elapsed < old.elapsed;
+    onlineMotionKeys.set(id, { key, elapsed });
+    return changed;
+  };
+  const visit = encounter => { if (encounter) {
+    if (check(encounter.id, encounter.boss)) bosses.push({ id: encounter.id, boss: plainState(encounter.boss) });
+    visit(encounter.summon);
+  } };
+  visit(islandEncounter);
+  const local = { id: online.id, playerState, equipment, materialInventory: localInventory };
+  for (const h of [local, ...remoteHunters.values()]) if (check(h.id, h.playerState, h.equipment?.state)) {
+    hunters.push({ id: h.id, player: plainState(h.playerState), weapon: h.equipment ? plainState(h.equipment.state) : null });
+  }
+  if (bosses.length || hunters.length) online.broadcast('motion', { time: performance.now(), epoch: huntEpoch, bosses, hunters });
+};
+const onlineHunters = () => [{ id: online.id, player: plainState(playerState), equipped: localInventory.equipment.equipped,
+  weapon: equipment ? plainState(equipment.state) : null, loadout: networkLoadout(localInventory) },
+  ...[...remoteHunters.values()].map(h => ({ id: h.id, player: plainState(h.playerState), equipped: h.materialInventory.equipment.equipped,
+    weapon: h.equipment ? plainState(h.equipment.state) : null, loadout: networkLoadout(h.materialInventory) }))];
+const leaveOnlineHunt = async () => { onlinePresentation.clear(); onlineMotionKeys.clear(); if (online?.room) await online.leave(); clearRemoteHunters(); pendingWorld = null; latestConfirmedWorld = null; };
+online = new OnlineConnection();
+online.addEventListener('packet', ({ detail: { peer, type, data } }) => {
+  try {
+    if (online.host) {
+      if (type === 'loadout' && !remoteHunters.has(peer)) { newRemoteHunter(peer, data); return; }
+      const h = remoteHunters.get(peer); if (!h) return;
+      if (type === 'input') {
+        acceptOnlineInput(h, data);
+        if (Number.isSafeInteger(data.ackEvent)) h.ackEvent = Math.min(onlineEventSequence, Math.max(h.ackEvent, data.ackEvent));
+        if (Number.isSafeInteger(data.ackReward)) h.ackReward = Math.min(rewardSequence, Math.max(h.ackReward, data.ackReward));
+      }
+      if (type === 'action' && acceptOnlineInput(h, data.input) && h.actions.length < 32 && data.action && typeof data.action === 'object') h.actions.push(data.action);
+    } else if (online.guest && peer === online.room?.host && type === 'combat') {
+      if (onlineStarting || lastOnlineEpoch !== data.epoch) pendingCombatEvents.push(data);
+      else receiveCombatEvents([data]);
+      if (pendingCombatEvents.length > 256) pendingCombatEvents.shift();
+    } else if (online.guest && peer === online.room?.host && type === 'motion') {
+      if (!onlineStarting && lastOnlineEpoch === data.epoch) receiveOnlinePresentation(data, false);
+    } else if (online.guest && peer === online.room?.host && type === 'world') {
+      if (onlineStarting || selectedArena !== online.room.map) pendingWorld = data;
+      else applyOnlineWorld(data);
+    }
+  } catch (error) { console.warn('Ignored invalid online packet:', error.message); }
+});
+online.addEventListener('peer-left', ({ detail }) => disposeRemoteHunter(detail));
+online.addEventListener('room', ({ detail }) => { if (!detail) { clearRemoteHunters(); onlinePresentation.clear(); onlineMotionKeys.clear(); } });
+online.addEventListener('fallback', () => {
+  clearRemoteHunters(); pendingWorld = null;
+  // A behavior event can be newer than the last periodic snapshot. Resume that confirmed action.
+  const snapshot = plainState(islandEncounter);
+  const restoreLatest = encounter => {
+    if (!encounter) return;
+    if (latestOnlineBosses.has(encounter.id)) encounter.boss = latestOnlineBosses.get(encounter.id).boss;
+    restoreLatest(encounter.summon);
+  };
+  restoreLatest(snapshot);
+  islandEncounter = restoreEncounter(snapshot, islandEncounter); behemothState = islandEncounter.boss;
+  latestOnlineBosses.clear();
+  for (const boss of encounterEnemies(islandEncounter)) boss.attackHit = boss.onlineHits?.includes(online.id) ?? false;
+  // No reset: the last confirmed boss action, timers, projectiles and meters continue locally.
+});
+online.addEventListener('handover', () => {
+  lastWorldTime = -Infinity;
+  onlinePresentation.clear(); onlineMotionKeys.clear(); latestOnlineBosses.clear();
+  online.send('loadout', networkLoadout(localInventory));
+});
+online.addEventListener('promoted', () => {
+  const snapshot = latestConfirmedWorld;
+  if (!snapshot?.encounter || !Array.isArray(snapshot.hunters)) return;
+  const encounter = plainState(snapshot.encounter);
+  const restoreLatest = current => {
+    if (!current) return;
+    const newer = latestOnlineBosses.get(current.id);
+    if (newer?.time >= snapshot.time) current.boss = plainState(newer.boss);
+    restoreLatest(current.summon);
+  };
+  restoreLatest(encounter);
+  islandEncounter = restoreEncounter(encounter, islandEncounter); behemothState = islandEncounter.boss;
+  huntEpoch = snapshot.epoch;
+  onlineEventSequence = Math.max(onlineEventSequence, onlineEventAck, snapshot.eventSequence ?? 0);
+  rewardSequence = Math.max(rewardSequence, onlineRewardAck, snapshot.rewardSequence ?? 0);
+  onlineEventHistory.splice(0, onlineEventHistory.length, ...confirmedEventHistory);
+  rewardHistory.splice(0, rewardHistory.length, ...confirmedRewardHistory);
+  for (const hunter of snapshot.hunters) {
+    if (hunter.id === online.id) {
+      Object.assign(playerState, hunter.player);
+      if (equipment && hunter.weapon) Object.assign(equipment.state, hunter.weapon);
+      continue;
+    }
+    if (!online.peers.has(hunter.id) || hunter.id === snapshot.host) { disposeRemoteHunter(hunter.id); continue; }
+    const h = remoteHunters.get(hunter.id) ?? newRemoteHunter(hunter.id, hunter.loadout);
+    Object.assign(h.playerState, hunter.player);
+    h.materialInventory = createInventoryState(hunter.loadout);
+    const definition = window.availableWeapons[EQUIPMENT[hunter.equipped]?.type];
+    h.equipment = definition ? { definition, state: hunter.weapon ?? definition.createState() } : null;
+    h.lastInput = performance.now();
+  }
+  for (const id of [...remoteHunters.keys()]) if (!online.peers.has(id)) disposeRemoteHunter(id);
+  latestOnlineBosses.clear(); onlinePresentation.clear(); onlineMotionKeys.clear();
+  syncEncounterView(); syncSummonView(); renderCombatHud();
+});
+online.addEventListener('directory-offline', () => { if (online.room) onlineMenu.notify('directoryOffline'); });
+onlineMenu = createOnlineMenu({ connection: online, narrative,
+  settingsParent: document.querySelector('#preferencesPanel'),
+  onModal(open) {
+    clearInput();
+    clearTimeout(pointerUnlockSettingsTimer);
+    if (open && settingsOpen) setSettingsOpen(false, false);
+    if (open && document.pointerLockElement) document.exitPointerLock();
+    if (!open) requestCameraPointerLock();
+  },
+  async onPrivate(map) { await leaveOnlineHunt(); await setArenaMode(map); setSettingsOpen(false); },
+  async onGroup(room, creator) {
+    onlineStarting = true; pendingWorld = null; latestConfirmedWorld = null; onlineRewardAck = 0; onlineEventAck = 0; onlineEventSeen.clear(); confirmedEventHistory.length = 0; confirmedRewardHistory.length = 0; pendingCombatEvents = []; lastWorldTime = -Infinity; onlinePresentation.clear(); onlineMotionKeys.clear(); latestOnlineBosses.clear(); lastOnlineEpoch = null; receivedRewards.clear();
+    try {
+      await setArenaMode(room.map); setSettingsOpen(false, false);
+      if (!creator) {
+        online.send('loadout', networkLoadout(localInventory));
+        const deadline = performance.now() + 7000;
+        while (!pendingWorld && performance.now() < deadline && online.room) await new Promise(resolve => setTimeout(resolve, 30));
+        if (!pendingWorld || !online.room) throw new Error('peer-unreachable');
+        applyOnlineWorld(pendingWorld); pendingWorld = null;
+      }
+    } finally { onlineStarting = false; }
+  },
+});
+let onlineTick = 0;
+setInterval(() => {
+  if (!online.room || onlineStarting) return;
+  if (online.guest) online.send('input', { ...onlineInput(), ackReward: onlineRewardAck, ackEvent: onlineEventAck });
+  else if (online.host && ++onlineTick % 2 === 0) {
+    const hunters = onlineHunters();
+    const encounter = plainState(islandEncounter);
+    for (const h of remoteHunters.values()) online.send('world', { time: performance.now(), encounter, hunters, epoch: huntEpoch,
+      eventSequence: onlineEventSequence, rewardSequence,
+      eventStart: h.eventStart, events: onlineEventHistory.filter(e => e.sequence > h.eventStart && e.sequence > h.ackEvent),
+      rewards: rewardHistory.filter(r => r.sequence > h.rewardStart && r.sequence > h.ackReward) }, h.id);
+  }
+}, 50);
+window.addEventListener('pagehide', () => { online.leave(); });
+
 const timer = new THREE.Timer();
 timer.connect(document);
 const movementStep = 1 / 60;
 let movementAccumulator = 0;
-const animate = () => {
-  requestAnimationFrame(animate);
-  timer.update();
-  updateHomeMapPreview(performance.now());
-  const delta = Math.min(timer.getDelta(), 0.05);
-  arena.rotation.y += (targetRotationY - arena.rotation.y) * delta * 0.3;
 
-  if (!arenaScreen.classList.contains('hidden') && !mapTransitionActive) {
-    const moveX = Number(heldKeys.has('d') || heldKeys.has('arrowright')) - Number(heldKeys.has('a') || heldKeys.has('arrowleft'));
-    const moveY = Number(heldKeys.has('w') || heldKeys.has('arrowup')) - Number(heldKeys.has('s') || heldKeys.has('arrowdown'));
-    const cameraYaw = getCameraYaw();
-    raycaster.setFromCamera(screenCenter, camera);
-    const rayHitsFloor = raycaster.ray.intersectPlane(floorPlane, aimPoint);
-    const aimYaw = rayHitsFloor
-      ? Math.atan2(-(aimPoint.x - playerState.position[0]), -(aimPoint.z - playerState.position[2]))
-      : cameraYaw;
-    movementAccumulator += settingsOpen || !settlementPanel.hidden ? 0 : delta;
-    let consumedActionPress = false;
-    while (movementAccumulator >= movementStep) {
-      const chestplateCommitted = chestplateCombat.commitment > 0;
+// Both local prediction and host simulation of guests execute this same path.
+const simulateHunter = (movementStep, moveX, moveY, cameraYaw, aimYaw) => {
+  const chestplateCommitted = chestplateCombat.commitment > 0;
       stepStatModifiers(playerState.statModifiers, movementStep);
       syncCellStats(playerState, currentCellLevels());
       stepShields(playerState, movementStep);
@@ -2146,8 +2594,8 @@ const animate = () => {
         aimYaw: attackYaw,
         facingMode: equipment?.state?.sheathed ? 'travel' : undefined,
         facingYaw: chestplateCommitted ? chestplateCombat.yaw : equipment?.state?.action && Number.isFinite(equipment.state.attackYaw) ? equipment.state.attackYaw : undefined,
-        jumpPressed: !chestplateCommitted && !consumedActionPress && !weaponTick.locked && pressedKeys.has('jump'),
-        dodgePressed: !isTown() && !chestplateCommitted && !consumedActionPress && !weaponTick.locked && pressedKeys.has('dodge'),
+        jumpPressed: !chestplateCommitted && !weaponTick.locked && pressedKeys.has('jump'),
+        dodgePressed: !isTown() && !chestplateCommitted && !weaponTick.locked && pressedKeys.has('dodge'),
       }, movementStep, {
         colliders: ARENA_COLLIDERS,
         collisionWorld: movementCollisionWorld,
@@ -2190,6 +2638,34 @@ const animate = () => {
       behemothView.root.updateMatrixWorld(true);
       stepProjectiles(movementStep);
       renderCombatHud();
+
+};
+
+const animate = () => {
+  requestAnimationFrame(animate);
+  timer.update();
+  updateHomeMapPreview(performance.now());
+  updateOnlinePresentation(Math.min(timer.getDelta(), 0.05));
+  const delta = Math.min(timer.getDelta(), 0.05);
+  arena.rotation.y += (targetRotationY - arena.rotation.y) * delta * 0.3;
+
+  if (!arenaScreen.classList.contains('hidden') && !mapTransitionActive) {
+    const moveX = Number(heldKeys.has('d') || heldKeys.has('arrowright')) - Number(heldKeys.has('a') || heldKeys.has('arrowleft'));
+    const moveY = Number(heldKeys.has('w') || heldKeys.has('arrowup')) - Number(heldKeys.has('s') || heldKeys.has('arrowdown'));
+    const cameraYaw = getCameraYaw();
+    raycaster.setFromCamera(screenCenter, camera);
+    const rayHitsFloor = raycaster.ray.intersectPlane(floorPlane, aimPoint);
+    const aimYaw = rayHitsFloor
+      ? Math.atan2(-(aimPoint.x - playerState.position[0]), -(aimPoint.z - playerState.position[2]))
+      : cameraYaw;
+    lastOnlineAimYaw = aimYaw;
+    const pauseLocal = settingsOpen || !settlementPanel.hidden || onlineMenu?.openNow;
+    movementAccumulator += online?.room ? delta : pauseLocal ? 0 : delta;
+    let consumedActionPress = false;
+    while (movementAccumulator >= movementStep) {
+      simulateHunter(movementStep, pauseLocal ? 0 : moveX, pauseLocal ? 0 : moveY, cameraYaw, aimYaw);
+      if (online?.host) { stepRemoteHunters(movementStep); publishOnlineMotion(); }
+      pressedKeys.clear();
       movementAccumulator -= movementStep;
       consumedActionPress = true;
     }
@@ -2207,9 +2683,9 @@ const animate = () => {
       tempestCastRing.rotation.z = castProgress * Math.PI * 1.5;
     } else tempestCastMaterial.opacity = 0.9;
     updateAttackVolume();
-    if (selectedArena === 'island') updateBehemothView(behemothView, behemothState, delta, collisionVisibilityToggle.checked);
+    if (selectedArena === 'island') updateBehemothView(behemothView, onlineBossPose(islandEncounter.id, behemothState), delta, collisionVisibilityToggle.checked);
     for (const record of summonViews.values()) {
-      updateBehemothView(record.view, record.boss, delta, collisionVisibilityToggle.checked);
+      updateBehemothView(record.view, onlineBossPose(islandEncounter.summon?.id, record.boss), delta, collisionVisibilityToggle.checked);
       record.view.root.visible &&= selectedArena === 'island';
       if (record.view.projectileRoot) record.view.projectileRoot.visible &&= selectedArena === 'island';
     }

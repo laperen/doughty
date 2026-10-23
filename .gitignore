@@ -1,0 +1,4 @@
+*.mjs
+*.md
+*.cjs
+/__pycache__

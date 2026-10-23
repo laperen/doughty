@@ -1,0 +1,12 @@
+.online-menu { width: min(760px, 92vw); max-height: 88vh; overflow: auto; background: #18262d; color: #e5f4ed; border: 1px solid #708c84; border-radius: 12px; padding: 28px; }
+.online-menu::backdrop { background: #071115b8; }
+.online-menu button { display: inline-block; margin: 8px 10px 8px 0; }
+.online-menu label, .online-settings label { display: block; margin: 14px 0; }
+.online-menu input, .online-menu select, .online-settings input:not([type=checkbox]), .online-settings select { display: block; max-width: 100%; width: 100%; padding: 9px; margin-top: 6px; background: #0e1e25; color: #ecf9f1; border: 1px solid #6f8c86; border-radius: 4px; }
+.online-settings output, .online-code { display: block; font: 600 20px monospace; letter-spacing: .15em; user-select: all; }
+.online-room { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; border-top: 1px solid #47615b; padding: 12px 0; }
+.online-room strong { flex: 1 1 180px; overflow-wrap: anywhere; }
+.online-notice { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 10000; max-width: 85vw; padding: 10px 18px; border-radius: 6px; background: #14262deb; color: #dcece5; pointer-events: none; font-size: 14px; }
+.online-notice[hidden] { display: none; }
+.hunting-board-options { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.hunting-board-code { margin-top: 16px; padding-top: 12px; border-top: 1px solid #47615b; }
