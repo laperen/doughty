@@ -309,3 +309,10 @@
 /* Burning is a shared player debuff, independent of the equipped weapon. */
 .weapon-resource.resource-burning i { background: #f46a28; }
 .weapon-resource.resource-burning { color: #ffd09d; }
+.npc-menu-close.menu-button { position:absolute; top:12px; right:12px; display:grid; place-items:center; width:32px; height:32px; min-width:0; padding:0; margin:0; border:1px solid transparent; background:transparent; color:inherit; opacity:.6; font:26px/1 sans-serif; box-shadow:none; }
+.npc-menu-close.menu-button:hover,.npc-menu-close.menu-button:focus-visible { opacity:1; background:#ffffff0d; border-color:#ffffff35; }
+.settlement-panel h2,.inventory-heading { padding-right:32px; }
+.hunting-board-modes { display:flex; gap:8px; margin:12px 0; }
+.hunting-board-modes [aria-selected="true"] { border-color:#d5bd8e; background:#ffffff18; }
+.hunting-board-modes [role="tab"] { flex:1; }
+.arena-selection label[hidden] { display:none; }

@@ -1,6 +1,7 @@
 import { ONLINE_TEXT as T } from './online-text.js';
 import { EXPLORATION_ISLANDS } from './exploration-islands.js';
 import { ROOM_SERVER_URL } from './online-config.js';
+import { configureMenuClose } from './menu-close.js';
 const STORAGE = 'doughty-online-v1';
 export function createOnlineMenu({ connection, narrative, onPrivate, onGroup, onModal, settingsParent }) {
   let saved = {};
@@ -22,6 +23,9 @@ export function createOnlineMenu({ connection, narrative, onPrivate, onGroup, on
     }); return node;
   };
   const dialog = element('dialog', null, document.body, { className: 'online-menu' });
+  const closeButton = element('button', null, dialog, { type: 'button', className: 'menu-button' });
+  configureMenuClose(closeButton);
+  closeButton.addEventListener('click', close);
   const content = element('div', null, dialog);
   const notice = element('div', null, document.body, { className: 'online-notice', hidden: true });
   notice.setAttribute('role', 'status'); notice.setAttribute('aria-live', 'polite');
@@ -46,7 +50,7 @@ export function createOnlineMenu({ connection, narrative, onPrivate, onGroup, on
   const fallback = element('input', null, fallbackLabel, { type: 'checkbox', checked: preferences.createOnFailure });
   fallback.addEventListener('change', () => { preferences.createOnFailure = fallback.checked; save(); });
   const leave = button('leave', settings, () => connection.host ? connection.leave() : connection.fallback());
-  let refreshTimer = null, screen = '', generation = 0, busy = false, operation = 0, notifyTimer, destination = 'island';
+  let refreshTimer = null, screen = '', generation = 0, busy = false, operation = 0, notifyTimer, destination = 'island', gameMode = 'hunting-grounds';
   const latency = new Map(), failures = new Map();
   let resumeRefresh = null, measuring = null;
   const hostKey = room => `${preferences.endpoint}|${room.id}|${room.host}`;
@@ -90,6 +94,7 @@ export function createOnlineMenu({ connection, narrative, onPrivate, onGroup, on
   function close() {
     generation++; operation++; busy = false; connection.cancelProbes(); resumeRefresh = null;
     clearInterval(refreshTimer); refreshTimer = null; screen = '';
+    dialog.removeAttribute('aria-busy');
     if (dialog.open) dialog.close(); onModal(false);
     if (!connection.room) { connection.socket?.close(); connection.socket = null; }
   }
@@ -128,7 +133,7 @@ export function createOnlineMenu({ connection, narrative, onPrivate, onGroup, on
     const revision = generation;
     await ensureConnection();
     if (revision !== generation || document.hidden) return;
-    const room = await connection.create({ private: isPrivate, title, region: preferences.region, map: destination });
+    const room = await connection.create({ private: isPrivate, title, region: preferences.region, map: destination, mode: gameMode });
     if (revision !== generation || document.hidden) { await connection.leave(); return; }
     try { await enterGroup(room, true); } catch (e) { await connection.leave(); throw e; }
   }
@@ -176,8 +181,7 @@ export function createOnlineMenu({ connection, narrative, onPrivate, onGroup, on
   async function list() {
     page('chooseRoom'); const revision = generation;
     element('p', null, content, { textContent: destination === 'island' ? 'Cinderwild Isle' : EXPLORATION_ISLANDS[destination]?.name });
-    const label = element('label', 'gameMode', content);
-    const mode = element('select', null, label); element('option', 'huntingGrounds', mode, { value: 'hunting-grounds' });
+    element('p', 'huntingGrounds', content);
     const filterLabel = element('label', 'minimum', content);
     const filter = strength.cloneNode(true); filterLabel.append(filter);
     filter.value = '0';
@@ -195,7 +199,22 @@ export function createOnlineMenu({ connection, narrative, onPrivate, onGroup, on
         const locationName = room.map === 'island' ? 'Cinderwild Isle' : EXPLORATION_ISLANDS[room.map]?.name;
         element('span', null, row, { textContent: locationName });
         element('span', null, row, { textContent: `${room.members} / ${room.capacity}` });
-        element('span', ping == null ? 'unknown' : rating(ping), row);
+        const status = element('span', backedOff(room) ? 'unreachable' : ping == null ? 'unknown' : rating(ping), row);
+        status.setAttribute('role', 'status');
+        button('testConnection', row, async () => {
+          if (selected !== room.id) connection.cancelProbes();
+          selected = room.id;
+          status.textContent = text('testingConnection');
+          status.dataset.textId = T.testingConnection.id;
+          try {
+            await measure(room, revision);
+          } catch (error) {
+            if (error.message !== 'probe-cancelled') failed(room);
+            throw error;
+          } finally {
+            if (revision === generation && !document.hidden) render();
+          }
+        });
         button('join', row, async () => {
           if (selected !== room.id) connection.cancelProbes();
           selected = room.id;
@@ -210,14 +229,6 @@ export function createOnlineMenu({ connection, narrative, onPrivate, onGroup, on
             throw error;
           }
         });
-        // Focus selects a room for measurement without committing to a join.
-        row.addEventListener('focusin', () => {
-          if (busy || selected === room.id || sampleFor(room) || backedOff(room)) return;
-          selected = room.id; connection.cancelProbes();
-          measure(room, revision).then(() => { if (revision === generation && !busy) render(); }).catch(error => {
-            if (error.message !== 'probe-cancelled') failed(room);
-          });
-        });
       }
       if (!rows.children.length) element('p', 'noRooms', rows);
     };
@@ -228,9 +239,9 @@ export function createOnlineMenu({ connection, narrative, onPrivate, onGroup, on
       try {
         await ensureConnection();
         if (revision !== generation || document.hidden) return;
-        const result = await connection.list({ mode: mode.value, map: destination });
+        const result = await connection.list({ mode: gameMode, map: destination });
         if (revision !== generation) return;
-        rooms = result.rooms.filter(room => room.map === destination); render();
+        rooms = result.rooms.filter(room => room.map === destination && room.mode === gameMode); render();
       } catch { if (revision === generation) notify('connectionFailed'); }
       finally { fetching = false; }
     }
@@ -243,8 +254,8 @@ export function createOnlineMenu({ connection, narrative, onPrivate, onGroup, on
     button('cancel', content, group);
     await ensureConnection();
     if (revision !== generation || document.hidden) return;
-    const { rooms } = await connection.list({ mode: 'hunting-grounds', map: destination });
-    const candidates = rooms.filter(r => r.map === destination && !backedOff(r))
+    const { rooms } = await connection.list({ mode: gameMode, map: destination });
+    const candidates = rooms.filter(r => r.map === destination && r.mode === gameMode && !backedOff(r))
       .sort((a, b) => Number(b.region === preferences.region) - Number(a.region === preferences.region) || Math.random() - .5).slice(0, 6);
     for (const room of candidates) {
       if (revision !== generation || document.hidden) return;
@@ -272,8 +283,9 @@ export function createOnlineMenu({ connection, narrative, onPrivate, onGroup, on
   dialog.addEventListener('cancel', event => { event.preventDefault(); if (!busy) close(); });
   narrative?.onLanguageChange(updateRoom);
   return {
-    open(map = 'island', action = null) {
+    open(map = 'island', action = null, mode = 'hunting-grounds') {
       destination = map;
+      gameMode = mode;
       if (!action) { entry(); return; }
       run(async () => {
         if (connection.room) await connection.leave();

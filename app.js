@@ -2,6 +2,7 @@ import { OnlineConnection } from './online-connection.js';
 import { OnlinePresentation, motionKey } from './online-presentation.js';
 import { createOnlineMenu } from './online-menu.js';
 import { ONLINE_TEXT } from './online-text.js';
+import { configureMenuClose } from './menu-close.js';
 import { plainState, restoreEncounter, contactKey, networkLoadout } from './online-state.js';
 import { createInventoryState } from './inventory.js';
 import { EXPLORATION_ISLANDS } from './exploration-islands.js';
@@ -276,6 +277,7 @@ arenaScreen.append(settlementPrompt);
 const settlementPanel = document.createElement('section');
 settlementPanel.className = 'settlement-panel'; settlementPanel.hidden = true;
 settlementPanel.innerHTML = '<h2></h2><p></p><button type="button" class="menu-button">Close</button>';
+configureMenuClose(settlementPanel.querySelector('button'));
 settlementPanel.querySelector('h2').dataset.narrativeDirect = '';
 settlementPanel.querySelector('p').dataset.narrativeDirect = '';
 const dialogueControls = document.createElement('div');
@@ -298,6 +300,15 @@ settlementTravelControls.innerHTML = `<div class="camera-settings arena-selectio
 <label class="arena-option"><input type="radio" name="hunting-board-arena" value="cinderfall"><span><strong>Cinderfall Crucible</strong></span></label>
 </div><button type="button" class="primary-button">Go to selected location</button>`;
 settlementPanel.append(settlementTravelControls);
+const huntingBoardModes = document.createElement('div');
+huntingBoardModes.className = 'hunting-board-modes';
+huntingBoardModes.setAttribute('role', 'tablist');
+huntingBoardModes.setAttribute('aria-label', 'Game mode');
+settlementTravelControls.prepend(huntingBoardModes);
+const boardMaps = settlementTravelControls.querySelector('.arena-selection');
+boardMaps.id = 'huntingBoardMaps';
+boardMaps.setAttribute('role', 'tabpanel');
+let huntingBoardMode = 'hunting-grounds';
 const huntingBoardOptions = document.createElement('div');
 huntingBoardOptions.className = 'hunting-board-options';
 huntingBoardOptions.hidden = true;
@@ -315,11 +326,37 @@ const boardButton = (key, parent, action) => {
   button.dataset.textId = entry.id;
   button.textContent = narrative?.text(entry.id) ?? entry.value;
   button.addEventListener('click', action); parent.append(button);
+  return button;
 };
+const modeTabs = ['huntingGrounds', 'training'].map((key, index) => {
+  const tab = boardButton(key, huntingBoardModes, () => selectBoardMode(index));
+  tab.id = `huntingBoardMode${index}`;
+  tab.setAttribute('role', 'tab');
+  tab.setAttribute('aria-controls', boardMaps.id);
+  tab.addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? 1 : 1 - index;
+    selectBoardMode(next); modeTabs[next].focus();
+  });
+  return tab;
+});
+function selectBoardMode(index) {
+  huntingBoardMode = index ? 'training' : 'hunting-grounds';
+  modeTabs.forEach((tab, i) => {
+    tab.setAttribute('aria-selected', String(i === index)); tab.tabIndex = i === index ? 0 : -1;
+  });
+  boardMaps.setAttribute('aria-labelledby', modeTabs[index].id);
+  for (const input of boardMaps.querySelectorAll('input')) {
+    input.closest('label').hidden = (input.value === 'range') !== !!index;
+    input.checked = !!index && input.value === 'range';
+  }
+  updateHuntingBoardOptions();
+}
 for (const action of ['privatePlay', 'quickJoin', 'chooseRoom', 'createRoom']) boardButton(action, huntingBoardOptions, () => {
   const map = settlementTravelControls.querySelector('input:checked')?.value;
   if (map !== 'island' && !EXPLORATION_ISLANDS[map]) return;
-  leaveHuntingBoard(); onlineMenu.open(map, action);
+  leaveHuntingBoard(); onlineMenu.open(map, action, huntingBoardMode);
 });
 const huntingBoardCode = document.createElement('div');
 huntingBoardCode.className = 'hunting-board-code';
@@ -332,7 +369,8 @@ const updateHuntingBoardOptions = () => {
 };
 settlementTravelControls.addEventListener('change', updateHuntingBoardOptions);
 updateHuntingBoardOptions();
-settlementTravelControls.querySelector('button').addEventListener('click', async () => {
+selectBoardMode(0);
+settlementTravelControls.querySelector('.primary-button').addEventListener('click', async () => {
   const destination = settlementTravelControls.querySelector('input:checked')?.value;
   if (!['range', 'island', ...Object.keys(EXPLORATION_ISLANDS)].includes(destination)) return;
   settlementPanel.hidden = true;
@@ -426,8 +464,7 @@ async function interactSettlement() {
     settlementPanel.querySelector('p').textContent = '';
     settlementPanel.querySelector('p').hidden = true;
     settlementTravelControls.hidden = false;
-    for (const input of settlementTravelControls.querySelectorAll('input[name="hunting-board-arena"]')) input.checked = false;
-    updateHuntingBoardOptions();
+    selectBoardMode(0);
     settlementPanel.hidden = false;
     clearInput();
     altCursorHeld = true;

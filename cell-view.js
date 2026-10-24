@@ -1,4 +1,5 @@
 import { CELLS, CELL_TYPES, canCreateCell } from './cells.js';
+import { configureMenuClose } from './menu-close.js';
 
 export function createCellView({ inventory, area, onCreate, onBack, narrative }) {
   const dialog = document.createElement('dialog');
@@ -12,6 +13,7 @@ export function createCellView({ inventory, area, onCreate, onBack, narrative })
   const header = node('header', '', dialog); header.className = 'inventory-heading';
   const title = node('h2', 'Cell researcher', header); title.id = 'cellTitle';
   const back = node('button', 'Back', header); back.className = 'menu-button'; back.onclick = onBack;
+  configureMenuClose(back);
   const balance = node('p', '', dialog); balance.className = 'cell-balance';
   const note = node('p', 'Crafted cells can be equipped through cell slots in the equipment menu.', dialog);
   const layout = node('div', '', dialog); layout.className = 'inventory-layout';
@@ -44,7 +46,7 @@ export function createCellView({ inventory, area, onCreate, onBack, narrative })
   const content = node('div', '', layout); content.className = 'inventory-content';
   const list = node('div', '', content); list.className = 'cell-list'; list.id = 'researcherCells';
   function render() {
-    title.textContent = text('Cell researcher'); back.textContent = text('Back');
+    title.textContent = text('Cell researcher'); configureMenuClose(back);
     filterTitle.textContent = text('Cell type'); clear.textContent = text('Clear filters');
     for (const [caption, source] of filterLabels) caption.textContent = text(source);
     note.textContent = text('Crafted cells can be equipped through cell slots in the equipment menu.');

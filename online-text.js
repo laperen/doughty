@@ -195,5 +195,17 @@ export const ONLINE_TEXT = {
   "directoryOffline": {
     "id": "a21f8722-3883-533b-a62f-10f05bf7d1f9",
     "value": "Room directory unavailable. Your current hunt connection remains active."
+  },
+  "training": {
+    "id": "5730c2d5-2161-4444-a574-414395f4c8f8",
+    "value": "Training (Open Range)"
+  },
+  "testConnection": {
+    "id": "427f1f7a-e12c-406f-a7be-529e15fa50f1",
+    "value": "Test connection"
+  },
+  "testingConnection": {
+    "id": "302f29fe-49e7-4031-af90-4c8ea149f39a",
+    "value": "Testing connection..."
   }
 };

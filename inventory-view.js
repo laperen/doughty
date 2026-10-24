@@ -1,6 +1,8 @@
 import { CELLS, CELL_TYPES } from './cells.js';
 import { PART_TYPES, MATERIAL_SPECIES, MATERIALS, RARITIES, filterStacks, extractionYield, extractSelectedParts, donationYield, donateSelectedParts } from './inventory.js';
 
+import { configureMenuClose } from './menu-close.js';
+
 /** Full-screen material browser; selections remain drafts until confirmation. */
 export function createInventoryView({ state, onBack, onExtract = () => true }) {
   const dialog = document.createElement('dialog');
@@ -73,6 +75,7 @@ export function createInventoryView({ state, onBack, onExtract = () => true }) {
   addFilters('#inventoryTypes', Object.entries(PART_TYPES));
   addFilters('#inventorySpecies', Object.entries(MATERIAL_SPECIES).map(([id, value]) => [id, value.name]));
   function render() {
+    configureMenuClose(dialog.querySelector('#inventoryBack'), ['extract', 'donate'].includes(mode), 'Back to Gameplay');
     const cellsActive = mode === 'player' && category === 'cells';
     dialog.querySelector('#inventoryTabs').hidden = mode !== 'player';
     dialog.querySelector('#inventoryPartsPanel').hidden = cellsActive;

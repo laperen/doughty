@@ -1,4 +1,5 @@
 import { CHESTPLATE_TEXT, chestplateAbility } from './chestplate-abilities.js';
+import { configureMenuClose } from './menu-close.js';
 import { ARMOR, ARMOR_SLOTS, armorDefense, armorPieceDefense, armorUpgradeRecipe, canUpgradeArmor, canCraftArmor } from './armor.js';
 import { CELLS, CELL_TYPES, embeddedCellLevel } from './cells.js';
 import { cellFitsSlot, equipmentCellLevels, equipmentCellSlots } from './equipment-cells.js';
@@ -382,7 +383,7 @@ export function createEquipmentView({ inventory, area, onEquip, onCraft, onEquip
   dialog.addEventListener('close', () => { cancelHold(); endDrag(); cancelAnimationFrame(animation); });
   return { get open() { return dialog.open; }, back, close() { cancelHold(); cancelAnimationFrame(animation); dialog.close(); }, show(service = null) {
     cellTarget = null; previewYaw = -.3; endDrag();
-    crafter = service; page = 'overview'; type = service === 'armorer' ? 'helmet' : service === 'repeaters' ? 'repeaters' : inventory.equipment.equipped ? EQUIPMENT[inventory.equipment.equipped].type : 'striker-sword';
+    crafter = service; configureMenuClose(q('equipmentBack'), !!service); page = 'overview'; type = service === 'armorer' ? 'helmet' : service === 'repeaters' ? 'repeaters' : inventory.equipment.equipped ? EQUIPMENT[inventory.equipment.equipped].type : 'striker-sword';
     if (service === 'smith' && type === 'repeaters') type = 'striker-sword';
     selected = crafter ? candidates()[0]?.id || null : inventory.equipment.equipped;
     q('equipmentStatus').textContent = ''; render(); dialog.showModal(); q('equipmentBack').focus(); animate();

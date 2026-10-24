@@ -10,3 +10,5 @@
 .online-notice[hidden] { display: none; }
 .hunting-board-options { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .hunting-board-code { margin-top: 16px; padding-top: 12px; border-top: 1px solid #47615b; }
+.online-menu { position:fixed; padding-top:40px; }
+.online-menu > .npc-menu-close { margin:0; }
