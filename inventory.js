@@ -6,6 +6,7 @@ import { createEquipmentState } from './equipment.js';
 export const PART_TYPES = Object.freeze({ legs: 'Legs', tails: 'Tails', heads: 'Heads', horns: 'Horns', cores: 'Cores (core and heart)', growths: 'Growths' });
 const commonParts = { head: 'head', tail: 'tail', leftFore: 'leg', rightFore: 'leg', leftHind: 'leg', rightHind: 'leg' };
 export const MATERIAL_SPECIES = Object.freeze({
+  gnasher: { name: 'Gnasher', core: 'core', parts: { ...commonParts }, items: { leg: 'legs', tail: 'tails', head: 'heads', core: 'cores' } },
   'first-behemoth': { name: 'Embermane', core: 'heart', parts: { ...commonParts, horn: 'horn' }, items: { leg: 'legs', tail: 'tails', head: 'heads', horn: 'horns', heart: 'cores' } },
   quillshot: { name: 'Quillshot', core: 'core', parts: { ...commonParts, leftTusk: 'tusk', rightTusk: 'tusk', quillFrontLeft: 'quills', quillFrontRight: 'quills', quillRearLeft: 'quills', quillRearRight: 'quills' }, items: { leg: 'legs', tail: 'tails', head: 'heads', tusk: 'horns', quills: 'growths', core: 'cores' } },
 });

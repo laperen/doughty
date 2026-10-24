@@ -3,10 +3,11 @@ import { createBehemothState, stepBehemoth } from './encounter-combat.js';
 import { advanceTimedMode } from './behemoth-states.js';
 import { advanceQuillshotTimers } from './quillshot.js';
 import { advanceEmbermaneModes } from './embermane-aether.js';
+import { advanceGnasherTimers } from './gnasher.js';
 import { BEHEMOTH_TIERS, SUMMON_HEALTH_FRACTION, SUMMON_REPLACEMENT_DELAY } from './behemoth-tiers.js';
 
 export const ISLAND = Object.freeze({
-  name: 'Cinderwild Isle', layoutScale: 2, arrival: [0, 0.25, 78], roster: ['first-behemoth', 'quillshot'], tier: 'normal', maxAlive: 1,
+  name: 'Cinderwild Isle', layoutScale: 2, arrival: [0, 0.25, 78], roster: ['gnasher', 'first-behemoth', 'quillshot'], tier: 'normal', maxAlive: 1,
   spawnDuration: 2.4, deathDuration: 3.2, replacementDelay: 5, awarenessRadius: 20.25,
   patrolRadius: 8,
   arenas: [
@@ -29,6 +30,7 @@ export function alertEncounter(encounter, position) {
 }
 export function stepIslandEncounter(encounter, players, dt) {
   let { boss, arena } = encounter;
+  boss.runOutContact = null;
   encounter.clock += dt;
   if (encounter.summon?.boss.mode === 'defeated' && !encounter.summon.replacementWaitStarted) {
     encounter.summon.replacementWaitStarted = true;
@@ -75,7 +77,8 @@ export function stepIslandEncounter(encounter, players, dt) {
   } else {
     // Health, parts and stagger persist; timed combat states continue expiring.
     stepWounds(boss.parts, dt);
-    if (boss.speciesId === 'quillshot') advanceQuillshotTimers(boss, dt, false);
+    if (boss.speciesId === 'gnasher') advanceGnasherTimers(boss, dt);
+    else if (boss.speciesId === 'quillshot') advanceQuillshotTimers(boss, dt, false);
     else {
       advanceTimedMode(boss.states.enrage, dt);
       advanceEmbermaneModes(boss, dt, false);

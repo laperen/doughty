@@ -200,6 +200,13 @@ export function stepQuillshot(s, playerPosition, dt, bounds = 68, options = {}) 
       if (barrage(s.move)) { volley(s, players); s.volleyCount++; s.nextVolley = s.move === 'intermittent' ? (s.definition ?? QUILLSHOT).quills.intermittentCadence : (s.definition ?? QUILLSHOT).quills.cadence; }
     }
   } else if (s.mode === 'active') {
+    if (rankedSideDrop(s) && s.sideCombo?.phase === 'pause') {
+      // Hold the last 120-degree orientation without another fall or contact hit.
+      if (s.elapsed >= move.recovery) {
+        s.sideCombo.phase = 'spin'; s.elapsed = 1; s.attackHit = false;
+      }
+      return [];
+    }
     if (s.move === 'charge') { s.position[0] -= Math.sin(s.yaw) * move.speed * dt; s.position[2] -= Math.cos(s.yaw) * move.speed * dt; }
     if (barrage(s.move)) while (s.nextVolley <= s.elapsed && s.nextVolley < s.activeDuration && (s.move !== 'intermittent' || s.volleyCount < (s.definition ?? QUILLSHOT).quills.intermittentCount)) {
       volley(s, players); s.volleyCount++; s.nextVolley += s.move === 'intermittent' ? (s.definition ?? QUILLSHOT).quills.intermittentCadence : (s.definition ?? QUILLSHOT).quills.cadence;
@@ -209,14 +216,18 @@ export function stepQuillshot(s, playerPosition, dt, bounds = 68, options = {}) 
       s.previousSpinYaw = s.yaw;
       spinVolley(s, Math.min(1, (s.elapsed - 1) / SIDE_COMBO.spinDuration));
     } else if (s.move === 'sideDrop' && s.elapsed >= 1 && !s.sideReleased) { sideVolley(s); s.sideReleased = true; }
-    if (s.elapsed >= s.activeDuration) { s.mode = 'recovery'; s.elapsed = 0; }
+    if (s.elapsed >= s.activeDuration) {
+      if (rankedSideDrop(s) && s.sideCombo && s.sideCombo.cycle + 1 < SIDE_COMBO.repeats) {
+        // Separate the three spins with prone holds at their distinct angles.
+        s.sideCombo.cycle++; s.sideCombo.emitted = 0;
+        s.sideCombo.spinYaw = s.yaw;
+        s.previousSpinYaw = s.yaw;
+        s.sideCombo.phase = 'pause';
+        s.elapsed = 0; s.attackHit = false;
+      } else { s.mode = 'recovery'; s.elapsed = 0; }
+    }
   } else if (s.mode === 'recovery') {
     if (s.elapsed >= move.recovery) {
-      if (rankedSideDrop(s) && s.sideCombo && s.sideCombo.cycle + 1 < SIDE_COMBO.repeats) {
-        s.sideCombo.cycle++; s.sideCombo.emitted = 0; s.sideCombo.phase = 'fall';
-        s.mode = 'windup'; s.elapsed = 0; s.attackHit = false;
-        return [];
-      }
       if (s.sideCombo) { s.yaw = s.sideCombo.startYaw + s.side * Math.PI * 2; s.sideCombo = null; }
       if (barrage(s.move)) { s.meleeCount = 0; s.afterRetreat = false; }
       else if (s.move !== 'enrage') s.meleeCount++;
@@ -252,15 +263,16 @@ export function stepQuillshot(s, playerPosition, dt, bounds = 68, options = {}) 
 export function quillshotAttackTouchesPlayer(s, p) {
   const m = (s.definition ?? QUILLSHOT).moves[s.move];
   if (s.mode !== 'active' || s.attackHit || !m?.damage || Math.abs(p[1] - s.position[1]) > 2.5 * (s.definition ?? QUILLSHOT).sizeScale) return false;
+  if (s.sideCombo?.phase === 'pause') return false;
   const spinning = rankedSideDrop(s) && s.sideCombo?.phase === 'spin';
   if (s.move === 'sideDrop' && s.elapsed > 0.2 && !spinning) return false;
-  const yaw = s.move === 'sideDrop' ? s.yaw + s.side * Math.PI / 2 : s.yaw;
+  const yaw = s.move === 'sideDrop' ? s.yaw + (spinning ? Math.PI : s.side * Math.PI / 2) : s.yaw;
   if (dist(s.position, p) >= m.reach * (s.definition ?? QUILLSHOT).sizeScale + 0.36) return false;
   const targetYaw = yawTo(s.position, p);
   if (Math.cos(delta(yaw, targetYaw)) >= Math.cos(m.arc * Math.PI / 360)) return true;
   // Sweep the rotating sector between simulation frames so edge contacts cannot tunnel.
   if (spinning && Number.isFinite(s.previousSpinYaw)) {
-    const previous = s.previousSpinYaw + s.side * Math.PI / 2;
+    const previous = s.previousSpinYaw + Math.PI;
     const middle = previous + (yaw - previous) / 2;
     return Math.abs(delta(middle, targetYaw)) <= m.arc * Math.PI / 360 + Math.abs(yaw - previous) / 2;
   }

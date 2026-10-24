@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import * as emberView from './behemoth-view.js';
 import * as quillView from './quillshot-view.js';
-export const createBehemothView = (scene, species) => species === 'quillshot' ? quillView.createQuillshotView(scene) : emberView.createBehemothView(scene);
+import * as gnasherView from './gnasher-view.js';
+export const createBehemothView = (scene, species) => species === 'gnasher' ? gnasherView.createGnasherView(scene) : species === 'quillshot' ? quillView.createQuillshotView(scene) : emberView.createBehemothView(scene);
 export function disposeBehemothView(view) {
   const resources = new Set();
   for (const root of [view.root, view.projectileRoot].filter(Boolean)) {
@@ -16,7 +17,8 @@ export function disposeBehemothView(view) {
   for (const resource of resources) resource.dispose();
 }
 export function updateBehemothView(view, s, ...args) {
-  if (s.speciesId === 'quillshot') quillView.updateQuillshotView(view, s, ...args);
+  if (s.speciesId === 'gnasher') gnasherView.updateGnasherView(view, s, ...args);
+  else if (s.speciesId === 'quillshot') quillView.updateQuillshotView(view, s, ...args);
   else emberView.updateBehemothView(view, s, ...args);
   if (!view.woundMarkers) {
     view.woundMarkers = {};

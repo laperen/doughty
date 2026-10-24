@@ -4,6 +4,5 @@ export function quillshotSidePose(s) {
   const move = s.definition?.moves.sideDrop ?? { tell: 1, recovery: 1.2 };
   let amount = s.mode === 'windup' ? Math.min(1, s.elapsed / move.tell)
     : s.mode === 'recovery' ? Math.max(0, 1 - s.elapsed / move.recovery) : 1;
-  if (s.sideCombo?.phase === 'spin' && s.mode === 'active') amount = 1 - Math.min(1, Math.max(0, s.elapsed - 1) / ((s.activeDuration ?? 2) - 1));
   return { roll: (s.side ?? 1) * amount * 1.15, dip: -0.4 * amount };
 }

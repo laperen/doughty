@@ -42,7 +42,7 @@ import { STRIKER_SWORD } from './striker-weapon.js';
 import { sweptMeleeContact } from './swept-melee.js';
 import { spendStamina } from './stamina.js';
 import { addTimedStatModifier, getEffectiveStat, getStatModifierRemaining, stepStatModifiers } from './stat-modifiers.js';
-import { definitionFor, behemothAttackTouchesPlayer, createBehemothState, hitBehemoth, isInterruptible } from './encounter-combat.js';
+import { definitionFor, behemothAttackTouchesPlayer, behemothContactAttack, createBehemothState, hitBehemoth, isInterruptible } from './encounter-combat.js';
 import { createBehemothView, updateBehemothView, disposeBehemothView } from './encounter-view.js';
 import { quillImpactTouches } from './quillshot.js';
 import { applyBurning, dodgeBurning, stepBurning } from './burning.js';
@@ -1415,7 +1415,8 @@ const stepEncounter = (dt, resolveContacts = () => {}) => {
     if (contactingStreams.size) behemothState.projectiles = behemothState.projectiles.filter(q => !contactingStreams.has(q.id));
     if (meleeHit || quillHit) {
       if (meleeHit) { behemothState.attackHit = true; if (online?.host) behemothState.onlineHits.push(contactOwner); }
-      const incomingDamage = meleeHit ? BEHEMOTH.moves[behemothState.move].damage : quillHit.damage;
+      const contactAttack = meleeHit ? behemothContactAttack(behemothState) : null;
+      const incomingDamage = meleeHit ? contactAttack.damage : quillHit.damage;
       const rolling = playerState.movementAction === 'dodge' && playerState.actionTime > 0.08;
       activateEmbermane(playerState.statModifiers, currentFamilyAbility(), {
         contact: true, dodgeProtected: rolling, damage: incomingDamage,
@@ -1429,7 +1430,7 @@ const stepEncounter = (dt, resolveContacts = () => {}) => {
       if (!rolling && !(equipment?.state.airHeight > 0) && !isRecoveryProtected(playerState) && playerState.invulnerability === 0) {
         const damageTaken = mitigateDamage(incomingDamage, armorDefense(materialInventory.armor));
         consumeResource(playerState, 'health', damageTaken);
-        if (playerState.health > 0 && (meleeHit ? behemothState.speciesId !== 'quillshot' && behemothState.states.aetherCharge.active : quillHit.burning)) applyBurning(playerState);
+        if (playerState.health > 0 && (meleeHit ? contactAttack.burning !== false && behemothState.speciesId === 'first-behemoth' && behemothState.states.aetherCharge.active : quillHit.burning)) applyBurning(playerState);
         chestplateCombat.pendingProjectile = null;
         chestplateCombat.commitment = 0;
         equipment?.definition.cancelAction?.(equipment.state);

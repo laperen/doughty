@@ -2,3 +2,4 @@
 *.md
 *.cjs
 /__pycache__
+/behemoth-previewer

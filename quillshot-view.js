@@ -154,9 +154,9 @@ export function updateQuillshotView(v, s, dt, collision = false) {
     else { landing.visible = false; mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(...q.direction)); }
   }
   v.tellZone.visible = s.mode === 'windup';
-  v.attackZone.visible = collision && s.mode === 'active' && (s.move !== 'sideDrop' || s.elapsed <= 0.2 || s.sideCombo?.phase === 'spin');
+  v.attackZone.visible = collision && s.mode === 'active' && (s.move !== 'sideDrop' || (s.sideCombo?.phase !== 'pause' && s.elapsed <= 0.2) || s.sideCombo?.phase === 'spin');
   for (const zone of [v.tellZone, v.attackZone]) {
-    zone.rotation.y = s.move === 'sideDrop' ? s.side * Math.PI / 2 : 0;
+    zone.rotation.y = s.move === 'sideDrop' ? (s.sideCombo?.phase === 'spin' ? Math.PI : s.side * Math.PI / 2) : 0;
     for (const child of zone.children) child.visible = child.name === s.move;
   }
   if (v.tellZone.visible) v.tellMaterial.opacity = 0.08 + Math.min(1, s.elapsed / QUILLSHOT.moves[s.move].tell) * 0.17;

@@ -18,6 +18,12 @@ const QUILL = [
   [-.8, -3.1, -2.7, .2, .4, 1.7, 'leftTusk'],
   [.8, -3.1, -2.7, .2, .4, 1.7, 'rightTusk'],
 ];
+const GNASHER = [
+  [0, -.85, .85, 1.03, .7, 3.03],
+  [0, -2.65, -1.75, .65, .6, 1.95],
+  ...[-1, 1].flatMap(side => [[side * .98, -1.2, -.95, .32, .4, 1.75], [side * 1.1, .7, 1.15, .6, 0, 2.05]]),
+  [0, 2.1, 4.6, .8, .9, 1.65, 'tail'],
+];
 
 /** Deepest horizontal capsule contact; shared by travel and overlap queries. */
 export function behemothPushOut(state, position, radius, height) {
@@ -30,7 +36,7 @@ export function behemothPushOut(state, position, radius, height) {
   const pose = quill ? quillshotSidePose(state) : { roll: 0, dip: 0 };
   const rollCos = Math.cos(pose.roll), rollSin = Math.sin(pose.roll);
   let best = null, deepest = 0;
-  for (const [cx, start, end, r, bottom, top, part] of quill ? QUILL : EMBER) {
+  for (const [cx, start, end, r, bottom, top, part] of state.speciesId === 'gnasher' ? GNASHER : quill ? QUILL : EMBER) {
     if (part && state.parts?.[part]?.broken) continue;
     const midY = (bottom + top) / 2, halfY = (top - bottom) / 2;
     const rolledX = cx * rollCos - midY * rollSin;

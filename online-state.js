@@ -1,5 +1,6 @@
-import { createBehemothState } from './encounter-combat.js';
+import { BEHEMOTH_SPECIES, createBehemothState } from './encounter-combat.js';
 import { createIslandEncounter } from './island-encounters.js';
+import { hasRunOutContact } from './behemoth-run-out.js';
 
 /** Definitions stay local; snapshots include timers, RNG, projectiles and lifecycle. */
 export function plainState(value) {
@@ -17,7 +18,7 @@ export function networkLoadout(inventory) {
   };
 }
 export function restoreEncounter(snapshot, previous) {
-  if (!snapshot || !['first-behemoth', 'quillshot'].includes(snapshot.speciesId) || !Number.isInteger(snapshot.index) || snapshot.index < 0 || snapshot.index > 1) throw new Error('Invalid encounter snapshot');
+  if (!snapshot || !BEHEMOTH_SPECIES.includes(snapshot.speciesId) || !Number.isInteger(snapshot.index) || snapshot.index < 0 || snapshot.index > 1) throw new Error('Invalid encounter snapshot');
   const same = previous?.id === snapshot.id && previous?.speciesId === snapshot.speciesId && previous?.boss.tier === snapshot.boss?.tier;
   const result = same ? previous : createIslandEncounter(snapshot.index, snapshot.serial, snapshot.speciesId, snapshot.tier);
   const boss = same ? result.boss : createBehemothState(snapshot.speciesId, snapshot.boss.tier);
@@ -31,5 +32,6 @@ export function restoreEncounter(snapshot, previous) {
 
 /** Keep repeated melee contacts independent per hunter, including side-combo phases. */
 export function contactKey(boss) {
+  if (hasRunOutContact(boss)) return `run-out:${boss.runOutCount}`;
   return `${boss.attackCount}:${boss.move}:${boss.sideCombo?.cycle ?? ''}:${boss.sideCombo?.phase ?? ''}`;
 }

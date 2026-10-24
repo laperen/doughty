@@ -5,6 +5,99 @@
     "id": "39f52b5a-e913-41c9-a1b8-007880f94963",
     "scheduleBindingModelVersion": 1,
     "text": {
+      "7cf6940f-7c85-5ed3-bc2b-6aa8f02e4f25": {
+        "value": "TAIL SWEEP"
+      },
+      "fdc8c09e-4485-5247-a929-f5904a60a6a9": {
+        "value": "FOOT SLAM"
+      },
+      "39bce468-338e-5a8d-acbc-83bf037cf481": {
+        "value": "REPEATED TAIL SLAMS"
+      },
+      "b98c83b7-71dd-5ff2-a82c-f367b37c492c": {
+        "value": "{{name:d42c3151-0fa8-5b85-92e8-72171cc501ff}}\n{{value:d5e675a9-a458-51f0-9140-cbb69b1e6728}} / {{value:7ba8733f-2c82-53d8-ac1e-3efe3597b7d3}}\nHP {{value:9451bd2e-7cd0-5cc3-8317-75cf7c84eb17}} / {{value:9ee35d67-1fcf-5104-bbae-287eb36a10f9}}\nEnrage {{value:1974d0cf-c5b4-5cd2-8fde-2ac532240a53}}s\nDamage received {{value:e10a88d8-9d49-59c9-b605-40ef321c1aca}}"
+      },
+      "a462da77-c4b8-5a5f-aae4-e94109c67b0a": {
+        "value": "Gnasher"
+      },
+      "a2863b57-4a61-5661-bf29-9c6f260467eb": {
+        "value": "Lesser Gnasher"
+      },
+      "7d579b64-763a-5781-8a65-93ec3737dead": {
+        "value": "Normal Gnasher"
+      },
+      "1aa36000-1cef-5648-be63-f39167470c65": {
+        "value": "Greater Gnasher"
+      },
+      "8d1f1847-48eb-5f1a-89e3-af23e35366bd": {
+        "value": "Alpha Gnasher"
+      },
+      "25570237-b822-51ed-8e1f-d5fa572da85d": {
+        "value": "Gnasher Leg"
+      },
+      "e2c30cb7-4422-50e4-8c34-a3946915d7a2": {
+        "value": "Gnasher Tail"
+      },
+      "aaf872c1-9db2-5d75-a669-3335ba764a82": {
+        "value": "Gnasher Head"
+      },
+      "153a59fc-5bb3-503d-9255-906bccd1c059": {
+        "value": "Gnasher Core"
+      },
+      "7087de78-0ad1-5cf8-89b7-d8b978a33ea6": {
+        "value": "Gnasher Greater Core"
+      },
+      "fe499bf7-328a-5fe7-b40f-224057dfe761": {
+        "value": "Gnasher Alpha Core"
+      },
+      "d8f7e9d0-ec22-5996-afa1-31d626499e1c": {
+        "value": "Gnasher encounter preview"
+      },
+      "b41890c0-f6ae-5b37-973f-c2964f35050b": {
+        "value": "Tier"
+      },
+      "5368fe87-eb1e-5034-afd7-82c1226245d9": {
+        "value": "Automatic attacks"
+      },
+      "0a603d96-5310-5fd2-91a0-d5a95e4a9c78": {
+        "value": "Show collision"
+      },
+      "3a6a9603-627c-5435-8a6f-173e3cfd0333": {
+        "value": "Reset encounter"
+      },
+      "e96f1f7c-a5ef-518f-b008-118b9834ede5": {
+        "value": "Trigger enrage"
+      },
+      "4bf4e059-2350-5848-ae9d-3a391f23c86c": {
+        "value": "Attack"
+      },
+      "450cf9e8-9fb5-5720-bde1-a2af30d1cc67": {
+        "value": "Body roll"
+      },
+      "8fece55c-619e-5544-8c7b-b4b8c7259fbd": {
+        "value": "Tail sweep"
+      },
+      "f9b324a0-2d92-5657-a441-9a61da1e5bfd": {
+        "value": "Foot slam"
+      },
+      "010a8762-59a2-5715-be5c-f887a4e4d8cd": {
+        "value": "Repeated tail slams"
+      },
+      "8b778352-6698-5b12-b66c-5a74374b188d": {
+        "value": "Part"
+      },
+      "674770e4-30ed-5047-a957-f06325772225": {
+        "value": "Play attack"
+      },
+      "f260d1ee-5b8e-5ce6-aa77-82eb3a0f7fc3": {
+        "value": "Break selected part"
+      },
+      "2b22a166-2bf9-58d0-960a-76e7ac72e355": {
+        "value": "Stagger"
+      },
+      "34978666-ff59-58e2-aa23-081058b9d510": {
+        "value": "WASD moves the hunter marker. Space dodges. Drag to orbit; scroll to zoom. This preview uses no inventory save."
+      },
       "f096df1d-32eb-4d66-a513-c182abe39311": {
         "value": "AETHER CHARGED"
       },
@@ -1963,6 +2056,45 @@
       },
       "302f29fe-49e7-4031-af90-4c8ea149f39a": {
         "value": "Testing connection..."
+      },
+      "c297a349-6178-4c0e-8a54-1c5dfb0b5fae": {
+        "value": "Behemoth previewer"
+      },
+      "6c0ea11c-6110-468c-988b-ccd3e978f345": {
+        "value": "Trigger aether-charge"
+      },
+      "12f6e81e-41d9-41fe-998a-fdcd167349ee": {
+        "value": "Charge"
+      },
+      "c0a48cff-43f3-40a9-81e0-14fa1301b14e": {
+        "value": "Claw swipe"
+      },
+      "183905a6-013b-466f-ae15-59bb7940e865": {
+        "value": "Targeted volley"
+      },
+      "1a2d8a3d-f1bf-4fe1-8032-50ae2445c9da": {
+        "value": "Defensive volley"
+      },
+      "d6f942b1-3adf-4fcf-9522-484f83ce02d3": {
+        "value": "Fireball stream"
+      },
+      "21faeb3e-1dc2-4c4b-b8a9-23b3add2c18e": {
+        "value": "Swipe"
+      },
+      "dca83908-4a1e-4ae9-accb-a9c467a145b7": {
+        "value": "Slam"
+      },
+      "08923235-538e-4816-951d-7b05925c3be8": {
+        "value": "Side drop"
+      },
+      "9e20c5e6-26b2-4356-9511-d058989fd8d1": {
+        "value": "Intermittent barrage"
+      },
+      "5b12b561-992d-450d-9915-4d2e2992ef4e": {
+        "value": "Bombardment"
+      },
+      "ffba06a5-10a1-494f-ad4d-6473a5e6a9fd": {
+        "value": "{{name:d42c3151-0fa8-5b85-92e8-72171cc501ff}}\n{{value:d5e675a9-a458-51f0-9140-cbb69b1e6728}} / {{value:7ba8733f-2c82-53d8-ac1e-3efe3597b7d3}}\nHP {{value:9451bd2e-7cd0-5cc3-8317-75cf7c84eb17}} / {{value:9ee35d67-1fcf-5104-bbae-287eb36a10f9}}\nEnrage {{value:1974d0cf-c5b4-5cd2-8fde-2ac532240a53}}s\nDamage received {{value:e10a88d8-9d49-59c9-b605-40ef321c1aca}}\nAether-charge {{value:cde408f8-882e-4ccb-877b-dcb709639ebc}}s"
       }
     },
     "stats": {

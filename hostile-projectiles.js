@@ -8,6 +8,8 @@ export function stepFallingProjectile(q, players, dt) {
   return q.age >= QUILL_FLIGHT.fall;
 }
 export function hostileProjectileTouches(q, position) {
+  if (q.kind === 'ground-blast') return Math.hypot(q.position[0] - position[0], q.position[2] - position[2]) <= q.radius + 0.36
+    && Math.abs(position[1] - q.position[1]) < 1.8;
   const scale = q.sizeMultiplier ?? 1;
   if (q.kind === 'fall') return Math.hypot(q.destination[0] - position[0], q.destination[2] - position[2]) <= QUILL_FLIGHT.radius * scale + 0.36 && Math.abs(position[1] - q.destination[1]) < 1.8 * scale;
   const a = q.previous, b = q.position, dx = b[0] - a[0], dz = b[2] - a[2];

@@ -3,6 +3,7 @@ import { applyPartDamage, applyCoreDamage, clearBehemothModes, advanceStaggerThr
 import { createWoundMeter, resolveWound, stepWounds } from './wounds.js';
 import { createTimedMode, activatePendingMode, advanceTimedMode } from './behemoth-states.js';
 import { behemothPushOut } from './behemoth-collision.js';
+import { startRunOut, stepRunOut, hasRunOutContact, runOutTouchesPlayer } from './behemoth-run-out.js';
 import { AETHER_TUNING, advanceEmbermaneModes, isElementalMove, releaseEmbermaneVolley, releaseEmbermaneStream, stepEmbermaneProjectiles } from './embermane-aether.js';
 
 const SIZE_SCALE = 1.2;
@@ -42,6 +43,7 @@ export const BEHEMOTH = Object.freeze({
     runOutTurnSpeed: 6,
   }),
   moves: Object.freeze({
+    runOut: Object.freeze({ damage: 10, contactOnly: true, burning: false }),
     targetedVolley: Object.freeze({ tell: 1, active: 0.3, recovery: 0.8, damage: 0 }),
     defensiveVolley: Object.freeze({ tell: 0.7, active: 0.3, recovery: 0.8, damage: 0 }),
     fireballStream: Object.freeze({ tell: 1, active: 2, recovery: 0.8, damage: 0 }),
@@ -69,6 +71,7 @@ export function createBehemothState(tier = 'normal') {
     parts: Object.fromEntries(Object.keys(definition.parts).map(id => [id, { damage: 0, broken: false, ...createWoundMeter(definition.parts[id]) }])),
     chargeCount: 0, closeCount: 0, attackCount: 0, lastMove: null,
     lastRunOutAttackCount: 0, runOutGoal: null, returnCharge: false, chargeDuration: null,
+    runOutCount: 0, runOutContact: null,
     repositionedAfterAttack: false, lastRetreatAfterCloseCount: -1,
     canTargetKnockedDownPlayers: false,
     attackHit: false, flash: 0, lastOutcome: '',
@@ -98,6 +101,7 @@ function startMove(state, move) {
 }
 
 function react(state, kind, duration) {
+  state.runOutContact = null;
   state.followElemental = false; state.afterElementalRetreat = false;
   state.runOutGoal = null; state.returnCharge = false; state.chargeDuration = null;
   state.mode = 'reaction';
@@ -122,32 +126,6 @@ function observe(state, duration) {
   state.move = null;
   state.elapsed = 0;
   state.pause = duration * (state.states.enrage.active ? (state.definition ?? BEHEMOTH).states.enrage.waitMultiplier : 1);
-}
-
-function startRunOut(state, playerPosition, bounds) {
-  // Snapshot a target-relative destination, favoring a sprint away from the hunter.
-  // Choose an alternate direction near boundaries without chasing a moving target.
-  const radius = Math.max(1, bounds - 2);
-  const awayYaw = horizontalDistance(state.position, playerPosition) > 0.01
-    ? yawTo(playerPosition, state.position) : state.yaw;
-  let bestScore = -Infinity;
-  for (let i = 0; i < 32; i++) {
-    const angle = awayYaw + i * Math.PI / 16;
-    const [x, z] = facingVector(angle);
-    const goal = [playerPosition[0] + x * (state.definition ?? BEHEMOTH).pacing.runOutDistance, state.position[1], playerPosition[2] + z * (state.definition ?? BEHEMOTH).pacing.runOutDistance];
-    if (Math.hypot(goal[0], goal[2]) > radius) continue;
-    const score = Math.cos(angle - awayYaw);
-    if (score > bestScore) { bestScore = score; state.runOutGoal = goal; }
-  }
-  // Smaller arenas may not fit the authored separation at all.
-  if (bestScore === -Infinity) {
-    const [x, z] = facingVector(awayYaw);
-    const goal = [playerPosition[0] + x * (state.definition ?? BEHEMOTH).pacing.runOutDistance, state.position[1], playerPosition[2] + z * (state.definition ?? BEHEMOTH).pacing.runOutDistance];
-    const scale = Math.min(1, radius / Math.hypot(goal[0], goal[2]));
-    state.runOutGoal = [goal[0] * scale, goal[1], goal[2] * scale];
-  }
-  state.lastRunOutAttackCount = state.attackCount;
-  state.mode = 'run-out-turn'; state.move = null; state.elapsed = 0; state.attackHit = false;
 }
 
 /** Breaks are recorded independently of the winning reaction, including on lethal hits. */
@@ -192,6 +170,7 @@ export function hitBehemoth(state, { damage = 0, partDamage = damage, stagger = 
 
 /** Fixed-step AI. Attack events are resolved by the caller against the player. */
 export function stepBehemoth(state, playerPosition, dt, bounds = 68, { targetKnockedDown = false, canTargetKnockedDownPlayers = state.canTargetKnockedDownPlayers, players = [{ id: 'local', position: playerPosition, knockedDown: targetKnockedDown }] } = {}) {
+  state.runOutContact = null;
   stepWounds(state.parts, dt);
   const events = [];
   if (state.mode === 'defeated') return events;
@@ -276,24 +255,14 @@ export function stepBehemoth(state, playerPosition, dt, bounds = 68, { targetKno
     return events;
   }
   if (['run-out-turn', 'run-out', 'turn-back'].includes(state.mode)) {
-    state.elapsed += dt;
-    const goal = state.runOutGoal;
-    const desiredYaw = state.mode === 'turn-back' ? targetYaw : yawTo(state.position, goal);
-    if (state.mode !== 'run-out') {
-      advanceTurn(state, desiredYaw, (state.definition ?? BEHEMOTH).pacing.runOutTurnSpeed * dt);
-      if (Math.abs(angleDelta(state.yaw, desiredYaw)) < 0.03) {
-        if (state.mode === 'turn-back') {
-          if (state.states.aetherCharge.active) startMove(state, state.elementalCount % 2 === 0 ? 'targetedVolley' : 'fireballStream');
-          else { startMove(state, 'charge'); state.returnCharge = true; }
-        } else { state.mode = 'run-out'; state.elapsed = 0; }
+    if (state.mode === 'turn-back') {
+      state.elapsed += dt;
+      advanceTurn(state, targetYaw, (state.definition ?? BEHEMOTH).pacing.runOutTurnSpeed * dt);
+      if (Math.abs(angleDelta(state.yaw, targetYaw)) < .03) {
+        if (state.states.aetherCharge.active) startMove(state, state.elementalCount % 2 === 0 ? 'targetedVolley' : 'fireballStream');
+        else { startMove(state, 'charge'); state.returnCharge = true; }
       }
-    } else {
-      const remaining = horizontalDistance(state.position, goal);
-      const travel = Math.min(remaining, (state.definition ?? BEHEMOTH).moves.charge.speed * dt);
-      state.yaw = desiredYaw;
-      if (remaining > 0) for (const i of [0, 2]) state.position[i] += (goal[i] - state.position[i]) / remaining * travel;
-      if (remaining <= travel + 0.01) { state.mode = 'turn-back'; state.elapsed = 0; }
-    }
+    } else if (stepRunOut(state, dt)) { state.mode = 'turn-back'; state.elapsed = 0; }
     return events;
   }
   advanceTurn(state, targetYaw, dt * (state.mode === 'observe' ? 1.6 : 2.8));
@@ -375,6 +344,7 @@ export function stepBehemoth(state, playerPosition, dt, bounds = 68, { targetKno
 }
 
 export function behemothAttackTouchesPlayer(state, playerPosition) {
+  if (hasRunOutContact(state)) return runOutTouchesPlayer(state, playerPosition);
   const move = (state.definition ?? BEHEMOTH).moves[state.move];
   if (!move || !move.damage || state.mode !== 'active' || state.attackHit) return false;
   // Charge contact must reach the solid footprint, including the projecting
