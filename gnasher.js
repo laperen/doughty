@@ -9,17 +9,19 @@ export const GNASHER = Object.freeze({
   name: 'Gnasher', sizeScale: 1.2, bodyRadius: 1.55 * 1.2, bodyHeight: 2.8 * 1.2, modelSpaceMoves: true,
   maxHealth: 1350, maxStagger: 280, staggerThresholdMultiplier: 1.5,
   staggerDuration: BEHEMOTH.staggerDuration, partBreakDuration: BEHEMOTH.partBreakDuration, interruptDuration: 5,
-  staggerMultipliers: BEHEMOTH.staggerMultipliers,
+  staggerMultipliers: { ...BEHEMOTH.staggerMultipliers, teeth: 1 },
+  interruptParts: ['head', 'teeth'],
   pacing: { ...BEHEMOTH.pacing, maxChaseDuration: 3, afterEnrageRetreat: 1.2 },
   states: { enrage: { ...BEHEMOTH.states.enrage }, aetherCharge: { enabled: false, interval: 90, durations: [20] } },
   parts: Object.fromEntries([
-    ['head', 'Head', 210], ['tail', 'Tail', 240],
+    ['head', 'Head', 210], ['teeth', 'Buck teeth', 210], ['tail', 'Tail', 240],
     ['leftFore', 'Left front leg', 220], ['rightFore', 'Right front leg', 220],
     ['leftHind', 'Left hind leg', 220], ['rightHind', 'Right hind leg', 220],
-  ].map(([id, label, health]) => [id, { label, health, woundable: true, woundHealth: 145 }])),
+  ].map(([id, label, health]) => [id, { label, health, woundable: id !== 'teeth', woundHealth: 145 }])),
   moves: {
     runOut: { damage: 10, contactOnly: true, burning: false },
-    charge: { tell: 0.8, active: 1.05, recovery: 1.15, speed: 13, damage: 28, reach: 3.4, interruptStart: 0.2, interruptEnd: 0.85 },
+    charge: { tell: 0.8, active: 0.7, recovery: 1.15, speed: 13, damage: 28, reach: 3.4, interruptStart: 0.1, interruptEnd: 0.65 },
+    somersault: { tell: 0.8, active: 1.05, recovery: 1.15, speed: 13, travelDuration: .75, impactStart: .75, damage: 28, reach: 5.5 },
     tailSweep: { tell: 0.75, active: 0.4, recovery: 1, damage: 22, reach: 5, arc: 220 },
     footSlam: { tell: 0.8, active: 0.2, recovery: 1, damage: 24, reach: 3.6 },
     tailSlam: { tell: 0.9, active: 0.2, recovery: 0.65, damage: 28, reach: 5.5 },
@@ -32,11 +34,11 @@ export const GNASHER_TUNING = Object.freeze({
   tailSlams: 4, tailChaseStep: .45, tailChaseWindow: .45, tailBlastStart: 1.5,
   blastCount: 6, blastRadius: 1.2, blastDelay: 0.12, blastLife: 0.4, blastDamage: 18,
   // These waits follow move recovery; they do not apply between combo strikes.
-  afterAttack: Object.freeze({ charge: 1, footSlam: 1.2, tailSweep: 1.2, tailSlam: 1.5, enrageBurst: .6 }) });
+  afterAttack: Object.freeze({ somersault: 1.5, charge: 1, footSlam: 1.2, tailSweep: 1.2, tailSlam: 1.5, enrageBurst: .6 }) });
 const distance = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
 const yawTo = (a, b) => Math.atan2(-(b[0] - a[0]), -(b[2] - a[2]));
 const delta = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
-const isTailMove = move => move === 'tailSlam' || move === 'tailSweep';
+const isTailMove = move => move === 'tailSlam' || move === 'tailSweep' || move === 'somersault';
 export const hasGnasherBlastChain = s => ['greater', 'alpha'].includes(s.tier);
 
 export function createGnasherState(tier = 'normal') {
@@ -200,9 +202,10 @@ export function stepGnasher(s, target, dt, bounds = 68, options = {}) {
     }
     if (s.elapsed >= move.tell) { s.mode = 'active'; s.elapsed = 0; releaseBlasts(s); }
   } else if (s.mode === 'active') {
-    if (s.move === 'charge') {
-      s.position[0] -= Math.sin(s.yaw) * move.speed * dt;
-      s.position[2] -= Math.cos(s.yaw) * move.speed * dt;
+    if (s.move === 'charge' || s.move === 'somersault') {
+      const travel = s.move === 'somersault' ? Math.max(0, Math.min(dt, move.travelDuration - (s.elapsed - dt))) : dt;
+      s.position[0] -= Math.sin(s.yaw) * move.speed * travel;
+      s.position[2] -= Math.cos(s.yaw) * move.speed * travel;
     }
     if (s.elapsed >= move.active) { s.mode = 'recovery'; s.elapsed = 0; }
   } else if (s.mode === 'recovery') {
@@ -239,7 +242,8 @@ export function stepGnasher(s, target, dt, bounds = 68, options = {}) {
       return [];
     }
     const d = distance(s.position, target), scale = s.definition.sizeScale;
-    if (d > 12 && d < 24) startGnasherMove(s, 'charge', target);
+    const gapCloser = !s.parts.tail.broken && s.attackCount % 2 ? 'somersault' : 'charge';
+    if (d > 12 && d < 24) startGnasherMove(s, gapCloser, target);
     else {
       const behind = Math.abs(delta(s.yaw, yawTo(s.position, target))) > Math.PI / 2;
       const selected = s.parts.tail.broken ? 'footSlam' : s.states.enrage.active && s.closeCount % 3 === 0 ? 'tailSlam'
@@ -250,7 +254,7 @@ export function stepGnasher(s, target, dt, bounds = 68, options = {}) {
       if (d > range * scale) {
         // Count only this pursuit, rather than the preceding idle/recovery time.
         // A fleeing hunter or blocked approach must not keep us walking forever.
-        if (s.mode === 'chase' && s.elapsed >= s.definition.pacing.maxChaseDuration) startGnasherMove(s, 'charge', target);
+        if (s.mode === 'chase' && s.elapsed >= s.definition.pacing.maxChaseDuration) startGnasherMove(s, gapCloser, target);
         else {
           if (s.mode !== 'chase') s.elapsed = 0;
           s.mode = 'chase'; s.position[0] -= Math.sin(s.yaw) * 3.5 * dt; s.position[2] -= Math.cos(s.yaw) * 3.5 * dt;
@@ -273,7 +277,8 @@ export function gnasherAttackTouchesPlayer(s, p) {
   const c = Math.cos(s.yaw), sn = Math.sin(s.yaw), x = (c * dx - sn * dz) / scale, z = (sn * dx + c * dz) / scale;
   const pad = 0.36 / scale;
   if (s.move === 'footSlam') return x * s.side > 1e-8 && Math.hypot(x - s.side * 1.65, z + 0.7) <= 1.9 + pad;
-  if (s.move === 'tailSlam') {
+  if (s.move === 'somersault' && s.elapsed < m.impactStart) return false;
+  if (s.move === 'tailSlam' || s.move === 'somersault') {
     // The torso lands with the tail. Both volumes share this strike's hit identity.
     const body = Math.hypot(x / (1.55 + pad), (z + .3) / (2.2 + pad)) <= 1;
     const tail = z > 1 && Math.abs(x) <= 1.2 + pad && z <= m.reach + pad;

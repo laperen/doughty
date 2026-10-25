@@ -161,7 +161,7 @@ export function hitBehemoth(state, { damage = 0, partDamage = damage, stagger = 
     react(state, 'part-break', (state.definition ?? BEHEMOTH).partBreakDuration);
     return result('part-break');
   }
-  if (['head', 'horn'].includes(part) && interrupt && isInterruptible(state)) {
+  if (((state.definition ?? BEHEMOTH).interruptParts ?? ['head', 'horn']).includes(part) && interrupt && isInterruptible(state)) {
     react(state, 'interrupt', (state.definition ?? BEHEMOTH).staggerDuration);
     return result('interrupt');
   }

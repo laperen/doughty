@@ -92,10 +92,11 @@ export function createGnasherView(scene) {
   blob(head, [0, -.45, -.83], [.41, .28, .35], mouth);
   blob(head, [0, -.57, -.84], [.26, .09, .26], tongue);
   blob(head, [0, -.65, -.62], [.4, .14, .43], belly);
+  const teeth = new THREE.Group(); head.add(teeth); parts.teeth = teeth;
   for (const side of [-1, 1]) {
     const socket = blob(head, [side * .49, .13, -.54], [.17, .14, .14], dark); socket.rotation.z = side * .3;
     blob(head, [side * .54, .13, -.59], [.065, .065, .08], eye);
-    const tooth = blob(head, [side * .14, -.43, -1.19], [.12, .27, .13], ivory, box); tooth.rotation.x = -.16;
+    const tooth = blob(teeth, [side * .14, -.43, -1.19], [.12, .27, .13], ivory, box); tooth.rotation.x = -.16;
     spike(head, [side * .4, .27, -.62], [side * .78, .45, -.32], .18, maneTip);
     // Layered cheek ruff sweeps outward/back, without round teddy-bear ears.
     for (let i = 0; i < 7; i++) {
@@ -104,7 +105,8 @@ export function createGnasherView(scene) {
     }
   }
   for (let i = -2; i <= 2; i++) spike(head, [i * .12, .43, -.3], [i * .2, .82 - Math.abs(i) * .08, .02], .15, maneTip);
-  hitbox(head, 'head', [0, -.05, -.35], [1.7, 1.65, 2.05]);
+  hitbox(teeth, 'teeth', [0, -.43, -1.25], [.6, .62, .45]);
+  hitbox(head, 'head', [0, -.05, -.25], [1.7, 1.65, 1.8]);
   const tail = new THREE.Group(); tail.position.set(0, 1.25, 1.45); rig.add(tail); parts.tail = tail;
   const tailBase = blob(tail, [0, -.03, .43], [.42, .34, .8], belly);
   const paddle = new THREE.Group(); tail.add(paddle);
@@ -198,8 +200,11 @@ export function updateGnasherView(v, s, dt, collision = false) {
     v.rig.rotation.z = dead ? .72 : s.move === 'part-break' ? Math.sin(s.elapsed * 12) * .18 : 1.15;
     v.rig.position.y = -.35;
   } else if (s.move === 'charge') {
-    v.rig.rotation.x = s.mode === 'active' ? -active * Math.PI * 2 : windup * .25;
-    v.rig.position.y = s.mode === 'active' ? Math.sin(active * Math.PI) * .7 : 0;
+    v.rig.rotation.x = windup * .15 - active * .1;
+  } else if (s.move === 'somersault') {
+    const flip = Math.min(1, s.elapsed / m.travelDuration);
+    v.rig.rotation.x = s.mode === 'active' ? -flip * Math.PI * 2 : windup * .25;
+    v.rig.position.y = s.mode === 'active' ? Math.sin(flip * Math.PI) * .7 : 0;
     // Rotate about the torso, keeping the roll above the ground plane.
     v.rig.position.y += 1.4 * (1 - Math.cos(v.rig.rotation.x));
     v.rig.position.z = -1.4 * Math.sin(v.rig.rotation.x);
@@ -214,7 +219,7 @@ export function updateGnasherView(v, s, dt, collision = false) {
   else if (s.move === 'enrageBurst') { v.rig.rotation.x = -.12; v.rig.position.y = Math.sin(s.elapsed * 18) * .08; }
   for (const [id, part] of Object.entries(v.parts)) {
     if (id.includes('Fore') || id.includes('Hind')) {
-      part.rotation.x = ['chase', 'patrol', 'run-out'].includes(s.mode) ? Math.sin(s.elapsed * (s.mode === 'run-out' ? 18 : 10) + part.position.x * 2) * (s.mode === 'run-out' ? .45 : .3) : 0;
+      part.rotation.x = (['chase', 'patrol', 'run-out'].includes(s.mode) || s.move === 'charge' && s.mode === 'active') ? Math.sin(s.elapsed * (s.mode === 'run-out' ? 18 : 10) + part.position.x * 2) * (s.mode === 'run-out' ? .45 : .3) : 0;
       if (s.move === 'footSlam' && Math.sign(part.position.x) === s.side) part.rotation.x += windup * .7;
       if (s.move === 'tailSlam' && s.mode === 'windup' && s.slamStep?.distance > 0 && s.elapsed < GNASHER_TUNING.tailChaseWindow) {
         part.rotation.x += .2 * Math.sin(Math.PI * s.elapsed / GNASHER_TUNING.tailChaseWindow) * Math.sign(part.position.x);
@@ -224,6 +229,10 @@ export function updateGnasherView(v, s, dt, collision = false) {
   // Match Embermane's severed-tail convention: remove the tip, retain a core-only stump.
   const severed = s.parts.tail.broken;
   v.paddle.visible = !severed;
+  v.parts.teeth.visible = !s.parts.teeth?.broken;
+  // Keep the broken socket target inside the head so subsequent hits resolve to the head.
+  v.hitboxes.teeth.scale.setScalar(s.parts.teeth?.broken ? 0 : 1);
+  if (!s.parts.teeth?.broken) v.hitboxes.teeth.scale.set(.6, .62, .45);
   v.tailBase.scale.z = severed ? .28 : .8; v.tailBase.position.z = severed ? .15 : .43;
   v.hitboxes.tail.scale.set(severed ? .84 : 2.4, .7, severed ? .85 : 3.75);
   v.hitboxes.tail.position.z = severed ? .14 : 2;
@@ -237,10 +246,10 @@ export function updateGnasherView(v, s, dt, collision = false) {
   for (const line of v.outlines) line.visible = collision;
   v.tellZone.visible = s.mode === 'windup' || collision && s.mode === 'active';
   v.foot.visible = s.move === 'footSlam'; v.foot.position.x = s.side * 1.65; v.foot.rotation.z = s.side < 0 ? Math.PI : 0;
-  v.tailWarning.visible = !severed && s.move === 'tailSlam';
+  v.tailWarning.visible = !severed && ['tailSlam', 'somersault'].includes(s.move);
   v.bodyWarning.visible = v.tailWarning.visible;
   v.sweep.visible = !severed && s.move === 'tailSweep';
-  v.charge.visible = s.move === 'charge';
+  v.charge.visible = ['charge', 'somersault'].includes(s.move);
   updateEnrageEffect(v.enrageEffect, s, m);
   v.enrageEffect.burst.scale.setScalar(s.definition.moves.enrageBurst.reach);
   const live = new Set(s.projectiles.map(q => q.id));

@@ -6,15 +6,15 @@ import { createEquipmentState } from './equipment.js';
 export const PART_TYPES = Object.freeze({ legs: 'Legs', tails: 'Tails', heads: 'Heads', horns: 'Horns', cores: 'Cores (core and heart)', growths: 'Growths' });
 const commonParts = { head: 'head', tail: 'tail', leftFore: 'leg', rightFore: 'leg', leftHind: 'leg', rightHind: 'leg' };
 export const MATERIAL_SPECIES = Object.freeze({
-  gnasher: { name: 'Gnasher', core: 'core', parts: { ...commonParts }, items: { leg: 'legs', tail: 'tails', head: 'heads', core: 'cores' } },
+  gnasher: { name: 'Gnasher', core: 'core', parts: { ...commonParts, teeth: 'teeth' }, items: { leg: 'legs', tail: 'tails', head: 'heads', teeth: 'horns', core: 'cores' } },
   'first-behemoth': { name: 'Embermane', core: 'heart', parts: { ...commonParts, horn: 'horn' }, items: { leg: 'legs', tail: 'tails', head: 'heads', horn: 'horns', heart: 'cores' } },
   quillshot: { name: 'Quillshot', core: 'core', parts: { ...commonParts, leftTusk: 'tusk', rightTusk: 'tusk', quillFrontLeft: 'quills', quillFrontRight: 'quills', quillRearLeft: 'quills', quillRearRight: 'quills' }, items: { leg: 'legs', tail: 'tails', head: 'heads', tusk: 'horns', quills: 'growths', core: 'cores' } },
 });
 export const RARITIES = Object.freeze({ common: { name: 'Common', dust: 5, score: 1 }, rare: { name: 'Rare', dust: 10, score: 2 }, superior: { name: 'Superior', dust: 20, score: 3 } });
 export const MATERIALS = Object.freeze(Object.fromEntries(Object.entries(MATERIAL_SPECIES).flatMap(([speciesId, species]) => Object.entries(species.items).map(([part, type]) => {
   const id = `${speciesId}:${part}`;
-  const rarity = type === 'cores' ? 'superior' : (speciesId === 'first-behemoth' ? ['horn', 'tail'] : ['head', 'tail']).includes(part) ? 'rare' : 'common';
-  return [id, { id, speciesId, type, ...(type === 'cores' ? { tier: 'normal' } : {}), rarity, rarityScore: RARITIES[rarity].score, dustYield: RARITIES[rarity].dust, name: `${species.name} ${part[0].toUpperCase()}${part.slice(1)}`, rare: rarity === 'rare' }];
+  const rarity = type === 'cores' ? 'superior' : (speciesId === 'gnasher' ? ['teeth', 'tail'] : speciesId === 'first-behemoth' ? ['horn', 'tail'] : ['head', 'tail']).includes(part) ? 'rare' : 'common';
+  return [id, { id, speciesId, type, ...(type === 'cores' ? { tier: 'normal' } : {}), rarity, rarityScore: RARITIES[rarity].score, dustYield: RARITIES[rarity].dust, name: speciesId === 'gnasher' && part === 'teeth' ? 'Gnasher Buck Teeth' : `${species.name} ${part[0].toUpperCase()}${part.slice(1)}`, rare: rarity === 'rare' }];
 })).concat(Object.entries(MATERIAL_SPECIES).flatMap(([speciesId, species]) => ['greater', 'alpha'].map(tier => {
   const id = `${speciesId}:${tier}-${species.core}`;
   return [id, { id, speciesId, tier, type: 'cores', rarity: 'superior', rarityScore: 3, dustYield: 20,

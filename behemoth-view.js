@@ -281,8 +281,11 @@ export function updateBehemothView(view, state, dt, visibleCollision = false) {
   if (view.tellZone.visible) view.tellMaterial.opacity = 0.08 + Math.min(1, state.elapsed / BEHEMOTH.moves[state.move].tell) * 0.17;
   const interrupt = isInterruptible(state);
   view.headMarker.visible = interrupt;
-  view.headMarker.position.set(0, 2.7 + Math.sin(state.elapsed * 22) * 0.08, -2.3);
-  view.headMarker.position.multiplyScalar(BEHEMOTH.sizeScale);
+  // Follow the animated head rather than a fixed point above the creature.
+  view.head.updateWorldMatrix(true, false);
+  view.headMarker.position.set(0, -0.12, -0.4);
+  view.head.localToWorld(view.headMarker.position);
+  view.root.worldToLocal(view.headMarker.position);
   view.headMarker.scale.setScalar(0.9 + Math.sin(state.elapsed * 18) * 0.12);
   view.staggerRing.visible = state.mode === 'reaction' && ['interrupt', 'true-stagger'].includes(state.move);
   view.staggerRing.position.set(0, 0.1, 0);
