@@ -5,6 +5,9 @@
     "id": "39f52b5a-e913-41c9-a1b8-007880f94963",
     "scheduleBindingModelVersion": 1,
     "text": {
+      "e4c56482-3d49-4eaa-a4c3-6a52d32ab32d": {
+        "value": "Animate clouds"
+      },
       "7cf6940f-7c85-5ed3-bc2b-6aa8f02e4f25": {
         "value": "TAIL SWEEP"
       },
@@ -38,8 +41,12 @@
       "e2c30cb7-4422-50e4-8c34-a3946915d7a2": {
         "value": "Gnasher Tail"
       },
-      "ab17cb5d-5aca-484a-9736-956e4e33d065": {"value": "Buck teeth"},
-      "1965d4dd-edcb-4590-882f-bcdc7ceca1cf": {"value": "Gnasher Buck Teeth"},
+      "ab17cb5d-5aca-484a-9736-956e4e33d065": {
+        "value": "Buck teeth"
+      },
+      "1965d4dd-edcb-4590-882f-bcdc7ceca1cf": {
+        "value": "Gnasher Buck Teeth"
+      },
       "aaf872c1-9db2-5d75-a669-3335ba764a82": {
         "value": "Gnasher Head"
       },
@@ -436,9 +443,6 @@
       "cadb6944-49f8-4bee-a8ae-82ebacfd4e67": {
         "value": "Gameplay"
       },
-      "cbae8465-4eaf-4d43-a5d0-e263485c3651": {
-        "value": "Settings"
-      },
       "203aec7f-8024-4d85-a56a-260c3b27aaf4": {
         "value": "CAMERA SETTINGS"
       },
@@ -646,9 +650,6 @@
       "5b737e09-c15f-4851-8a39-0ebee7d1755d": {
         "value": "Island encounter"
       },
-      "dc22b57d-6727-4ece-adc8-580636b76321": {
-        "value": "Close"
-      },
       "b1e1a914-e3c1-468a-b0ab-4814da03dee0": {
         "value": "Hunting Board"
       },
@@ -748,12 +749,6 @@
       "eb0853ce-404b-4cc6-bf65-a56cf3239938": {
         "value": "FOLLOW THE STONE PATHS"
       },
-      "d286842b-b069-4df0-ba7e-0dd92559cca4": {
-        "value": "ENCLOSED RANGE"
-      },
-      "39270541-eded-4672-a172-a50d144bfc48": {
-        "value": "OPEN APPROACH"
-      },
       "570e53bf-85e8-4837-b967-1bf0998b8ee0": {
         "value": "Player status"
       },
@@ -805,16 +800,7 @@
       "6bc75a49-162b-484a-a649-3760bd8085c9": {
         "value": "H"
       },
-      "60992999-99fd-4c9f-be6c-c9ae89b96e5e": {
-        "value": "L"
-      },
       "a946c56a-5368-41d8-b4a1-29625542c9d3": {
-        "value": "Chain pull"
-      },
-      "0fed2dd8-de1d-4f67-9a99-fea478c52860": {
-        "value": "H"
-      },
-      "7d38652b-0033-4b6c-9d8e-5ed8cc841891": {
         "value": "Chain pull"
       },
       "53e2bf92-26be-4e35-8513-f36fd8b47ac3": {
@@ -831,30 +817,6 @@
       },
       "b588d68a-f576-4efb-90e6-2965e48bfd37": {
         "value": "CB"
-      },
-      "99f634ac-5c82-4882-a3e8-fffb745147bc": {
-        "value": "BEHEMOTH DEFEATED"
-      },
-      "7fafbc33-2ad7-4d74-af61-9a4cf5323515": {
-        "value": "Welcome to {{name:d7a92efc-c62b-4467-bb6d-2bd5512ed46e}}. The market lanes climb around the old inn to the watchtower courtyard. Cross the western stream to explore the bridge quarter, visit the smithy behind the travel board, or meet the weapon masters on either side of the arrival square."
-      },
-      "8c9b5c98-4e05-4db5-9b35-a460aec93337": {
-        "value": "Head"
-      },
-      "59044d75-0a48-450b-8aea-6b65cff6f688": {
-        "value": "Tail"
-      },
-      "8c42ed9e-ecd9-4bae-a1d7-ded3b3c85979": {
-        "value": "Left front leg"
-      },
-      "418e680a-7542-431e-898e-3dd7141d386b": {
-        "value": "Right front leg"
-      },
-      "c4bbbb1c-b47f-492b-93b8-e97fee65a22e": {
-        "value": "Left hind leg"
-      },
-      "dabe5105-ce91-48f4-a593-8ecba8f04d28": {
-        "value": "Right hind leg"
       },
       "f2c5b772-c4cc-4dab-95e6-a95a681ce4e7": {
         "value": "Left tusk"
@@ -879,12 +841,6 @@
       },
       "e3d95be2-6808-4494-b6ee-9fd5457c4c70": {
         "value": "Hold LMB: fire | RMB: scattershot | R: reload | Q: haste mine | X: sheath"
-      },
-      "34a4394d-90b6-4e8a-ba91-f0bf97926ceb": {
-        "value": "Weapon sheathed"
-      },
-      "48b2e0fa-8851-4dea-a13e-fa57f5a3707b": {
-        "value": "Weapon sheathed"
       },
       "fec5001f-1a4d-4b61-8c50-d0fc57105510": {
         "value": "{{name:600ea7ea-5045-4803-b118-1f4ab72c76bf}} drawn"
@@ -955,15 +911,6 @@
       "79648c6d-c531-4c4b-9219-f7d16eb8ec50": {
         "value": "Empty"
       },
-      "63fde884-a970-41b5-9dd4-27adf55de606": {
-        "value": "Q"
-      },
-      "de729516-3405-4fbc-a711-1c8ac16c45f9": {
-        "value": "Weapon sheathed"
-      },
-      "aff9532b-4fd6-4c3c-ba36-56414771e644": {
-        "value": "Unsheathed - attack again to strike"
-      },
       "46013a05-a4fb-4fcb-a46f-91a1850ff4ff": {
         "value": "{{name:2acb57bf-2ab9-4afc-8718-34d6cb9e6f43}} wind-up"
       },
@@ -975,9 +922,6 @@
       },
       "d7ea8083-90e4-45e9-a46c-63e4f6943ccc": {
         "value": "{{name:acff47ce-e952-4dbd-a803-2f908e5c7eff}} — attack speed +20%"
-      },
-      "046a6c10-4a46-41f8-a930-8d96efbcc1ac": {
-        "value": "Weapon sheathed"
       },
       "2e0a9324-5767-4331-9886-e2034151f3c8": {
         "value": "Weapon ready"
@@ -1036,9 +980,6 @@
       "91f41ebf-afb5-4b11-9da5-12ee18e439c9": {
         "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}°"
       },
-      "5b15ac6a-001d-4eed-8dfc-89dd014dac2c": {
-        "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}°"
-      },
       "68eb8b45-4350-48e6-b9ab-3719415c2e2b": {
         "value": "E - {{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}}"
       },
@@ -1055,9 +996,6 @@
         "value": "{{name:d50f6f26-8c83-46ae-91f8-a2476b8e8766}} {{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}} · {{name:d3d914ca-0658-4ca5-bbc0-9df2331fc75f}} {{name:5edf7200-df99-4ca8-bcf8-f3f902598854}}"
       },
       "6a1d451d-1685-466a-8acc-43e8886b90d3": {
-        "value": "{{value:805c3762-4817-4357-809e-428ce3b1757f}}S"
-      },
-      "e9e803cc-eaa0-41f3-9e3a-7d02933b8f88": {
         "value": "{{value:805c3762-4817-4357-809e-428ce3b1757f}}S"
       },
       "b445bd0b-6a29-408e-b813-fff6ad59adcf": {
@@ -1102,23 +1040,11 @@
       "37177933-76dc-41cd-b8e4-b7ac5c94597c": {
         "value": "{{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}} · {{name:5edf7200-df99-4ca8-bcf8-f3f902598854}} mantra"
       },
-      "2b805b44-e983-4563-a97f-397e2156da10": {
-        "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}°"
-      },
-      "a3bd5bc3-01b4-458f-8db2-175b006a9d6b": {
-        "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}°"
-      },
       "04a47c83-2717-4c78-8b0c-786b9341f111": {
         "value": "Health"
       },
-      "eea2c889-89a7-4c8f-9794-3053ded98bb2": {
-        "value": "Stamina"
-      },
       "df72a844-bb72-4dfb-9e43-6ad18484f961": {
         "value": "{{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}} / {{name:5edf7200-df99-4ca8-bcf8-f3f902598854}}"
-      },
-      "f1b94680-6ad6-4c5b-bea4-806854c0ada4": {
-        "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}} / {{value:1db806ed-4e35-4eb2-b2dc-fc7adfa00645}}"
       },
       "1d216224-1a55-40ec-bbb2-03691a574ab4": {
         "value": "+15% / {{value:805c3762-4817-4357-809e-428ce3b1757f}}s"
@@ -1137,9 +1063,6 @@
       },
       "d287cba4-7fdf-49ee-bf1e-b1ef88271feb": {
         "value": "{{name:8a1ceb6a-73c1-4be8-a117-d00a0d74c0ff}} BROKEN"
-      },
-      "51bc6397-ff9a-4243-bc47-bde01937aa06": {
-        "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}°"
       },
       "fbd8f53a-aae8-41c7-8ebb-71130c9b8836": {
         "value": "{{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}}/12"
@@ -1551,9 +1474,6 @@
       },
       "2bc373d6-df68-4653-8e66-efbaae04a603": {
         "value": "Currency"
-      },
-      "d788602e-e396-4c7e-8977-b5e375571829": {
-        "value": "Tier: {{value:39f2ed64-61ec-4496-b1d5-9d4a9a87073a}} · Reforges: {{value:c35e4551-0658-4de8-8b09-320c066c031d}}"
       },
       "53ac5162-2b54-4b30-b5c5-98ad9c373fd3": {
         "value": "Evasive Fury"

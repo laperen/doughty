@@ -35,7 +35,7 @@ export const STRIKER_CRESCENT_SPECIAL = Object.freeze({
     return {
       id: this.id,
       kind: this.kind,
-      damage: this.damage, damageMultiplier: this.damageMultiplier, damageMultiplier: this.damageMultiplier,
+      damage: this.damage, damageMultiplier: this.damageMultiplier,
       width: this.width,
       height: this.height,
       depth: this.depth,

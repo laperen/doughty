@@ -9,7 +9,9 @@ export const SCATTERSHOT = Object.freeze({ id: 'scattershot', label: 'Scattersho
 export const CAPTAIN_GRIP = Object.freeze({ id: 'captain-grip', label: 'Haste mine', cooldown: 20,
   duration: .5, fireAt: .25, lifetime: 20, buffDuration: 12, attackSpeed: 15 });
 export function repeaterFalloff(distance) {
-  return distance <= 8 ? 1 : distance <= 15 ? .5 : distance <= 25 ? .25 : 0;
+  return distance <= REPEATER_TUNING.idealRange ? 1
+    : distance <= REPEATER_TUNING.middleRange ? .5
+    : distance <= REPEATER_TUNING.maxRange ? .25 : 0;
 }
 export function createRepeaters({ chamber = SCATTERSHOT, grip = CAPTAIN_GRIP } = {}) {
   const definition = {
@@ -37,7 +39,8 @@ export function createRepeaters({ chamber = SCATTERSHOT, grip = CAPTAIN_GRIP } =
       }
       if (input === 'heavy' && state.scatterCooldown > 0
         || input === 'buff' && state.buffCooldown > 0) return { type: 'input-ignored' };
-      const duration = input === 'light' ? .35 : input === 'reload' ? 1 : input === 'heavy' ? chamber.duration : grip.duration;
+      const duration = input === 'light' ? REPEATER_TUNING.shotInterval
+        : input === 'reload' ? REPEATER_TUNING.reload : input === 'heavy' ? chamber.duration : grip.duration;
       state.action = { type: input, duration, fired: false, hand: state.hand };
       if (input === 'reload') {
         state.action.empoweredReload = idealRange;

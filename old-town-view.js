@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { defineEnvironment } from './map-environment.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 const OLD_TOWN_STATIONS = Object.freeze([
   { id: 'cell-researcher', name: 'Cell researcher', position: [32, 3, 3.5], color: '#dce6e4', text: 'I can craft cells from aether-dust and upgrade matching pairs.' },
@@ -16,7 +17,15 @@ const OLD_TOWN_STATIONS = Object.freeze([
   { id: 'refugee', name: 'Arriving survivor', position: [29, 5, -37], color: '#bd9aa0', text: 'A Behemoth destroyed our settlement. We brought what we could carry. Refugees will arrive on and off with requests for help; quests are not available in this mockup.' },
 ]);
 
-export const OLD_TOWN = Object.freeze({ name: 'Old Emberwatch', arrival: [0, 0, 60] });
+export const OLD_TOWN = Object.freeze({
+  name: 'Old Emberwatch', arrival: [0, 0, 60],
+  environment: defineEnvironment({
+    skyTop: '#5b95b5', skyHorizon: '#e6d5ba', fogColor: '#d3cec0',
+    cloudColor: '#fff0dc', cloudShadow: '#a4b3bf', clouds: .42,
+    cloudScale: 3, wind: .18, sunlight: 3, sunColor: '#ffe4c1',
+    ambientColor: '#dfe6ed', groundColor: '#655c51',
+  }),
+});
 
 // Authored from the supplied old-town reference images: southern arrival circle,
 // western watercourse, split market streets and a raised northern civic square.

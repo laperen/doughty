@@ -6,15 +6,6 @@ import { BEHEMOTH, isInterruptible } from './behemoth.js';
 const material = (color, emissive = '#000000') => new THREE.MeshStandardMaterial({ color, emissive, roughness: 0.72, metalness: 0.06, flatShading: true });
 
 
-function ellipsoid(parent, name, size, position, mat) {
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), mat);
-  mesh.name = name;
-  mesh.scale.set(...size);
-  mesh.position.set(...position);
-  mesh.castShadow = true;
-  parent.add(mesh);
-  return mesh;
-}
 function cone(parent, name, radius, height, position, mat, rotation = 0) {
   const mesh = new THREE.Mesh(new THREE.ConeGeometry(radius, height, 5), mat);
   mesh.name = name;
@@ -34,6 +25,18 @@ function ring(parent, radius, mat) {
 
 /** Original mechanics-lab creature assembled from simple geometry. */
 export function createBehemothView(scene) {
+  // Own the shared sphere per view so disposing one creature cannot dispose
+  // geometry belonging to another creature or a menu preview.
+  const sphere = new THREE.SphereGeometry(1, 8, 6);
+  function ellipsoid(parent, name, size, position, mat) {
+    const mesh = new THREE.Mesh(sphere, mat);
+    mesh.name = name;
+    mesh.scale.set(...size);
+    mesh.position.set(...position);
+    mesh.castShadow = true;
+    parent.add(mesh);
+    return mesh;
+  }
   const fur = material('#a95d37');
   const dark = material('#3b3030');
   const pale = material('#d5aa74');

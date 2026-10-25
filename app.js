@@ -26,6 +26,7 @@ import { OLD_TOWN, createOldTownView } from './old-town-view.js';
 import { behemothPushOut } from './behemoth-collision.js';
 import { CHAINBLADES } from './chainblades-weapon.js';
 import { createEnvironment } from './environment.js';
+import { RANGE_MAP } from './map-environment.js';
 import { createSunShadows } from './sun-shadows.js';
 import { ISLAND, encounterEnemies, createIslandEncounter, stepIslandEncounter, alertEncounter, inTerritory, encounterTouchable } from './island-encounters.js';
 import { createIslandView } from './island-view.js';
@@ -238,7 +239,7 @@ scene.add(keyLight);
 const rimLight = new THREE.DirectionalLight('#a2c8ff', 1.7);
 rimLight.position.set(13, 8, -8);
 scene.add(rimLight);
-const environment = createEnvironment(scene, camera, { sun: keyLight, ambient: ambientLight });
+const environment = createEnvironment(scene, camera, { sun: keyLight, ambient: ambientLight, rim: rimLight }, document.querySelector('#cloudAnimationToggle'));
 const sunShadows = createSunShadows(renderer, scene, keyLight, environment.state, document.querySelector('#shadowQuality'));
 
 const arena = new THREE.Group();
@@ -1957,7 +1958,7 @@ const applyArenaMode = async (mode, persist = true) => {
   camera.near = arenaScreen.classList.contains('hidden') ? 2 : 0.1;
   camera.far = selectedArena === 'range' ? 120 : 400;
   camera.updateProjectionMatrix();
-  environment.setArena(isTown() || currentExplorationIsland() ? 'island' : selectedArena);
+  environment.setMap(currentExplorationIsland() ?? (isTown() ? currentTown() : selectedArena === 'island' ? ISLAND : RANGE_MAP));
   camera.position.set(previewDistance * 0.67, previewDistance * 0.53, previewDistance * 0.75);
   controls.update();
   controls.saveState();

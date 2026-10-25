@@ -1,99 +1,110 @@
-import * as THREE from 'three';
+﻿import * as THREE from 'three';
+import { RANGE_MAP } from './map-environment.js';
 
-export function createEnvironment(scene, camera, lights) {
-  const defaults = { skyTop: '#3ee6ee', skyHorizon: '#baefde', sunAngle: 145, sunlight: 3.2, ambient: 1.9, clouds: .45, wind: .7, windDirection: 90, fog: .35 };
-  const state = { ...defaults };
+/** One background draw for the gradient and cosmetic, distant clouds. */
+export function createEnvironment(scene, camera, lights, animationInput) {
+  const animationStorageKey = 'doughty-cloud-animation';
+  let animateClouds = true;
   try {
-    const saved = JSON.parse(localStorage.getItem('doughty-environment'));
-    for (const key of Object.keys(defaults)) {
-      if (typeof defaults[key] === 'string' && /^#[0-9a-f]{6}$/i.test(saved?.[key])) state[key] = saved[key];
-      if (typeof defaults[key] === 'number' && Number.isFinite(saved?.[key])) state[key] = saved[key];
-    }
-  } catch { /* Defaults also cover unavailable storage. */ }
+    animateClouds = localStorage.getItem(animationStorageKey) !== 'false';
+  } catch { /* Animate by default when browser storage is unavailable. */ }
+  animationInput.checked = animateClouds;
+  animationInput.addEventListener('change', () => {
+    animateClouds = animationInput.checked;
+    try { localStorage.setItem(animationStorageKey, String(animateClouds)); }
+    catch { /* The preference still applies for this session. */ }
+  });
+  // Preserve identity for the sun-shadow controller across map changes.
+  const state = { ...RANGE_MAP.environment };
   const group = new THREE.Group(); group.name = 'Atmosphere'; scene.add(group);
-  const uniforms = { top: { value: new THREE.Color() }, horizon: { value: new THREE.Color() } };
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12), new THREE.ShaderMaterial({
+  const uniforms = {
+    top: { value: new THREE.Color() }, horizon: { value: new THREE.Color() },
+    cloudColor: { value: new THREE.Color() }, cloudShadow: { value: new THREE.Color() },
+    coverage: { value: 0 }, cloudScale: { value: 1 }, cloudStretch: { value: 1 },
+    softness: { value: .18 }, drift: { value: new THREE.Vector2() },
+  };
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 20), new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, uniforms,
-    vertexShader: 'varying vec3 direction; void main(){direction=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
-    fragmentShader: `uniform vec3 top; uniform vec3 horizon; varying vec3 direction;
-      void main(){float h=normalize(direction).y;gl_FragColor=vec4(mix(horizon,top,smoothstep(-.08,.85,h)),1.0);
-      #include <tonemapping_fragment>
-      #include <colorspace_fragment>
+    // Far-plane depth keeps all map geometry in front of the sky.
+    vertexShader: `varying vec3 direction;
+      void main(){direction=position;
+        vec4 p=projectionMatrix*modelViewMatrix*vec4(position,1.0);
+        gl_Position=p.xyww;
+      }`,
+    fragmentShader: `
+      uniform vec3 top, horizon, cloudColor, cloudShadow;
+      uniform float coverage, cloudScale, cloudStretch, softness;
+      uniform vec2 drift;
+      varying vec3 direction;
+      float hash(vec2 p){
+        vec3 q=fract(vec3(p.xyx)*.1031);
+        q+=dot(q,q.yzx+33.33);
+        return fract((q.x+q.y)*q.z);
+      }
+      float noise(vec2 p){
+        vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
+        return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),
+                   mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
+      }
+      float cloudNoise(vec2 p){
+        // Four bounded 2D octaves; no volume sampling or ray marching.
+        float n=.55*noise(p);
+        p=mat2(.8,-.6,.6,.8)*p*2.03+17.1;n+=.26*noise(p);
+        p=p*2.01+9.2;n+=.13*noise(p);
+        p=p*2.02+5.7;return n+.06*noise(p);
+      }
+      void main(){
+        vec3 d=normalize(direction);
+        vec3 color=mix(horizon,top,smoothstep(-.08,.85,d.y));
+        if(d.y>0.0 && coverage>0.0){
+          // Stable overhead projection with clouds fading into horizon haze.
+          vec2 p=d.xz/(max(d.y,0.0)+.24)*cloudScale;
+          p.x/=cloudStretch;
+          float n=cloudNoise(p+drift);
+          float threshold=mix(.91,.20,coverage);
+          float mask=smoothstep(threshold-softness,threshold+softness,n);
+          mask*=smoothstep(.015,.20,d.y)*smoothstep(0.0,.12,coverage);
+          vec3 tint=mix(cloudShadow,cloudColor,smoothstep(threshold-.05,.88,n));
+          color=mix(color,tint,mask*.92);
+        }
+        gl_FragColor=vec4(color,1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
       }`,
   }));
-  sky.name = 'Gradient sky'; sky.frustumCulled = false; sky.renderOrder = -1; group.add(sky);
-  const cloudMaterial = new THREE.MeshStandardMaterial({ color: '#f1dfdc', roughness: 1, fog: false });
-  const geometry = new THREE.IcosahedronGeometry(1, 2);
-  const clouds = [];
-  for (let i = 0; i < 10; i++) {
-    const cloud = new THREE.Group(); const material = cloudMaterial.clone(); const angle = i * Math.PI * 2 / 10;
-    cloud.position.set(Math.sin(angle) * (240 + i % 3 * 35), 100 + i % 3 * 18, Math.cos(angle) * (240 + i % 3 * 35));
-    for (let j = 0; j < 4; j++) {
-      const puff = new THREE.Mesh(geometry, material);
-      puff.position.set(j * 5 - 7, (j % 2) * 2, j % 2 * 2);
-      puff.scale.set(7, 3 + j % 2, 4); cloud.add(puff);
-    }
-    cloud.scale.setScalar(3);
-    material.transparent = true; material.depthWrite = false;
-    cloud.userData.material = material;
-    group.add(cloud); clouds.push(cloud);
-  }
-  group.traverse(object => { object.userData.movementCollision = false; });
-  const panel = document.querySelector('#environmentSettings');
-  const inputs = [...panel.querySelectorAll('[data-environment]')];
-  let arenaMode = 'range';
+  sky.name = 'Cloud sky'; sky.frustumCulled = false; sky.renderOrder = -1;
+  sky.userData.movementCollision = false; group.add(sky);
   const apply = () => {
     uniforms.top.value.set(state.skyTop); uniforms.horizon.value.set(state.skyHorizon);
+    uniforms.cloudColor.value.set(state.cloudColor); uniforms.cloudShadow.value.set(state.cloudShadow);
+    uniforms.coverage.value = state.clouds; uniforms.cloudScale.value = state.cloudScale;
+    uniforms.cloudStretch.value = state.cloudStretch; uniforms.softness.value = state.cloudSoftness;
     const angle = state.sunAngle * Math.PI / 180;
     lights.sun.position.set(Math.cos(angle) * 20, 15, Math.sin(angle) * 20);
-    lights.sun.intensity = state.sunlight; lights.ambient.intensity = state.ambient;
-    lights.ambient.color.set(state.skyTop).lerp(new THREE.Color('#ffffff'), .6);
-    lights.sun.color.set(state.skyHorizon).lerp(new THREE.Color('#ffffff'), .5);
-    const distance = arenaMode === 'island' ? 440 : 150;
-    scene.fog.color.set(state.skyHorizon);
-    scene.fog.near = 25 + (1 - state.fog) * distance;
-    scene.fog.far = scene.fog.near + 40 + (1 - state.fog) * (arenaMode === 'island' ? 360 : 180);
-    clouds.forEach((cloud, i) => { cloud.visible = i < Math.round(state.clouds * clouds.length); });
-    for (const input of inputs) {
-      const key = input.dataset.environment; input.value = state[key];
-      const output = panel.querySelector(`[data-value="${key}"]`);
-      if (output) output.textContent = ['sunAngle', 'windDirection'].includes(key) ? `${state[key]}°` : Number(state[key]).toFixed(2);
-    }
+    lights.sun.intensity = state.sunlight; lights.sun.color.set(state.sunColor);
+    lights.ambient.intensity = state.ambient; lights.ambient.color.set(state.ambientColor);
+    lights.ambient.groundColor.set(state.groundColor);
+    if (lights.rim) { lights.rim.color.set(state.rimColor); lights.rim.intensity = state.rimIntensity; }
+    scene.fog.color.set(state.fogColor);
+    scene.fog.near = 25 + (1 - state.fog) * state.fogDistance;
+    scene.fog.far = scene.fog.near + 40 + (1 - state.fog) * state.fogDepth;
   };
-  for (const input of inputs) {
-    const key = input.dataset.environment;
-    if (input.type === 'range') state[key] = THREE.MathUtils.clamp(state[key], Number(input.min), Number(input.max));
-    input.addEventListener('input', () => {
-      state[key] = input.type === 'color' ? input.value : Number(input.value); apply();
-      try { localStorage.setItem('doughty-environment', JSON.stringify(state)); } catch { /* Session settings still work. */ }
-    });
-  }
-  panel.querySelector('button').addEventListener('click', () => {
-    Object.assign(state, defaults); apply();
-    try { localStorage.removeItem('doughty-environment'); } catch { /* Session settings still work. */ }
-  });
   apply();
   return {
     group, state,
-    setArena(mode) { arenaMode = mode; apply(); },
+    setMap(map) {
+      Object.assign(state, RANGE_MAP.environment, map?.environment);
+      uniforms.drift.value.set(0, 0);
+      apply();
+    },
     update(delta) {
       sky.position.copy(camera.position); sky.scale.setScalar(camera.far * .9);
-      const direction = state.windDirection * Math.PI / 180;
-      const travel = Math.max(0, delta) * state.wind * 10;
-      // A camera-centered field keeps clouds available across both arenas. Reuse
-      // every mesh, wrapping beyond a faded boundary rather than reallocating.
-      const halfWidth = 380;
-      for (const cloud of clouds) {
-        cloud.position.x += Math.sin(direction) * travel;
-        cloud.position.z -= Math.cos(direction) * travel;
-        let x = cloud.position.x - camera.position.x;
-        let z = cloud.position.z - camera.position.z;
-        x = ((x + halfWidth) % (halfWidth * 2) + halfWidth * 2) % (halfWidth * 2) - halfWidth;
-        z = ((z + halfWidth) % (halfWidth * 2) + halfWidth * 2) % (halfWidth * 2) - halfWidth;
-        cloud.position.x = camera.position.x + x;
-        cloud.position.z = camera.position.z + z;
-        cloud.userData.material.opacity = 1 - THREE.MathUtils.smoothstep(Math.max(Math.abs(x), Math.abs(z)), 300, halfWidth);
-      }
+      // Pause at the current offset; resuming continues without a jump.
+      if (!animateClouds) return;
+      const angle = state.windDirection * Math.PI / 180;
+      const travel = Math.min(Math.max(0, delta), .1) * state.wind * .025;
+      uniforms.drift.value.x += Math.sin(angle) * travel;
+      uniforms.drift.value.y -= Math.cos(angle) * travel;
     },
   };
 }

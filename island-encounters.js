@@ -1,4 +1,5 @@
 import { stepWounds } from './wounds.js';
+import { defineEnvironment } from './map-environment.js';
 import { createBehemothState, stepBehemoth } from './encounter-combat.js';
 import { advanceTimedMode } from './behemoth-states.js';
 import { advanceQuillshotTimers } from './quillshot.js';
@@ -7,6 +8,13 @@ import { advanceGnasherTimers } from './gnasher.js';
 import { BEHEMOTH_TIERS, SUMMON_HEALTH_FRACTION, SUMMON_REPLACEMENT_DELAY } from './behemoth-tiers.js';
 
 export const ISLAND = Object.freeze({
+  environment: defineEnvironment({
+    skyTop: '#82413e', skyHorizon: '#dfad86', fogColor: '#c6a38b',
+    cloudColor: '#b09c92', cloudShadow: '#62565e', clouds: .6,
+    cloudScale: 3.3, cloudStretch: 1.4, wind: .3, windDirection: 95,
+    sunColor: '#ffdfbd', ambientColor: '#e0d5cf', groundColor: '#615b54',
+    rimColor: '#dfc4b3', rimIntensity: 1.2,
+  }),
   name: 'Cinderwild Isle', layoutScale: 2, arrival: [0, 0.25, 78], roster: ['gnasher', 'first-behemoth', 'quillshot'], tier: 'normal', maxAlive: 1,
   spawnDuration: 2.4, deathDuration: 3.2, replacementDelay: 5, awarenessRadius: 20.25,
   patrolRadius: 8,

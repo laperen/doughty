@@ -115,13 +115,6 @@
 #goToArenaButton{width:100%;margin:0 0 16px}
 #goToArenaButton:disabled{opacity:.4;cursor:default;transform:none}
 
-.environment-settings summary{cursor:pointer;font:10px var(--mono);letter-spacing:.13em;color:#e4e6e8;padding:3px 0}
-.environment-settings summary::marker{color:var(--acid)}
-.environment-settings summary:focus-visible{outline:1px solid var(--acid);outline-offset:5px}
-.environment-controls{padding-top:12px}
-.environment-color{display:flex;align-items:center;justify-content:space-between;margin:10px 0;font:10px var(--mono)}
-.environment-color input{width:44px;height:27px;padding:2px;border:1px solid #7e96a35c;background:#101820;cursor:pointer}
-.environment-reset{margin-top:18px}
 #shadowQuality{max-width:160px;padding:6px;border:1px solid #7e96a35c;border-radius:3px;background:#101820;color:var(--paper);font:10px var(--mono)}
 .shadow-quality-hint{margin:9px 0 0;color:var(--muted);font:10px/1.5 var(--mono)}
 

@@ -77,35 +77,17 @@
                 </select>
               </label>
               <p id="shadowQualityHint" class="shadow-quality-hint">Applies immediately. Higher quality costs more performance.</p>
+              <label class="visual-toggle-row" for="cloudAnimationToggle">
+                <span class="fov-label" data-text-id="e4c56482-3d49-4eaa-a4c3-6a52d32ab32d">Animate clouds</span>
+                <input id="cloudAnimationToggle" class="visual-toggle-input" type="checkbox" checked>
+                <span class="visual-toggle" aria-hidden="true"></span>
+              </label>
               <label class="visual-toggle-row" for="collisionVisibilityToggle">
                 <span class="fov-label">Visible collision</span>
                 <input id="collisionVisibilityToggle" class="visual-toggle-input" type="checkbox" aria-label="Show collision volumes">
                 <span class="visual-toggle" aria-hidden="true"></span>
               </label>
             </div>
-        <details id="environmentSettings" class="camera-settings environment-settings">
-          <summary>ENVIRONMENT</summary>
-          <div class="environment-controls">
-            <label class="environment-color" for="env-skyTop"><span>Upper sky</span><input id="env-skyTop" type="color" data-environment="skyTop" value="#3ee6ee"></label>
-            <label class="environment-color" for="env-skyHorizon"><span>Horizon and haze</span><input id="env-skyHorizon" type="color" data-environment="skyHorizon" value="#baefde"></label>
-            <label class="fov-control" for="env-sunAngle"><span>Sun direction</span><output data-value="sunAngle" for="env-sunAngle">145</output></label>
-            <input id="env-sunAngle" class="fov-slider" type="range" data-environment="sunAngle" min="0" max="360" step="1" value="145">
-            <label class="fov-control" for="env-sunlight"><span>Sun brightness</span><output data-value="sunlight" for="env-sunlight">3.20</output></label>
-            <input id="env-sunlight" class="fov-slider" type="range" data-environment="sunlight" min="0" max="5" step="0.1" value="3.2">
-            <label class="fov-control" for="env-ambient"><span>Ambient brightness</span><output data-value="ambient" for="env-ambient">1.90</output></label>
-            <input id="env-ambient" class="fov-slider" type="range" data-environment="ambient" min="0" max="3" step="0.1" value="1.9">
-            <label class="fov-control" for="env-clouds"><span>Cloud coverage</span><output data-value="clouds" for="env-clouds">0.45</output></label>
-            <input id="env-clouds" class="fov-slider" type="range" data-environment="clouds" min="0" max="1" step="0.1" value="0.45">
-            <label class="fov-control" for="env-wind"><span>Wind speed</span><output data-value="wind" for="env-wind">0.70</output></label>
-            <input id="env-wind" class="fov-slider" type="range" data-environment="wind" min="0" max="2" step="0.1" value="0.7">
-            <label class="fov-control" for="env-windDirection"><span>Wind direction</span><output data-value="windDirection" for="env-windDirection">90?</output></label>
-            <input id="env-windDirection" class="fov-slider" type="range" data-environment="windDirection" min="0" max="360" step="1" value="90" aria-describedby="windDirectionHint">
-            <div id="windDirectionHint" class="fov-range">Travel toward: 0? north ? 90? east ? 180? south ? 270? west</div>
-            <label class="fov-control" for="env-fog"><span>Fog strength</span><output data-value="fog" for="env-fog">0.35</output></label>
-            <input id="env-fog" class="fov-slider" type="range" data-environment="fog" min="0" max="1" step="0.05" value="0.35">
-            <button type="button" class="menu-button environment-reset">Reset environment</button>
-          </div>
-        </details>
         <div id="feedbackSettings" class="camera-settings"><div class="settings-heading">FEEDBACK</div></div>
         </div>
         <div id="gameplayPanel" role="tabpanel" aria-labelledby="gameplayTab">
