@@ -5,6 +5,15 @@
     "id": "39f52b5a-e913-41c9-a1b8-007880f94963",
     "scheduleBindingModelVersion": 1,
     "text": {
+      "155e6c2a-b249-48e8-8326-bbe910907483": {
+        "value": "Group chat"
+      },
+      "297c0daf-e020-4d4d-ab9e-1fd8819b2390": {
+        "value": "Chat message"
+      },
+      "cef965e8-9e4c-474e-ab01-539a3088d20c": {
+        "value": "Message your group"
+      },
       "e4c56482-3d49-4eaa-a4c3-6a52d32ab32d": {
         "value": "Animate clouds"
       },

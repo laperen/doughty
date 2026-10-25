@@ -3,6 +3,10 @@
 export const projectId = "39f52b5a-e913-41c9-a1b8-007880f94963";
 
 export const sourceText = {
+  "155e6c2a-b249-48e8-8326-bbe910907483": "Group chat",
+  "297c0daf-e020-4d4d-ab9e-1fd8819b2390": "Chat message",
+  "cef965e8-9e4c-474e-ab01-539a3088d20c": "Message your group",
+
   "0db62377-b491-4084-b1e4-8fb70f7873fa": "HUNTING GROUNDS",
   "ba37990e-2f46-4836-9c04-70607f245dac": "FOLLOW THE PATHS",
 

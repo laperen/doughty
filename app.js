@@ -1,3 +1,4 @@
+import { createHuntChat } from './hunt-chat.js';
 import { OnlineConnection } from './online-connection.js';
 import { OnlinePresentation, motionKey } from './online-presentation.js';
 import { createOnlineMenu } from './online-menu.js';
@@ -55,6 +56,7 @@ import { createTrainingTargetView, updateTrainingTargetView } from './training-t
 
 let remoteHunter = null;
 let online = null;
+let huntChat = null;
 let onlineMenu = null;
 let onlineStarting = false;
 let pendingWorld = null;
@@ -1040,7 +1042,7 @@ const applyWeaponCamera = () => {
 };
 
 const requestCameraPointerLock = () => {
-  if (onlineMenu?.openNow || arenaScreen.classList.contains('hidden') || mapTransitionActive || settingsOpen || !settlementPanel.hidden || altCursorHeld || !document.hasFocus()) return;
+  if (huntChat?.focused || onlineMenu?.openNow || arenaScreen.classList.contains('hidden') || mapTransitionActive || settingsOpen || !settlementPanel.hidden || altCursorHeld || !document.hasFocus()) return;
   try {
     const request = renderer.domElement.requestPointerLock();
     request?.catch(() => syncPointerLockHint());
@@ -1077,7 +1079,7 @@ document.addEventListener('pointerlockchange', () => {
     pointerUnlockSettingsTimer = setTimeout(() => {
       pointerUnlockSettingsTimer = null;
       if (performance.now() - lastSettingsEscape > 150 && !settingsOpen && !onlineMenu?.openNow
-        && !arenaScreen.classList.contains('hidden') && !altCursorHeld
+        && !huntChat?.focused && !arenaScreen.classList.contains('hidden') && !altCursorHeld
         && document.pointerLockElement !== renderer.domElement) setSettingsOpen(true);
     }, 80);
   }
@@ -1182,13 +1184,75 @@ function fireRepeaters(event) {
   }
   feedback.sound('swing');
 }
-function dropBuffMine(definition) {
+// World pickups outlive their creating hunter and are simulated once by the host.
+const buffMines = [];
+let mineSequence = 0;
+let lastMineTime = -Infinity;
+function mineSnapshot() {
+  return buffMines.map(({ id, mesh, remaining, mine, age }) => ({ id, position: mesh.position.toArray(), remaining, mine, age }));
+}
+function clearBuffMines() {
+  for (const effect of buffMines) { scene.remove(effect.mesh); effect.mesh.geometry.dispose(); effect.mesh.material.dispose(); }
+  buffMines.length = 0;
+}
+function receiveBuffMines(data) {
+  if (!Number.isFinite(data.time) || data.time <= lastMineTime || !Array.isArray(data.mines)) return;
+  lastMineTime = data.time;
+  const retained = new Set();
+  for (const effect of data.mines) {
+    if (typeof effect.id !== 'string' || !Array.isArray(effect.position) || effect.position.length !== 3 || !effect.position.every(Number.isFinite)
+      || ![effect.remaining, effect.age, effect.mine?.attackSpeed, effect.mine?.buffDuration].every(Number.isFinite)
+      || effect.remaining <= 0) continue;
+    retained.add(effect.id);
+    const existing = buffMines.find(m => m.id === effect.id);
+    if (existing) {
+      existing.mesh.position.fromArray(effect.position);
+      Object.assign(existing, { remaining: effect.remaining, age: effect.age, mine: effect.mine });
+    } else createBuffMine(effect.mine, effect.position, effect.remaining, effect.age, effect.id);
+  }
+  for (let i = buffMines.length - 1; i >= 0; i--) if (!retained.has(buffMines[i].id)) {
+    const { mesh } = buffMines[i]; scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose(); buffMines.splice(i, 1);
+  }
+}
+function publishBuffMines() {
+  if (online?.host) online.broadcast('mines', { time: performance.now(), epoch: huntEpoch, mines: mineSnapshot() });
+}
+function createBuffMine(definition, position, remaining = definition.lifetime, age = 0, id = `${online?.id ?? 'local'}:${++mineSequence}`) {
   const mesh = new THREE.Mesh(new THREE.CylinderGeometry(.24, .32, .14, 12),
     new THREE.MeshStandardMaterial({ color: '#58cfe1', emissive: '#187e91', emissiveIntensity: 1.5 }));
+  mesh.position.fromArray(position); scene.add(mesh);
+  buffMines.push({ id, mesh, remaining, mine: definition, age });
+}
+function dropBuffMine(definition) {
+  if (online?.guest) return;
   const direction = new THREE.Vector3(-Math.sin(getCameraYaw()), 0, -Math.cos(getCameraYaw()));
-  mesh.position.set(...playerState.position).addScaledVector(direction, 1);
-  mesh.position.y += .1; scene.add(mesh);
-  rangedEffects.push({ mesh, remaining: definition.lifetime, mine: definition, age: 0 });
+  const position = new THREE.Vector3().fromArray(playerState.position).addScaledVector(direction, 1);
+  position.y += .1;
+  createBuffMine(definition, position.toArray());
+  publishBuffMines();
+}
+function stepBuffMines(dt) {
+  if (online?.guest) return;
+  let changed = false;
+  for (let i = buffMines.length - 1; i >= 0; i--) {
+    const effect = buffMines[i];
+    effect.remaining -= dt; effect.age += dt;
+    if (effect.remaining > 0 && effect.age >= .3) for (const collector of new Set([playerState, ...buffCollectors])) {
+      if (collector.health <= 0 || !collector.position || !collector.statModifiers) continue;
+      if (Math.hypot(collector.position[0] - effect.mesh.position.x, collector.position[2] - effect.mesh.position.z) > .65
+        || Math.abs(collector.position[1] - effect.mesh.position.y) > .7) continue;
+      addTimedStatModifier(collector.statModifiers, { source: 'repeater-haste', stat: 'attackSpeed',
+        percent: effect.mine.attackSpeed, duration: effect.mine.buffDuration });
+      effect.remaining = 0;
+      if (collector === playerState) feedback.sound('reward');
+      break;
+    }
+    if (effect.remaining <= 0) {
+      scene.remove(effect.mesh); effect.mesh.geometry.dispose(); effect.mesh.material.dispose(); buffMines.splice(i, 1);
+      changed = true;
+    }
+  }
+  if (changed) publishBuffMines();
 }
 // A tapered stream of the same cyan crystal motes used by Behemoth despawning.
 function absorbEmpoweredReload(origin) {
@@ -1229,17 +1293,6 @@ function stepRangedEffects(dt) {
       }
       positions.needsUpdate = true;
       effect.mesh.material.opacity = .9 * Math.min(1, effect.remaining / .12);
-    }
-    if (effect.mine && effect.remaining > 0) {
-      effect.age += dt;
-      for (const collector of [playerState, ...buffCollectors]) {
-        if (effect.age < .3 || collector.health <= 0 || !collector.position || !collector.statModifiers) continue;
-        if (Math.hypot(collector.position[0] - effect.mesh.position.x, collector.position[2] - effect.mesh.position.z) > .65
-          || Math.abs(collector.position[1] - effect.mesh.position.y) > .7) continue;
-        addTimedStatModifier(collector.statModifiers, { source: 'repeater-haste', stat: 'attackSpeed',
-          percent: effect.mine.attackSpeed, duration: effect.mine.buffDuration });
-        effect.remaining = 0; feedback.sound('reward'); break;
-      }
     }
     if (effect.remaining <= 0) {
       scene.remove(effect.mesh); effect.mesh.geometry.dispose(); effect.mesh.material.dispose(); rangedEffects.splice(i, 1);
@@ -1914,7 +1967,7 @@ let targetRotationY = 0;
 const resetEncounter = () => {
   huntEpoch++;
   feedback.clear();
-  clearRangedEffects();
+  clearRangedEffects(); clearBuffMines();
   weaponStates.clear();
   trainingState = createTrainingState();
   updateTrainingTargetView(trainingView, trainingState);
@@ -2177,6 +2230,8 @@ fovSlider.addEventListener('input', () => {
   camera.updateProjectionMatrix();
 });
 window.addEventListener('keydown', (event) => {
+  if (huntChat?.focused) return;
+  if (event.key === 'Enter' && !event.repeat && !event.isComposing && !settingsOpen && !onlineMenu?.openNow && !mapTransitionActive && !arenaScreen.classList.contains('hidden') && !event.target.closest?.('button, input, select, textarea, a') && huntChat?.open()) { event.preventDefault(); return; }
   if (onlineMenu?.openNow) return;
   if (event.key === 'Escape') {
     if (cellView.open) {
@@ -2359,10 +2414,11 @@ const applyOnlineWorld = data => {
     clearCellCombat(); clearChestplateCombat(); clearInput();
     if (equipment) equipment.state = equipment.definition.createState();
     for (const p of activeProjectiles) scene.remove(p.mesh);
-    activeProjectiles.length = 0; clearRangedEffects();
+    activeProjectiles.length = 0; clearRangedEffects(); clearBuffMines(); lastMineTime = -Infinity;
   }
   lastWorldTime = data.time;
   latestConfirmedWorld = plainState(data);
+  receiveBuffMines(data);
   receiveOnlinePresentation(data, true);
   receiveCombatEvents([...(data.events ?? []), ...pendingCombatEvents.splice(0)], data.eventStart);
   const oldId = islandEncounter.id, oldSpecies = islandEncounter.speciesId;
@@ -2488,8 +2544,29 @@ const onlineHunters = () => [{ id: online.id, player: plainState(playerState), e
     weapon: h.equipment ? plainState(h.equipment.state) : null, loadout: networkLoadout(h.materialInventory) }))];
 const leaveOnlineHunt = async () => { onlinePresentation.clear(); onlineMotionKeys.clear(); if (online?.room) await online.leave(); clearRemoteHunters(); pendingWorld = null; latestConfirmedWorld = null; };
 online = new OnlineConnection();
+const chatRates = new Map();
+const acceptChat = (sender, text) => {
+  if (typeof text !== 'string' || !text.trim() || text.length > 500) return false;
+  const now = performance.now();
+  if (now - (chatRates.get(sender) ?? -Infinity) < 500) return false;
+  chatRates.set(sender, now);
+  const message = { sender, text: text.trim() };
+  huntChat.receive(message); online.broadcast('chat', message); return true;
+};
+huntChat = createHuntChat({
+  send: text => online.host ? acceptChat(online.id, text) : online.guest && online.send('chat', { text }),
+  releaseControls: () => { clearInput(); clearTimeout(pointerUnlockSettingsTimer); if (document.pointerLockElement) document.exitPointerLock(); },
+  resumeCamera: () => requestCameraPointerLock(),
+});
+online.addEventListener('room', ({ detail }) => { huntChat.setRoom(!!detail); if (!detail) chatRates.clear(); });
+
 online.addEventListener('packet', ({ detail: { peer, type, data } }) => {
   try {
+    if (type === 'chat') {
+      if (online.host && remoteHunters.has(peer)) acceptChat(peer, data?.text);
+      else if (online.guest && peer === online.room?.host && typeof data?.sender === 'string' && data.sender.length <= 128 && typeof data.text === 'string' && data.text.length <= 500) huntChat.receive(data);
+      return;
+    }
     if (online.host) {
       if (type === 'loadout' && !remoteHunters.has(peer)) { newRemoteHunter(peer, data); return; }
       const h = remoteHunters.get(peer); if (!h) return;
@@ -2499,6 +2576,8 @@ online.addEventListener('packet', ({ detail: { peer, type, data } }) => {
         if (Number.isSafeInteger(data.ackReward)) h.ackReward = Math.min(rewardSequence, Math.max(h.ackReward, data.ackReward));
       }
       if (type === 'action' && acceptOnlineInput(h, data.input) && h.actions.length < 32 && data.action && typeof data.action === 'object') h.actions.push(data.action);
+    } else if (online.guest && peer === online.room?.host && type === 'mines') {
+      if (!onlineStarting && lastOnlineEpoch === data.epoch) receiveBuffMines(data);
     } else if (online.guest && peer === online.room?.host && type === 'combat') {
       if (onlineStarting || lastOnlineEpoch !== data.epoch) pendingCombatEvents.push(data);
       else receiveCombatEvents([data]);
@@ -2530,7 +2609,7 @@ online.addEventListener('fallback', () => {
   // No reset: the last confirmed boss action, timers, projectiles and meters continue locally.
 });
 online.addEventListener('handover', () => {
-  lastWorldTime = -Infinity;
+  lastWorldTime = -Infinity; lastMineTime = -Infinity;
   onlinePresentation.clear(); onlineMotionKeys.clear(); latestOnlineBosses.clear();
   online.send('loadout', networkLoadout(localInventory));
 });
@@ -2602,7 +2681,8 @@ setInterval(() => {
   else if (online.host && ++onlineTick % 2 === 0) {
     const hunters = onlineHunters();
     const encounter = plainState(islandEncounter);
-    for (const h of remoteHunters.values()) online.send('world', { time: performance.now(), encounter, hunters, epoch: huntEpoch,
+    const mines = mineSnapshot();
+    for (const h of remoteHunters.values()) online.send('world', { time: performance.now(), encounter, hunters, mines, epoch: huntEpoch,
       eventSequence: onlineEventSequence, rewardSequence,
       eventStart: h.eventStart, events: onlineEventHistory.filter(e => e.sequence > h.eventStart && e.sequence > h.ackEvent),
       rewards: rewardHistory.filter(r => r.sequence > h.rewardStart && r.sequence > h.ackReward) }, h.id);
@@ -2733,6 +2813,7 @@ const animate = () => {
     movementAccumulator += online?.room ? delta : pauseLocal ? 0 : delta;
     let consumedActionPress = false;
     while (movementAccumulator >= movementStep) {
+      stepBuffMines(movementStep);
       simulateHunter(movementStep, pauseLocal ? 0 : moveX, pauseLocal ? 0 : moveY, cameraYaw, aimYaw);
       if (online?.host) { stepRemoteHunters(movementStep); publishOnlineMotion(); }
       pressedKeys.clear();

@@ -309,3 +309,14 @@
 .hunting-board-modes [aria-selected="true"] { border-color:#d5bd8e; background:#ffffff18; }
 .hunting-board-modes [role="tab"] { flex:1; }
 .arena-selection label[hidden] { display:none; }
+
+.hunt-chat { position:fixed; left:18px; bottom:18px; z-index:40; width:min(380px,calc(100vw - 36px)); color:#eef2ef; font:13px/1.5 sans-serif; pointer-events:auto; }
+.hunt-chat[hidden] { display:none; }
+.hunt-chat-history { height:180px; overflow-y:auto; padding:10px; background:#101b24dd; border:1px solid #70827966; border-radius:6px 6px 0 0; transition:opacity .35s; }
+.hunt-chat-line { overflow-wrap:anywhere; white-space:pre-wrap; padding:2px 0; text-shadow:0 1px 3px #000; }
+.hunt-chat-line strong { color:#d9ff9b; }
+.hunt-chat-input { box-sizing:border-box; width:100%; padding:9px 10px; color:#fff; background:#101b24ed; border:1px solid #708279; border-radius:0 0 6px 6px; font:inherit; transition:opacity .35s; }
+.hunt-chat-latest { display:none; padding:4px 8px; background:#101b2499; border-radius:4px; }
+.hunt-chat.collapsed .hunt-chat-history,.hunt-chat.collapsed .hunt-chat-input { opacity:0; visibility:hidden; pointer-events:none; transition:opacity .35s,visibility 0s .35s; }
+.hunt-chat.collapsed .hunt-chat-latest { display:block; }
+.hunt-chat.collapsed { pointer-events:none; }
