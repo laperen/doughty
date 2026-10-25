@@ -25,7 +25,7 @@ function falling(s, destination, targetId) {
 }
 export function releaseEmbermaneVolley(s, players) {
   if (s.move === 'targetedVolley') {
-    for (const p of players) if (!p.knockedDown || s.canTargetKnockedDownPlayers) falling(s, p.position, p.id);
+    for (const p of players) falling(s, p.position, p.id);
   } else {
     for (let i = 0; i < AETHER_TUNING.defensiveCount; i++) {
       const yaw = s.yaw - Math.PI / 2 + Math.PI * i / (AETHER_TUNING.defensiveCount - 1);

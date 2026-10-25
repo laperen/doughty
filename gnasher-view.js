@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GNASHER, GNASHER_TUNING, isGnasherInterruptible } from './gnasher.js';
+import { GNASHER, GNASHER_TUNING, gnasherMoveDefinition, isGnasherInterruptible } from './gnasher.js';
 import { createEnrageEffect, updateEnrageEffect } from './behemoth-enrage-view.js';
 const BROKEN_COLOR = new THREE.Color('#734456');
 
@@ -146,6 +146,7 @@ export function createGnasherView(scene) {
   // Only the striking half is shown, matching the strict center-line collision clip.
   foot.geometry.dispose(); foot.geometry = new THREE.CircleGeometry(1.9, 48, -Math.acos(-1.65 / 1.9), 2 * Math.acos(-1.65 / 1.9));
   const tailWarning = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 4.5), warningMaterial); tailWarning.rotation.x = -Math.PI / 2; tailWarning.position.set(0, .06, 3.25); tellZone.add(tailWarning);
+  const bodyWarning = disc(1, 0, -.3); bodyWarning.scale.set(1.55, 2.2, 1); tellZone.add(bodyWarning);
   const sweep = new THREE.Mesh(new THREE.CircleGeometry(5, 48, Math.PI / 2 - 110 * Math.PI / 180, 220 * Math.PI / 180), warningMaterial);
   sweep.geometry.rotateX(-Math.PI / 2); sweep.position.y = .06; sweep.rotation.y = Math.PI; tellZone.add(sweep);
   const charge = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 8), warningMaterial); charge.rotation.x = -Math.PI / 2; charge.position.set(0, .06, -3); tellZone.add(charge);
@@ -162,7 +163,7 @@ export function createGnasherView(scene) {
   const blastGeometry = new THREE.SphereGeometry(1, 16, 8);
   const blastMaterial = new THREE.MeshBasicMaterial({ color: '#ee9b54', wireframe: true });
   return { root, rig, skin, belly, plate, dark, ivory, mane, maneTip, eye, mouth, tongue,
-    parts, partMaterials, hitboxes, outlines, paddle, tailBase, arrivalMotes, marker, tellZone, foot, tailWarning, sweep, charge,
+    parts, partMaterials, hitboxes, outlines, paddle, tailBase, arrivalMotes, marker, tellZone, foot, tailWarning, bodyWarning, sweep, charge,
     enrageEffect, projectileRoot, projectileMeshes: new Map(), blastGeometry, blastMaterial };
 }
 
@@ -189,7 +190,7 @@ export function updateGnasherView(v, s, dt, collision = false) {
   v.projectileRoot.visible = v.root.visible;
   v.rig.rotation.set(0, 0, 0); v.rig.position.set(0, 0, 0);
   v.parts.tail.rotation.set(0, 0, 0); v.parts.head.rotation.set(0, 0, 0);
-  const m = s.definition.moves[s.move];
+  const m = gnasherMoveDefinition(s);
   const windup = s.mode === 'windup' && m ? Math.min(1, s.elapsed / m.tell) : 0;
   const active = s.mode === 'active' && m ? Math.min(1, s.elapsed / m.active) : 0;
   const recovery = s.mode === 'recovery' && m ? Math.max(0, 1 - s.elapsed / m.recovery) : 0;
@@ -237,6 +238,7 @@ export function updateGnasherView(v, s, dt, collision = false) {
   v.tellZone.visible = s.mode === 'windup' || collision && s.mode === 'active';
   v.foot.visible = s.move === 'footSlam'; v.foot.position.x = s.side * 1.65; v.foot.rotation.z = s.side < 0 ? Math.PI : 0;
   v.tailWarning.visible = !severed && s.move === 'tailSlam';
+  v.bodyWarning.visible = v.tailWarning.visible;
   v.sweep.visible = !severed && s.move === 'tailSweep';
   v.charge.visible = s.move === 'charge';
   updateEnrageEffect(v.enrageEffect, s, m);

@@ -27,7 +27,9 @@ export const GNASHER = Object.freeze({
     enrageBurst: { ...BEHEMOTH.moves.enrageBurst, reach: 4 },
   },
 });
-export const GNASHER_TUNING = Object.freeze({ tailSlams: 4, tailChaseStep: .45, tailChaseWindow: .45, tailBlastStart: 1.5,
+export const GNASHER_TUNING = Object.freeze({
+  enrageStomp: Object.freeze({ tell: .25, active: .1, recovery: .15 }),
+  tailSlams: 4, tailChaseStep: .45, tailChaseWindow: .45, tailBlastStart: 1.5,
   blastCount: 6, blastRadius: 1.2, blastDelay: 0.12, blastLife: 0.4, blastDamage: 18,
   // These waits follow move recovery; they do not apply between combo strikes.
   afterAttack: Object.freeze({ charge: 1, footSlam: 1.2, tailSweep: 1.2, tailSlam: 1.5, enrageBurst: .6 }) });
@@ -48,16 +50,21 @@ export function createGnasherState(tier = 'normal') {
     states: { enrage: createTimedMode(), aetherCharge: createTimedMode() },
     parts: Object.fromEntries(Object.entries(definition.parts).map(([id, part]) => [id, { damage: 0, broken: false, ...createWoundMeter(part) }])),
     attackCount: 0, closeCount: 0, attackHit: false, flash: 0, lastOutcome: '',
-    canTargetKnockedDownPlayers: false, side: 1, slamCombo: null, blastDirection: [0, 0, 1],
+    enrageEntry: null, canTargetKnockedDownPlayers: false, side: 1, slamCombo: null, blastDirection: [0, 0, 1],
     enrageExitPending: false, runOutCount: 0, runOutGoal: null, runOutContact: null,
     projectiles: [], impactEvents: [], projectileSerial: 0,
   };
+}
+/** Entry stomps reuse foot-slam damage but have their own rapid cadence. */
+export function gnasherMoveDefinition(s) {
+  const move = s.definition.moves[s.move];
+  return s.enrageEntry && s.move === 'footSlam' ? { ...move, ...GNASHER_TUNING.enrageStomp } : move;
 }
 export const isGnasherInterruptible = chargeInterruptible;
 export function hitGnasher(s, hit) {
   const result = sharedHit(s, hit);
   if (result.outcome === 'interrupt') s.pause = s.definition.interruptDuration;
-  if (['reaction', 'defeated'].includes(s.mode)) { s.slamCombo = null; s.slamStep = null; s.runOutContact = null; }
+  if (['reaction', 'defeated'].includes(s.mode)) { s.enrageEntry = null; s.slamCombo = null; s.slamStep = null; s.runOutContact = null; }
   if (s.mode === 'defeated') { s.enrageExitPending = false; s.runOutGoal = null; }
   return result;
 }
@@ -127,14 +134,30 @@ export function advanceGnasherTimers(s, dt) {
   advanceTimedMode(s.states.aetherCharge, dt);
   s.flash = Math.max(0, s.flash - dt);
 }
-function enterEnrage(s) {
+function startEntryStomp(s, target, options) {
+  const entry = s.enrageEntry, side = entry.cycle % 2 === 0 ? -1 : 1;
+  const candidates = options.players ?? [{ position: target, knockedDown: options.targetKnockedDown }];
+  const c = Math.cos(s.yaw), sn = Math.sin(s.yaw);
+  const valid = candidates.filter(p => !p.knockedDown &&
+    (c * (p.position[0] - s.position[0]) - sn * (p.position[2] - s.position[2])) * side > 1e-8);
+  valid.sort((a, b) => distance(s.position, a.position) - distance(s.position, b.position));
+  const aim = valid[0]?.position ?? gnasherLocalPoint(s, side * 4, -.7);
+  const yaw = s.yaw;
+  startGnasherMove(s, 'footSlam', aim);
+  // Entry stomps alternate relative to a stationary body; only the blast row aims.
+  s.side = side; s.windupYaw = yaw; s.committedYaw = yaw;
+}
+function enterEnrage(s, target, options) {
   if (!activatePendingMode(s.states.enrage, s.definition.states.enrage,
     ['windup', 'active', 'recovery', 'reaction', 'defeated'].includes(s.mode))) return false;
-  s.slamCombo = null; s.slamStep = null; s.mode = 'windup'; s.move = 'enrageBurst'; s.elapsed = 0; s.attackHit = false; s.attackCount++;
+  s.enrageEntry = { cycle: 0, count: 4 };
+  s.slamCombo = null; s.slamStep = null;
+  startEntryStomp(s, target, options);
   return true;
 }
 export function stepGnasher(s, target, dt, bounds = 68, options = {}) {
   s.runOutContact = null;
+  if (!['windup', 'active', 'recovery'].includes(s.mode)) s.enrageEntry = null;
   if (s.mode === 'defeated') return [];
   // Also guard restored/externally authored actions; released blasts keep finishing.
   if (s.parts.tail.broken && isTailMove(s.move)) {
@@ -145,7 +168,7 @@ export function stepGnasher(s, target, dt, bounds = 68, options = {}) {
   if (s.enrageExitPending && !['windup', 'active', 'recovery', 'reaction', 'run-out-turn', 'run-out'].includes(s.mode)) {
     s.slamCombo = null; s.slamStep = null; startRunOut(s, target, bounds);
   }
-  if (enterEnrage(s)) return [{ type: 'enrage-start' }];
+  if (enterEnrage(s, target, options)) return [{ type: 'enrage-start' }];
   if (['run-out-turn', 'run-out'].includes(s.mode)) {
     if (stepRunOut(s, dt)) {
       Object.assign(s.states.enrage, { active: false, remaining: 0, buildup: 0 });
@@ -155,9 +178,10 @@ export function stepGnasher(s, target, dt, bounds = 68, options = {}) {
     return [];
   }
   s.elapsed += dt;
-  const move = s.definition.moves[s.move];
+  const move = gnasherMoveDefinition(s);
   if (s.mode === 'reaction') {
-    if (s.elapsed >= s.pause) { s.mode = 'idle'; s.move = null; s.elapsed = 0; s.pause = 0.4; enterEnrage(s); }
+    s.enrageEntry = null;
+    if (s.elapsed >= s.pause) { s.mode = 'idle'; s.move = null; s.elapsed = 0; s.pause = 0.4; enterEnrage(s, target, options); }
   } else if (s.mode === 'windup') {
     if (s.move === 'tailSlam' && s.slamStep) {
       // Reacquire at the next strike, then take one small step toward that point.
@@ -183,14 +207,24 @@ export function stepGnasher(s, target, dt, bounds = 68, options = {}) {
     if (s.elapsed >= move.active) { s.mode = 'recovery'; s.elapsed = 0; }
   } else if (s.mode === 'recovery') {
     if (s.elapsed >= move.recovery) {
-      if (!s.enrageExitPending && !s.parts.tail.broken && s.slamCombo && s.slamCombo.cycle + 1 < s.slamCombo.count && s.states.enrage.active) {
+      if (s.enrageEntry && s.move === 'footSlam') {
+        if (s.enrageEntry.cycle + 1 < s.enrageEntry.count) {
+          s.enrageEntry.cycle++; startEntryStomp(s, target, options);
+        } else {
+          startGnasherMove(s, 'enrageBurst', target);
+        }
+      } else if (s.enrageEntry && s.move === 'enrageBurst' && !s.parts.tail.broken) {
+        s.enrageEntry = null;
+        startGnasherMove(s, 'tailSlam', target);
+      } else if (!s.enrageExitPending && !s.parts.tail.broken && s.slamCombo && s.slamCombo.cycle + 1 < s.slamCombo.count && s.states.enrage.active) {
         s.slamCombo.cycle++; startGnasherMove(s, 'tailSlam', target);
       } else {
         const completed = s.move;
+        s.enrageEntry = null;
         s.slamCombo = null; s.slamStep = null; s.mode = 'idle'; s.move = null; s.elapsed = 0;
         s.pause = (GNASHER_TUNING.afterAttack[completed] ?? 1.2)
           * (s.states.enrage.active ? s.definition.states.enrage.waitMultiplier : 1);
-        s.closeCount++; enterEnrage(s);
+        s.closeCount++; enterEnrage(s, target, options);
       }
     }
   } else {
@@ -239,7 +273,12 @@ export function gnasherAttackTouchesPlayer(s, p) {
   const c = Math.cos(s.yaw), sn = Math.sin(s.yaw), x = (c * dx - sn * dz) / scale, z = (sn * dx + c * dz) / scale;
   const pad = 0.36 / scale;
   if (s.move === 'footSlam') return x * s.side > 1e-8 && Math.hypot(x - s.side * 1.65, z + 0.7) <= 1.9 + pad;
-  if (s.move === 'tailSlam') return z > 1 && Math.abs(x) <= 1.2 + pad && z <= m.reach + pad;
+  if (s.move === 'tailSlam') {
+    // The torso lands with the tail. Both volumes share this strike's hit identity.
+    const body = Math.hypot(x / (1.55 + pad), (z + .3) / (2.2 + pad)) <= 1;
+    const tail = z > 1 && Math.abs(x) <= 1.2 + pad && z <= m.reach + pad;
+    return body || tail;
+  }
   if (s.move === 'tailSweep') return Math.hypot(x, z) <= m.reach + pad
     && Math.abs(delta(Math.PI, Math.atan2(-x, -z))) <= m.arc * Math.PI / 360;
   return s.move === 'charge' && Math.abs(x) < 1.4 + pad && Math.abs(z) < m.reach + pad;

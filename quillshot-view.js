@@ -90,12 +90,13 @@ export function updateQuillshotView(v, s, dt, collision = false) {
   v.projectileRoot.visible = v.root.visible && s.lifecycle !== 'absent';
   const spawning = s.lifecycle === 'spawning';
   const death = s.mode === 'defeated' ? (s.lifecycleTime ?? s.deathTime ?? 0) : 0;
-  const opacity = spawning ? Math.min(1, s.lifecycleTime / 2.4) : Math.max(0, 1 - Math.max(0, death - .8) / 2.4);
+  const arrival = spawning ? Math.min(1, (s.lifecycleTime ?? 0) / 2.4) : 1;
+  const opacity = Math.max(0, 1 - Math.max(0, death - .8) / 2.4);
   v.root.visible = s.lifecycle !== 'absent' && (opacity > 0 || spawning);
   v.projectileRoot.visible = v.root.visible;
   v.root.scale.setScalar(s.definition?.sizeScale ?? QUILLSHOT.sizeScale);
-  v.root.position.y += spawning ? (1 - opacity) * 2 : death > .8 ? (1 - opacity) * .8 : 0;
-  v.arrivalMotes.visible = spawning || (death > .8 && death < 3.2);
+  v.root.position.y += spawning ? -(1 - arrival) * 3 : death > .8 ? (1 - opacity) * .8 : 0;
+  v.arrivalMotes.visible = death > .8 && death < 3.2;
   v.arrivalMotes.children.forEach((mote, i) => {
     const phase = 1 - opacity, angle = i * 2.399 + phase * 3;
     const radius = .5 + (i % 7) * .23 + phase * 1.8;

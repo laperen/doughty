@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createEmbermaneArrival, updateEmbermaneArrival } from './embermane-arrival-view.js';
 import { createEnrageEffect, updateEnrageEffect } from './behemoth-enrage-view.js';
 import { BEHEMOTH, isInterruptible } from './behemoth.js';
 
@@ -157,6 +158,7 @@ export function createBehemothView(scene) {
   for (let i=0;i<40;i++) arrivalMotes.add(new THREE.Mesh(new THREE.OctahedronGeometry(.07 + (i%3)*.025), moteMaterial));
   root.add(arrivalMotes);
   root.userData.arrivalMotes = arrivalMotes;
+  root.userData.embermaneArrival = createEmbermaneArrival(root);
   scene.add(root);
   return { fur, staggerColor, flames, flameMaterial, projectileRoot, projectileMeshes, fireballGeometry, landingGeometry, enrageEffect, burstSphere, hitboxes, outlines, partMeshes, horn, root, bodyRig, neck, head, tail, headHitbox, headOutline, headMarker, staggerRing, staggerCrown, breakRing, attackZone, tellZone, tellMaterial };
 }
@@ -191,12 +193,11 @@ const poseFor = (state) => {
 
 export function updateBehemothView(view, state, dt, visibleCollision = false) {
   view.root.scale.setScalar(state.definition?.sizeMultiplier ?? 1);
-  const spawning = state.lifecycle === 'spawning';
   const death = state.mode === 'defeated' ? (state.lifecycleTime ?? state.deathTime ?? 0) : 0;
-  const opacity = spawning ? Math.min(1, state.lifecycleTime / 2.4) : Math.max(0, 1 - Math.max(0, death - .8) / 2.4);
-  view.root.visible = opacity > 0 || spawning;
+  const opacity = Math.max(0, 1 - Math.max(0, death - .8) / 2.4);
+  view.root.visible = state.lifecycle !== 'absent' && opacity > 0;
   const motes = view.root.userData.arrivalMotes;
-  motes.visible = spawning || (death > .8 && death < 3.2);
+  motes.visible = death > .8 && death < 3.2;
   motes.children.forEach((mote,i) => {
     const phase = 1-opacity;
     const angle = i*2.399 + phase*3;
@@ -210,7 +211,7 @@ export function updateBehemothView(view, state, dt, visibleCollision = false) {
     for (const material of materials) { material.transparent = true; material.opacity = opacity; material.depthWrite = opacity > .95; }
   });
   view.root.position.set(...state.position);
-  view.root.position.y += spawning ? (1 - opacity) * 2 : death > .8 ? (1 - opacity) * .8 : 0;
+  view.root.position.y += death > .8 ? (1 - opacity) * .8 : 0;
 
   view.root.rotation.y = state.yaw;
   view.flames.visible = state.states.aetherCharge.active && state.mode !== 'defeated';
@@ -274,6 +275,7 @@ export function updateBehemothView(view, state, dt, visibleCollision = false) {
   } else if (state.move === 'claw' && ['windup', 'active'].includes(state.mode)) {
     view.bodyRig.userData.leftFore.rotation.x = 0.08;
   }
+  updateEmbermaneArrival(view, state, BEHEMOTH.sizeScale);
   view.tellZone.visible = state.mode === 'windup';
   for (const child of view.tellZone.children) child.visible = child.name === state.move;
   if (view.tellZone.visible) view.tellMaterial.opacity = 0.08 + Math.min(1, state.elapsed / BEHEMOTH.moves[state.move].tell) * 0.17;

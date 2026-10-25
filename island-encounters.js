@@ -22,11 +22,18 @@ export function createIslandEncounter(index = 0, serial = 1, speciesId = ISLAND.
   const arena = ISLAND.arenas[index];
   const boss = createBehemothState(speciesId, tier);
   Object.assign(boss, { position: [...arena.center], lifecycle: 'spawning', lifecycleTime: 0 });
-  return { id: `island-${serial}`, speciesId, tier, index, serial, arena, boss, summon: null, summonUnlocked: false, summonCooldown: 0, summonSerial: 0, awareness: 'dormant', clock: 0 };
+  return { id: `island-${serial}`, speciesId, tier, index, serial, arena, boss, summon: null, summonUnlocked: false, summonCooldown: 0, summonSerial: 0, awareness: 'dormant', targetId: null, clock: 0 };
 }
 export const encounterEnemies = encounter => [encounter.boss, encounter.summon?.boss].filter(Boolean);
 export function alertEncounter(encounter, position) {
   if (encounterTouchable(encounter.boss) && inTerritory(encounter.arena, position)) encounter.awareness = 'engaged';
+}
+function chooseTarget(encounter, candidates) {
+  const standing = candidates.filter(player => !player.knockedDown);
+  const pool = standing.length ? standing : candidates;
+  const target = pool[Math.floor(Math.random() * pool.length)];
+  encounter.targetId = target?.id ?? null;
+  return target ?? null;
 }
 export function stepIslandEncounter(encounter, players, dt) {
   let { boss, arena } = encounter;
@@ -57,19 +64,29 @@ export function stepIslandEncounter(encounter, players, dt) {
     if (boss.lifecycleTime >= ISLAND.spawnDuration) { boss.lifecycle = 'alive'; boss.lifecycleTime = 0; }
     return encounter;
   }
-  const occupants = players.filter(p => inTerritory(arena, p.position, encounter.awareness === 'engaged' ? 1 : 0));
+  const occupants = players.map((p, n) => ({ ...p, id: p.id ?? `player-${n}` }))
+    .filter(p => inTerritory(arena, p.position, encounter.awareness === 'engaged' ? 1 : 0));
   if (encounter.awareness === 'engaged' && !occupants.length) {
     encounter.awareness = 'returning'; boss.mode = 'idle'; boss.move = null; boss.attackHit = false;
+    encounter.targetId = null;
     boss.runOutGoal = null; boss.returnCharge = false; boss.chargeDuration = null;
     if (boss.projectiles) { boss.projectiles = []; boss.impactEvents = []; }
   }
   if (encounter.awareness !== 'engaged' && occupants.some(p => distance(p.position, boss.position) <= ISLAND.awarenessRadius)) encounter.awareness = 'engaged';
   if (encounter.awareness === 'engaged') {
-    const target = occupants.find(p => !p.knockedDown) ?? occupants[0];
+    let target = occupants.find(p => p.id === encounter.targetId);
+    const standing = occupants.some(p => !p.knockedDown);
+    // Keep a target for the full committed action. Replace it when it leaves
+    // the arena, or when it is down and a standing hunter is available.
+    if (!target || (boss.mode === 'idle' && target.knockedDown && standing)) target = chooseTarget(encounter, occupants);
+    const modeBeforeStep = boss.mode;
     const local = boss.position.map((v, i) => v - arena.center[i]);
     boss.position = local;
     for (const q of boss.projectiles ?? []) for (const key of ['position', 'previous', 'destination']) if (q[key]) q[key] = q[key].map((v, i) => v - arena.center[i]);
     stepBehemoth(boss, target.position.map((v, i) => v - arena.center[i]), dt, arena.radius - 3, { targetKnockedDown: target.knockedDown, players: occupants.map((p, n) => ({ ...p, id: p.id ?? `player-${n}`, position: p.position.map((v, i) => v - arena.center[i]) })) });
+    // A combo remains one committed sequence. Re-roll only once its final
+    // recovery completes, including full-target attacks such as volleys.
+    if (modeBeforeStep === 'recovery' && boss.mode === 'idle') chooseTarget(encounter, occupants);
     const r = Math.hypot(local[0], local[2]);
     if (r > arena.radius - 3) { local[0] *= (arena.radius - 3) / r; local[2] *= (arena.radius - 3) / r; }
     boss.position = local.map((v, i) => v + arena.center[i]);
