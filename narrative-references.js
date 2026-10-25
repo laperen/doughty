@@ -3,6 +3,9 @@
 export const projectId = "39f52b5a-e913-41c9-a1b8-007880f94963";
 
 export const sourceText = {
+  "0db62377-b491-4084-b1e4-8fb70f7873fa": "HUNTING GROUNDS",
+  "ba37990e-2f46-4836-9c04-70607f245dac": "FOLLOW THE PATHS",
+
   "e4c56482-3d49-4eaa-a4c3-6a52d32ab32d": "Animate clouds",
   "1965d4dd-edcb-4590-882f-bcdc7ceca1cf": "Gnasher Buck Teeth",
   "ab17cb5d-5aca-484a-9736-956e4e33d065": "Buck teeth",

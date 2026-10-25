@@ -2017,6 +2017,12 @@
       },
       "ffba06a5-10a1-494f-ad4d-6473a5e6a9fd": {
         "value": "{{name:d42c3151-0fa8-5b85-92e8-72171cc501ff}}\n{{value:d5e675a9-a458-51f0-9140-cbb69b1e6728}} / {{value:7ba8733f-2c82-53d8-ac1e-3efe3597b7d3}}\nHP {{value:9451bd2e-7cd0-5cc3-8317-75cf7c84eb17}} / {{value:9ee35d67-1fcf-5104-bbae-287eb36a10f9}}\nEnrage {{value:1974d0cf-c5b4-5cd2-8fde-2ac532240a53}}s\nDamage received {{value:e10a88d8-9d49-59c9-b605-40ef321c1aca}}\nAether-charge {{value:cde408f8-882e-4ccb-877b-dcb709639ebc}}s"
+      },
+      "0db62377-b491-4084-b1e4-8fb70f7873fa": {
+        "value": "HUNTING GROUNDS"
+      },
+      "ba37990e-2f46-4836-9c04-70607f245dac": {
+        "value": "FOLLOW THE PATHS"
       }
     },
     "stats": {

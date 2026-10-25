@@ -28,7 +28,7 @@ import { CHAINBLADES } from './chainblades-weapon.js';
 import { createEnvironment } from './environment.js';
 import { RANGE_MAP } from './map-environment.js';
 import { createSunShadows } from './sun-shadows.js';
-import { ISLAND, encounterEnemies, createIslandEncounter, stepIslandEncounter, alertEncounter, inTerritory, encounterTouchable } from './island-encounters.js';
+import { ISLAND, mainEncounters, createIslandPopulation, stepIslandPopulation, replacementArena, encounterEnemies, createIslandEncounter, alertEncounter, inTerritory, encounterTouchable } from './island-encounters.js';
 import { createIslandView } from './island-view.js';
 import { createRangeScenery } from './range-scenery.js';
 import { createArenaHud } from './arena-hud.js';
@@ -251,6 +251,8 @@ const oldTownView = { root: new THREE.Group(), stations: [] }; oldTownView.root.
 scene.add(oldTownView.root);
 const explorationViews = new Map(Object.keys(EXPLORATION_ISLANDS).map(id => { const view = new THREE.Group(); view.visible = false; scene.add(view); return [id, view]; }));
 const currentExplorationIsland = () => EXPLORATION_ISLANDS[selectedArena];
+const isHuntMap = () => selectedArena === 'island' || Boolean(currentExplorationIsland());
+const currentHuntMap = () => currentExplorationIsland() ?? ISLAND;
 const mapLoads = new Map();
 const preparedMapCollision = new Map();
 const ensureMapLoaded = (mode) => {
@@ -630,7 +632,15 @@ let BEHEMOTH = definitionFor(behemothState);
 let behemothView = createBehemothView(scene);
 const encounterViews = new Map([['first-behemoth', behemothView]]);
 const summonViews = new Map();
-const enemyRecords = () => [{ boss: behemothState, view: behemothView }, ...[...summonViews.values()].filter(r => r.boss === islandEncounter.summon?.boss)];
+const enemyRecords = () => [{ id: islandEncounter.id, encounter: islandEncounter, boss: behemothState, view: behemothView }, ...summonViews.values()];
+const notifyEnemyRemoved = id => {
+  equipment?.definition.onTargetRemoved?.(equipment.state, id);
+  if (online?.host) for (const h of remoteHunters.values()) h.equipment?.definition.onTargetRemoved?.(h.equipment.state, id);
+};
+const nearestEncounter = () => mainEncounters(islandEncounter).reduce((nearest, e) => {
+  const score = e => Math.hypot(playerState.position[0] - e.arena.center[0], playerState.position[2] - e.arena.center[2]);
+  return score(e) < score(nearest) ? e : nearest;
+}, islandEncounter);
 behemothView.root.visible = false;
 const projectileTargets = [];
 const registerProjectileTarget = ({ id, mesh, sizeClass = 'small', onDamage }) => {
@@ -683,9 +693,10 @@ const clearCellCombat = () => {
 const damageBehemoth = (damage, { part = 'body', stagger = 0, wound = 0, interrupt = false, periodic = false, melee = false, damageModifiers = [], targetBoss = behemothState, targetView = behemothView } = {}) => {
   if (online?.guest) return { outcome: 'pending' };
   const behemothState = targetBoss, behemothView = targetView, BEHEMOTH = definitionFor(targetBoss);
-  if (selectedArena !== 'island' || !encounterTouchable(behemothState)) return { outcome: 'ignored' };
-  if (selectedArena === 'island' && !inTerritory(islandEncounter.arena, playerState.position, 1)) return { outcome: 'ignored' };
-  if (selectedArena === 'island' && !periodic) alertEncounter(islandEncounter, playerState.position);
+  if (!isHuntMap() || !encounterTouchable(behemothState)) return { outcome: 'ignored' };
+  const record = enemyRecords().find(r => r.boss === targetBoss);
+  if (!record || !inTerritory(record.encounter.arena, playerState.position, 1)) return { outcome: 'ignored' };
+  if (!periodic) alertEncounter(record.encounter, playerState.position);
   const cell = currentEmbeddedCell();
   const modifiers = [...playerState.statModifiers, ...damageModifiers];
   if (damage > 0 && cell.id === 'recycle') {
@@ -703,7 +714,7 @@ const damageBehemoth = (damage, { part = 'body', stagger = 0, wound = 0, interru
     coreDamage: healthBefore - behemothState.health, melee, periodic, hasPart: Boolean(BEHEMOTH.parts[part]),
     growth: BEHEMOTH.parts[part]?.growth === true || BEHEMOTH.parts[part]?.quills === true });
   if (result.outcome === 'defeated') {
-    awardOnlineLoot(targetBoss === islandEncounter.boss ? islandEncounter.id : islandEncounter.summon?.id, behemothState);
+    awardOnlineLoot(record.id, behemothState);
   }
   const point = behemothView.hitboxes[part]?.getWorldPosition(new THREE.Vector3())
     ?? new THREE.Vector3(...behemothState.position);
@@ -718,34 +729,41 @@ const syncEncounterView = () => {
   behemothView = encounterViews.get(species);
   BEHEMOTH = definitionFor(behemothState);
   updateBehemothView(behemothView, behemothState, 0, collisionVisibilityToggle.checked);
-  for (let i = projectileTargets.length - 1; i >= 0; i--) if (projectileTargets[i].kind === 'first-behemoth') projectileTargets.splice(i, 1);
+  for (let i = projectileTargets.length - 1; i >= 0; i--) if (projectileTargets[i].kind === 'first-behemoth' && !projectileTargets[i].boss) projectileTargets.splice(i, 1);
   for (const [part, mesh] of Object.entries(behemothView.hitboxes)) registerProjectileTarget({
     id: 'first-behemoth', mesh, sizeClass: 'large',
     onDamage: (damage, details) => damageBehemoth(damage, { part, stagger: details?.stagger ?? 22, interrupt: details?.interrupt === true, damageModifiers: details?.damageModifiers }),
   });
-  behemothView.root.visible = selectedArena === 'island';
+  for (const record of projectileTargets) if (record.kind === 'first-behemoth' && !record.boss) record.id = islandEncounter.id;
+  behemothView.root.visible = isHuntMap();
 };
 const syncSummonView = () => {
-  const summon = islandEncounter.summon;
-  for (const [id, record] of summonViews) if (id !== summon?.id) {
+  const additional = mainEncounters(islandEncounter).flatMap(e => [
+    ...(e === islandEncounter ? [] : [{ id: e.id, encounter: e, boss: e.boss }]),
+    ...(e.summon ? [{ id: e.summon.id, encounter: e, boss: e.summon.boss }] : []),
+  ]);
+  const active = new Map(additional.map(r => [r.id, r]));
+  for (const [id, record] of summonViews) if (!active.has(id) || active.get(id).boss !== record.boss) {
     disposeBehemothView(record.view);
     for (let i = projectileTargets.length - 1; i >= 0; i--) if (projectileTargets[i].id === id) projectileTargets.splice(i, 1);
     summonViews.delete(id);
-    equipment?.definition.onTargetRemoved?.(equipment.state, id);
+    notifyEnemyRemoved(id);
   }
-  if (summon && !summonViews.has(summon.id)) {
-    const view = createBehemothView(scene, summon.speciesId);
-    summonViews.set(summon.id, { boss: summon.boss, view });
-    for (const [part, mesh] of Object.entries(view.hitboxes)) {
-      registerProjectileTarget({ id: summon.id, mesh, sizeClass: 'large',
-        onDamage: (damage, details) => damageBehemoth(damage, { ...details, part, targetBoss: summon.boss, targetView: view }) });
-      const record = projectileTargets.at(-1); record.kind = 'first-behemoth'; record.boss = summon.boss;
+  for (const enemy of additional) {
+    let record = summonViews.get(enemy.id);
+    if (!record) {
+      const view = createBehemothView(scene, enemy.boss.speciesId);
+      record = { ...enemy, view }; summonViews.set(enemy.id, record);
+      for (const [part, mesh] of Object.entries(view.hitboxes)) {
+        registerProjectileTarget({ id: enemy.id, mesh, sizeClass: 'large',
+          onDamage: (damage, details) => damageBehemoth(damage, { ...details, part, targetBoss: record.boss, targetView: view }) });
+        const target = projectileTargets.at(-1); target.kind = 'first-behemoth'; target.boss = record.boss;
+      }
     }
-  }
-  for (const record of summonViews.values()) {
+    Object.assign(record, enemy);
     updateBehemothView(record.view, record.boss, 0, collisionVisibilityToggle.checked);
-    record.view.root.visible &&= selectedArena === 'island';
-    if (record.view.projectileRoot) record.view.projectileRoot.visible &&= selectedArena === 'island';
+    record.view.root.visible &&= isHuntMap();
+    if (record.view.projectileRoot) record.view.projectileRoot.visible &&= isHuntMap();
   }
 };
 syncEncounterView();
@@ -791,7 +809,7 @@ const rebuildArenaCollision = () => {
     projectileObstacleMeshes = movementMeshes;
     return;
   }
-  const mapRoot = explorationViews.get(selectedArena) ?? (isTown() ? currentTownView().root : selectedArena === 'island' ? islandView : arena);
+  const mapRoot = explorationViews.get(selectedArena) ?? (isTown() ? currentTownView().root : isHuntMap() ? islandView : arena);
   mapRoot.updateMatrixWorld(true);
   movementGeometry = new THREE.Group();
   movementMeshes = [];
@@ -863,7 +881,7 @@ const movementCollisionWorld = {
           corrected = true;
           moved = true;
         }
-        for (const enemy of selectedArena === 'island' && !phaseEnemies ? encounterEnemies(islandEncounter).filter(encounterTouchable) : []) {
+        for (const enemy of isHuntMap() && !phaseEnemies ? encounterEnemies(islandEncounter).filter(encounterTouchable) : []) {
           const push = behemothPushOut(enemy, [capsule.start.x, capsule.start.y - radius, capsule.start.z], radius, height);
           if (push) {
             const length = Math.hypot(...push);
@@ -903,7 +921,7 @@ const movementCollisionWorld = {
       .find((hit) => hit && hit.depth > 1e-4 && !isWalkableSlope(hit.normal.toArray()));
     // A capsule resting on a floor or platform is expected to touch it. Treat
     // only penetration into a wall/ceiling as a blocked movement candidate.
-    return Boolean(contact) || dummyBlocked || (selectedArena === 'island' && encounterEnemies(islandEncounter).some(enemy => encounterTouchable(enemy) && Boolean(behemothPushOut(enemy, position, radius, height))));
+    return Boolean(contact) || dummyBlocked || (isHuntMap() && encounterEnemies(islandEncounter).some(enemy => encounterTouchable(enemy) && Boolean(behemothPushOut(enemy, position, radius, height))));
   },
   raycast(origin, direction, distance) {
     movementRaycaster.set(new THREE.Vector3(...origin), new THREE.Vector3(...direction).normalize());
@@ -1117,7 +1135,7 @@ window.registerProjectileTarget = registerProjectileTarget;
 // Camera aim chooses a point; the muzzle ray enforces range and nearby occlusion.
 function repeaterAim(yawOffset = 0, pitchOffset = 0) {
   scene.updateMatrixWorld(true);
-  const records = projectileTargets.filter(record => !currentExplorationIsland() && (selectedArena === 'range'
+  const records = projectileTargets.filter(record => (selectedArena === 'range'
     ? record.kind !== 'first-behemoth' : record.kind !== 'training-dummy' && encounterTouchable(record.boss ?? behemothState)));
   const objects = [...projectileObstacleMeshes, ...records.map(record => record.mesh)];
   const ray = new THREE.Raycaster();
@@ -1139,7 +1157,6 @@ function repeaterAim(yawOffset = 0, pitchOffset = 0) {
     distance: hit?.distance ?? Infinity, record: hit && records.find(record => record.mesh === hit.object) };
 }
 function repeaterReloadSource() {
-  if (currentExplorationIsland()) return null;
   scene.updateMatrixWorld(true);
   const origin = new THREE.Vector3(playerState.position[0], playerState.position[1] + 1.3, playerState.position[2]);
   let nearest = null;
@@ -1256,15 +1273,15 @@ const renderCombatHud = () => {
   }
   if (!combatStatus) return;
   updateSettlementHud();
-  islandStatus.classList.toggle('hidden', selectedArena !== 'island');
-  if (selectedArena === 'island') {
-    const e = islandEncounter;
+  islandStatus.classList.toggle('hidden', !isHuntMap());
+  if (isHuntMap()) {
+    const e = nearestEncounter();
     const livingBoss = e.boss.mode === 'defeated' && e.summon ? e.summon.boss : e.boss;
     const waiting = e.boss.mode === 'defeated' && !e.summon;
-    const destination = waiting ? ISLAND.arenas[(e.index + 1) % ISLAND.arenas.length] : e.arena;
+    const destination = waiting ? currentHuntMap().arenas[replacementArena(e, mainEncounters(islandEncounter))] : e.arena;
     const distance = Math.round(Math.hypot(playerState.position[0] - destination.center[0], playerState.position[2] - destination.center[2]));
     const activity = waiting ? 'Defeated / a new hunt is forming' : livingBoss.lifecycle === 'spawning' ? 'Behemoth arriving' : e.awareness === 'engaged' ? 'Behemoth alerted' : e.awareness === 'returning' ? 'Returning to its territory' : 'Behemoth roaming / approach to engage';
-    islandStatus.textContent = `${definitionFor(livingBoss).name ?? 'Embermane'} / CINDERWILD ISLE\n${destination.name} / ${distance} m\n${activity}`;
+    islandStatus.textContent = `${definitionFor(livingBoss).name ?? 'Embermane'} / ${currentHuntMap().name.toUpperCase()}\n${destination.name} / ${distance} m\n${activity}`;
     if (livingBoss.states.aetherCharge.active) islandStatus.textContent += `\n${narrative?.text(COMBAT_TEXT.aetherCharge.id) ?? COMBAT_TEXT.aetherCharge.value} ${Math.ceil(livingBoss.states.aetherCharge.remaining)}s`;
   }
   const state = equipment?.state;
@@ -1283,8 +1300,9 @@ const renderCombatHud = () => {
   if (woundBuff > 0) combatResources.textContent += ` | WOUND HASTE +15% ${woundBuff.toFixed(1)}s`;
   combatTargetStatus.textContent = selectedArena !== 'range' ? '' :
     `TRAINING DUMMY / INDESTRUCTIBLE\nCORE ${Math.round(trainingState.core)} / PART ${Math.round(trainingState.part)} / STAGGER ${Math.round(trainingState.stagger)} / WOUND ${Math.round(trainingState.wound)}\nDPS ${trainingDps(trainingState).toFixed(1)} / LAST ${Math.round(trainingState.lastHit)} / HITS ${trainingState.hits}`;
-  behemothHud.classList.toggle('hidden', selectedArena !== 'island');
-  if (selectedArena === 'island') {
+  behemothHud.classList.toggle('hidden', !isHuntMap());
+  if (isHuntMap()) {
+    const islandEncounter = nearestEncounter(), behemothState = islandEncounter.boss, BEHEMOTH = definitionFor(behemothState);
     const health = Math.round(behemothState.health / BEHEMOTH.maxHealth * 100);
     const stagger = Math.round(behemothState.stagger / behemothState.staggerThreshold * 100);
     const parts = Object.entries(BEHEMOTH.parts).map(([id, definition]) => {
@@ -1311,7 +1329,7 @@ const renderCombatHud = () => {
       : behemothState.mode === 'retreat' ? 'CREATING SPACE' : '';
     const summon = islandEncounter.summon?.boss;
     const summonLabel = summon ? `<div><span>${definitionFor(summon).name}</span> ${Math.ceil(summon.health)} / ${Math.ceil(definitionFor(summon).maxHealth)}</div>` : '';
-    behemothHud.innerHTML = `<div>${BEHEMOTH.name ?? 'Embermane'}</div><div>${selectedArena === 'island' ? islandEncounter.arena.name.toUpperCase() + ' / ' + (behemothState.lifecycle === 'alive' ? islandEncounter.awareness : behemothState.lifecycle).toUpperCase() : 'FIRST BEHEMOTH'}</div><div>${behemothState.mode === 'defeated' ? '' : enrageLabel}</div>${statusLabels}<div class="meter"><span style="width:${health}%"></span></div>${summonLabel}<div>STAGGER ${Math.ceil(behemothState.stagger)} / ${Math.ceil(behemothState.staggerThreshold)}</div><div class="meter stagger"><span style="width:${stagger}%"></span></div>${parts}<div class="player-health">HUNTER ${Math.ceil(playerState.health)} / ${playerState.maxHealth}</div><div class="state">${stateLabel}</div>`;
+    behemothHud.innerHTML = `<div>${BEHEMOTH.name ?? 'Embermane'}</div><div>${isHuntMap() ? islandEncounter.arena.name.toUpperCase() + ' / ' + (behemothState.lifecycle === 'alive' ? islandEncounter.awareness : behemothState.lifecycle).toUpperCase() : 'FIRST BEHEMOTH'}</div><div>${behemothState.mode === 'defeated' ? '' : enrageLabel}</div>${statusLabels}<div class="meter"><span style="width:${health}%"></span></div>${summonLabel}<div>STAGGER ${Math.ceil(behemothState.stagger)} / ${Math.ceil(behemothState.staggerThreshold)}</div><div class="meter stagger"><span style="width:${stagger}%"></span></div>${parts}<div class="player-health">HUNTER ${Math.ceil(playerState.health)} / ${playerState.maxHealth}</div><div class="state">${stateLabel}</div>`;
   }
 };
 const targetInMove = (move) => {
@@ -1356,7 +1374,7 @@ const selectBehemothPart = (move, yaw, from, to, bossFrom = behemothState.positi
 };
 
 const stepEncounter = (dt, resolveContacts = () => {}) => {
-  if (selectedArena !== 'island') return;
+  if (!isHuntMap()) return;
   if (online?.guest) return; // Incoming damage and AI are confirmed by the host.
   const burningDamage = stepBurning(playerState, dt);
   if (burningDamage) {
@@ -1366,7 +1384,7 @@ const stepEncounter = (dt, resolveContacts = () => {}) => {
   }
   playerState.invulnerability = Math.max(0, playerState.invulnerability - dt);
   if (!online?.room && playerState.health <= 0 && encounterEnemies(islandEncounter).some(enemy => enemy.mode !== 'defeated')) return;
-  const previousMode = behemothState.mode;
+  const previousModes = new Map(enemyRecords().map(r => [r.boss, r.boss.mode]));
   const previousPosition = [...behemothState.position];
   const previousEnemyPositions = new Map(enemyRecords().map(r => [r.boss, [...r.boss.position]]));
   const previousId = islandEncounter.id;
@@ -1374,22 +1392,22 @@ const stepEncounter = (dt, resolveContacts = () => {}) => {
     const hunters = [{ id: online?.id ?? 'local', position: playerState.position, knockedDown: isRecovering(playerState), health: playerState.health },
       ...[...remoteHunters.values()].map(h => ({ id: h.id, position: h.playerState.position, knockedDown: isRecovering(h.playerState), health: h.playerState.health }))].filter(h => h.health > 0);
     // A defeated solo hunter still pauses their local encounter as before.
-    islandEncounter = stepIslandEncounter(islandEncounter, hunters, dt);
+    islandEncounter = stepIslandPopulation(islandEncounter, hunters, dt);
   }
   behemothState = islandEncounter.boss;
   syncSummonView();
   if (previousId !== islandEncounter.id) {
-    clearCellCombat();
-    if (online?.host) for (const h of remoteHunters.values()) withHunter(h, clearCellCombat);
+    if (mainEncounters(islandEncounter).length === 1) {
+      clearCellCombat();
+      if (online?.host) for (const h of remoteHunters.values()) withHunter(h, clearCellCombat);
+    }
     syncEncounterView();
     for (const record of projectileTargets) if (record.kind === 'first-behemoth' && !record.boss) record.id = islandEncounter.id;
-    for (const projectile of activeProjectiles) scene.remove(projectile.mesh);
-    activeProjectiles.length = 0;
-    equipment?.definition.onTargetRemoved?.(equipment.state, previousId);
+    notifyEnemyRemoved(previousId);
   }
   // Player contact always resolves before damage from the newly moved enemy.
   resolveContacts(previousPosition, previousEnemyPositions);
-  if (behemothState.mode === 'windup' && previousMode !== 'windup') feedback.sound('cue');
+  if (enemyRecords().some(r => r.boss.mode === 'windup' && previousModes.get(r.boss) !== 'windup')) feedback.sound('cue');
   for (const { boss: enemy } of enemyRecords()) {
     if (!encounterTouchable(enemy)) continue;
     const behemothState = enemy, BEHEMOTH = definitionFor(enemy);
@@ -1455,7 +1473,7 @@ const stepEncounter = (dt, resolveContacts = () => {}) => {
 const processWeaponStep = (dt) => {
   if (chestplateCombat.commitment > 0) return { locked: true, movementScale: 0, travelDelta: 0, events: [] };
   if (isTown()) return { locked: false, movementScale: 1, travelDelta: 0, events: [] };
-  if (selectedArena === 'island' && playerState.health <= 0) return { locked: true, movementScale: 0, travelDelta: 0 };
+  if (isHuntMap() && playerState.health <= 0) return { locked: true, movementScale: 0, travelDelta: 0 };
   for (const [definition, state] of weaponStates) {
     if (definition !== equipment?.definition && definition.kind === 'ranged') definition.step(state, dt);
   }
@@ -1484,15 +1502,21 @@ const processWeaponStep = (dt) => {
     if (event.type === 'special-launch') { launchProjectile(event.projectile); feedback.sound('reward'); }
     if (event.type === 'attack-hit') feedback.sound('swing');
     const attackEvent = event.type === 'attack-hit';
-    const bossHits = selectedArena === 'island' && attackEvent ? enemyRecords().map(r => ({ ...r, part: behemothInMove(event.move, event.interrupt, r.boss, r.view) })).filter(r => r.part) : [];
+    const bossHits = isHuntMap() && attackEvent ? enemyRecords().map(r => ({ ...r, part: behemothInMove(event.move, event.interrupt, r.boss, r.view) })).filter(r => r.part) : [];
     const bossPart = bossHits[0]?.part;
-    if (attackEvent && (selectedArena === 'island' ? bossPart : targetInMove(event.move))) {
-      if (selectedArena === 'island') for (const hit of bossHits) damageBehemoth(event.move.damage, { part: hit.part, stagger: event.move.stagger, wound: event.move.wound, interrupt: event.interrupt, melee: equipment.definition.kind === 'melee', targetBoss: hit.boss, targetView: hit.view });
+    if (attackEvent && (isHuntMap() ? bossPart : targetInMove(event.move))) {
+      if (isHuntMap()) for (const hit of bossHits) damageBehemoth(event.move.damage, { part: hit.part, stagger: event.move.stagger, wound: event.move.wound, interrupt: event.interrupt, melee: equipment.definition.kind === 'melee', targetBoss: hit.boss, targetView: hit.view });
       else damageTrainingTarget(event.move.damage, { stagger: event.move.stagger, wound: event.move.wound });
       const confirmedEvent = event;
-      if (equipment.definition.onHit?.(state, confirmedEvent) && event.ability === 'karma-breaker') state.lastEvent = 'Karma Breaker Â· damage over time';
+      if (equipment.definition.onHit?.(state, confirmedEvent) && event.ability === 'karma-breaker') {
+        state.karmaTargetId = bossHits[0]?.id;
+        state.lastEvent = 'Karma Breaker Â· damage over time';
+      }
     } else if (event.type === 'karma-tick') {
-      if (selectedArena === 'island') damageBehemoth(event.damage, { stagger: event.stagger, periodic: true });
+      if (isHuntMap()) {
+        const target = enemyRecords().find(r => r.id === state.karmaTargetId);
+        if (target) damageBehemoth(event.damage, { stagger: event.stagger, periodic: true, targetBoss: target.boss, targetView: target.view });
+      }
       else damageTrainingTarget(event.damage, { stagger: event.stagger, periodic: true });
     }
     else if (event.type === 'combo-complete') state.lastEvent = `${event.combo.name} Â· ${event.combo.mantra} mantra`;
@@ -1501,12 +1525,12 @@ const processWeaponStep = (dt) => {
   return result;
 };
 const resolveContinuousContacts = (events, from, to, bossFrom = behemothState.position, enemyFrom = new Map()) => {
-  if (selectedArena !== 'range' && selectedArena !== 'island') return;
+  if (selectedArena !== 'range' && !isHuntMap()) return;
   for (const event of events ?? []) {
     if (event.type !== 'attack-active' || event.action.hitRegistered) continue;
     const touches = (a, b, radius, height) => sweptMeleeContact(event.move, event.yaw, from, to, a, b, radius, height);
     let part = null, selectedEnemy = null;
-    if (selectedArena === 'island') {
+    if (isHuntMap()) {
       for (const record of enemyRecords()) {
         if (!encounterTouchable(record.boss)) continue;
         part = selectBehemothPart(event.move, event.yaw, from, to, enemyFrom.get(record.boss) ?? (record.boss === behemothState ? bossFrom : record.boss.position), event.interrupt, record.boss, record.view);
@@ -1518,7 +1542,7 @@ const resolveContinuousContacts = (events, from, to, bossFrom = behemothState.po
     }
     if (!part) continue;
     event.action.hitRegistered = true;
-    if (selectedArena === 'island') damageBehemoth(event.move.damage, { part, stagger: event.move.stagger, wound: event.move.wound, interrupt: event.interrupt, melee: equipment.definition.kind === 'melee', targetBoss: selectedEnemy.boss, targetView: selectedEnemy.view });
+    if (isHuntMap()) damageBehemoth(event.move.damage, { part, stagger: event.move.stagger, wound: event.move.wound, interrupt: event.interrupt, melee: equipment.definition.kind === 'melee', targetBoss: selectedEnemy.boss, targetView: selectedEnemy.view });
     else damageTrainingTarget(event.move.damage, { stagger: event.move.stagger, wound: event.move.wound });
     equipment.definition.onHit?.(equipment.state, { ...event, type: 'attack-hit' });
   }
@@ -1556,7 +1580,7 @@ const launchProjectile = (definition) => {
   activeProjectiles.push({ ...definition, direction, position, travelled: 0, hitTargets: new Set(), mesh, collisionVolume });
 };
 const stepProjectiles = (dt) => {
-  const currentTargets = projectileTargets.filter((record) => !currentExplorationIsland() && (selectedArena === 'island'
+  const currentTargets = projectileTargets.filter((record) => (isHuntMap()
     ? record.kind !== 'training-dummy' && encounterTouchable(record.boss ?? behemothState) : record.kind !== 'first-behemoth'));
   for (let index = activeProjectiles.length - 1; index >= 0; index -= 1) {
     const projectile = activeProjectiles[index];
@@ -1656,13 +1680,12 @@ const updateAttackVolume = () => {
     attackVolumeRange = move.range;
   }
   const yaw = Number.isFinite(state.attackYaw) ? state.attackYaw : playerState.facingYaw;
-  attackVolume.position.set(playerState.position[0] - Math.sin(yaw) * (move.originOffset ?? 0), 0.035, playerState.position[2] - Math.cos(yaw) * (move.originOffset ?? 0));
+  attackVolume.position.set(playerState.position[0] - Math.sin(yaw) * (move.originOffset ?? 0), playerState.position[1] + 0.035, playerState.position[2] - Math.cos(yaw) * (move.originOffset ?? 0));
   attackVolume.rotation.y = yaw;
   attackVolume.visible = true;
 };
 const chainTarget = (yaw = equipment?.state.airElapsed != null ? getCameraYaw() : getAttackYaw()) => {
   if (isTown()) return null;
-  if (currentExplorationIsland()) return null;
   const meshes = selectedArena === 'range' ? [targetCore] : enemyRecords().filter(r => encounterTouchable(r.boss)).flatMap(r => Object.entries(r.view.hitboxes).filter(([part]) => !definitionFor(r.boss).parts[part]?.quills || !r.boss.parts[part].broken).map(([, mesh]) => mesh));
   const origin = new THREE.Vector3(...playerState.position);
   return meshes.map(mesh => {
@@ -1679,7 +1702,7 @@ const chainTarget = (yaw = equipment?.state.airElapsed != null ? getCameraYaw() 
 const handleAttackInput = (input) => {
   if (chestplateCombat.commitment > 0) return false;
   if (isTown()) return false;
-  if (isRecovering(playerState) || playerState.dodgeInputBlock > 0 || !equipment || playerState.movementAction === 'dodge' || playerState.movementAction === 'climb' || (selectedArena === 'island' && playerState.health <= 0)) return false;
+  if (isRecovering(playerState) || playerState.dodgeInputBlock > 0 || !equipment || playerState.movementAction === 'dodge' || playerState.movementAction === 'climb' || (isHuntMap() && playerState.health <= 0)) return false;
   const reloadSource = equipment.definition.kind === 'ranged'
     && (input === 'reload' || input === 'light' && equipment.state.ammo === 0) ? repeaterReloadSource() : null;
   const result = equipment.definition.handleAttack(equipment.state, input, { attackYaw: equipment.state.airElapsed != null ? getCameraYaw() : getAttackYaw(), target: equipment.definition.targetContext ? chainTarget() : null, autoReload: remoteHunter ? remoteHunter.input.autoReload : document.querySelector('#autoReload').checked,
@@ -1731,9 +1754,9 @@ const syncMenuGameplay = () => {
   const languageSettings = document.querySelector('#settingsLanguageSelection');
   if (languageSettings) languageSettings.hidden = !playing;
   const town = playing && isTown();
-  document.querySelector('#inventoryActions').hidden = !playing || (!town && selectedArena !== 'island');
+  document.querySelector('#inventoryActions').hidden = !playing || (!town && !isHuntMap());
   document.querySelector('#openInventoryButton').hidden = !town;
-  document.querySelector('#openLootButton').hidden = !playing || selectedArena !== 'island';
+  document.querySelector('#openLootButton').hidden = !playing || !isHuntMap();
   document.querySelector('#gameplayWeaponSettings').hidden = !playing;
   arenaSettings.hidden = !playing || town;
   document.querySelector('#gameplayTab').hidden = !playing;
@@ -1775,7 +1798,7 @@ const inventoryView = createInventoryView({ state: materialInventory, onExtract:
   document.querySelector(isTown() ? '#openInventoryButton' : '#openLootButton').focus();
 } });
 const openMaterials = mode => {
-  if (arenaScreen.classList.contains('hidden') || mapTransitionActive || (mode !== 'loot' ? !isTown() : selectedArena !== 'island')) return;
+  if (arenaScreen.classList.contains('hidden') || mapTransitionActive || (mode !== 'loot' ? !isTown() : !isHuntMap())) return;
   setSettingsOpen(true);
   settingsMenu.close();
   inventoryView.show(mode);
@@ -1898,17 +1921,16 @@ const resetEncounter = () => {
   Object.assign(playerState, createPlayerState());
   clearChestplateCombat();
   clearInput();
-  const startingSpecies = ISLAND.roster[Math.floor(Math.random() * ISLAND.roster.length)];
-  islandEncounter = createIslandEncounter(0, 1, startingSpecies);
+  islandEncounter = createIslandPopulation(isHuntMap() ? currentHuntMap().id : 'island');
   syncSummonView();
-  behemothState = selectedArena === 'island' ? islandEncounter.boss : createBehemothState();
+  behemothState = isHuntMap() ? islandEncounter.boss : createBehemothState();
   syncEncounterView();
-  for (const record of projectileTargets) if (record.kind === 'first-behemoth') record.id = selectedArena === 'island' ? islandEncounter.id : 'first-behemoth';
+  for (const record of projectileTargets) if (record.kind === 'first-behemoth' && !record.boss) record.id = isHuntMap() ? islandEncounter.id : 'first-behemoth';
   clearCellCombat();
   playerState.health = playerState.maxHealth;
   playerState.stamina = playerState.maxStamina;
   playerState.invulnerability = 0;
-  playerState.position = currentExplorationIsland() ? [...currentExplorationIsland().arrival] : isTown() ? [...currentTown().arrival] : selectedArena === 'island' ? [...ISLAND.arrival] : [0, -0.025, 1.5];
+  playerState.position = currentExplorationIsland() ? [...currentExplorationIsland().arrival] : isTown() ? [...currentTown().arrival] : isHuntMap() ? [...ISLAND.arrival] : [0, -0.025, 1.5];
   playerState.lastGroundedPosition = [...playerState.position];
   playerState.velocity = [0, 0, 0];
   playerBodyMaterial.emissive.set('#000000');
@@ -1916,7 +1938,7 @@ const resetEncounter = () => {
   activeProjectiles.length = 0;
   if (equipment) equipment.state = equipment.definition.createState();
   updateBehemothView(behemothView, behemothState, 1, collisionVisibilityToggle.checked);
-  behemothView.root.visible = selectedArena === 'island';
+  behemothView.root.visible = isHuntMap();
   renderCombatHud();
 };
 resetArenaButton.addEventListener('click', () => {
@@ -1945,20 +1967,20 @@ const applyArenaMode = async (mode, persist = true) => {
   for (const marker of markerMeshes) marker.visible = selectedArena === 'range';
   collisionVisuals.visible = selectedArena === 'range' && collisionVisibilityToggle.checked;
   target.visible = selectedArena === 'range';
-  behemothView.root.visible = selectedArena === 'island';
-  selectedArenaName.textContent = currentExplorationIsland()?.name ?? (isTown() ? currentTown().name : selectedArena === 'island' ? 'Cinderwild Isle' : 'Open Range');
+  behemothView.root.visible = isHuntMap();
+  selectedArenaName.textContent = currentExplorationIsland()?.name ?? (isTown() ? currentTown().name : isHuntMap() ? 'Cinderwild Isle' : 'Open Range');
   settlementPanel.hidden = true;
-  arenaModeBadge.textContent = currentExplorationIsland()?.name ?? (isTown() ? currentTown().name.toUpperCase() : selectedArena === 'island' ? 'CINDERWILD ISLE' : 'TRAINING RANGE');
-  arenaCaption.innerHTML = currentExplorationIsland() ? 'EXPLORATION ISLAND<br />NO BEHEMOTHS' : isTown() ? 'SURVIVORS AND SHELTER<br />E TO TALK' : selectedArena === 'island' ? 'TWO TERRITORIES<br />FOLLOW THE STONE PATHS' : 'ENCLOSED RANGE<br />OPEN APPROACH';
+  arenaModeBadge.textContent = currentExplorationIsland()?.name ?? (isTown() ? currentTown().name.toUpperCase() : isHuntMap() ? 'CINDERWILD ISLE' : 'TRAINING RANGE');
+  arenaCaption.innerHTML = currentExplorationIsland() ? 'HUNTING GROUNDS<br />FOLLOW THE PATHS' : isTown() ? 'SURVIVORS AND SHELTER<br />E TO TALK' : isHuntMap() ? 'TWO TERRITORIES<br />FOLLOW THE STONE PATHS' : 'ENCLOSED RANGE<br />OPEN APPROACH';
   controls.maxDistance = selectedArena !== 'range' ? 260 : 24;
-  controls.minDistance = selectedArena === 'island' ? 16 : 4;
+  controls.minDistance = isHuntMap() ? 16 : 4;
   controls.target.set(0, 1.2, 0);
-  const previewDistance = currentExplorationIsland() ? 235 : selectedArena === 'old-town' ? 145 : selectedArena === 'island' ? 176 : 18;
+  const previewDistance = currentExplorationIsland() ? 235 : selectedArena === 'old-town' ? 145 : isHuntMap() ? 176 : 18;
   // Distant previews need more depth precision for the closely layered paths.
   camera.near = arenaScreen.classList.contains('hidden') ? 2 : 0.1;
   camera.far = selectedArena === 'range' ? 120 : 400;
   camera.updateProjectionMatrix();
-  environment.setMap(currentExplorationIsland() ?? (isTown() ? currentTown() : selectedArena === 'island' ? ISLAND : RANGE_MAP));
+  environment.setMap(currentExplorationIsland() ?? (isTown() ? currentTown() : isHuntMap() ? ISLAND : RANGE_MAP));
   camera.position.set(previewDistance * 0.67, previewDistance * 0.53, previewDistance * 0.75);
   controls.update();
   controls.saveState();
@@ -2105,16 +2127,16 @@ const setScreen = (showArena) => {
     document.activeElement?.blur();
     player.visible = true;
     target.visible = selectedArena === 'range';
-    behemothView.root.visible = selectedArena === 'island';
+    behemothView.root.visible = isHuntMap();
     resetEncounter();
     applyWeaponCamera();
-    if (selectedArena !== 'island') { cameraOrbit.azimuth = 0; updateGameplayCamera(); }
+    if (!isHuntMap()) { cameraOrbit.azimuth = 0; updateGameplayCamera(); }
     requestCameraPointerLock();
     syncPointerLockHint();
   } else {
     player.visible = false;
     target.visible = selectedArena === 'range';
-    behemothView.root.visible = selectedArena === 'island';
+    behemothView.root.visible = isHuntMap();
     altCursorHeld = false;
     relockOnFocus = false;
     appShell.classList.remove('pointer-locked');
@@ -2347,8 +2369,11 @@ const applyOnlineWorld = data => {
   islandEncounter = restoreEncounter(data.encounter, islandEncounter); behemothState = islandEncounter.boss;
   if (oldId !== islandEncounter.id || oldSpecies !== islandEncounter.speciesId) {
     if (oldId !== islandEncounter.id) onlinePresentation.remove(oldId);
-    syncEncounterView(); clearCellCombat();
-    for (const p of activeProjectiles) scene.remove(p.mesh); activeProjectiles.length = 0;
+    syncEncounterView();
+    if (mainEncounters(islandEncounter).length === 1) {
+      clearCellCombat();
+      for (const p of activeProjectiles) scene.remove(p.mesh); activeProjectiles.length = 0;
+    }
   }
   syncSummonView();
   const ids = new Set();
@@ -2413,6 +2438,7 @@ const receiveOnlinePresentation = (data, snapshot) => {
     if (!encounter) return;
     receiveBoss(encounter.id, encounter.boss);
     visit(encounter.summon);
+    for (const other of encounter.others ?? []) visit(other);
   };
   visit(data.encounter);
   for (const entry of data.bosses ?? []) receiveBoss(entry.id, entry.boss);
@@ -2447,6 +2473,7 @@ const publishOnlineMotion = () => {
   const visit = encounter => { if (encounter) {
     if (check(encounter.id, encounter.boss)) bosses.push({ id: encounter.id, boss: plainState(encounter.boss) });
     visit(encounter.summon);
+    for (const other of encounter.others ?? []) visit(other);
   } };
   visit(islandEncounter);
   const local = { id: online.id, playerState, equipment, materialInventory: localInventory };
@@ -2494,6 +2521,7 @@ online.addEventListener('fallback', () => {
     if (!encounter) return;
     if (latestOnlineBosses.has(encounter.id)) encounter.boss = latestOnlineBosses.get(encounter.id).boss;
     restoreLatest(encounter.summon);
+    for (const other of encounter.others ?? []) restoreLatest(other);
   };
   restoreLatest(snapshot);
   islandEncounter = restoreEncounter(snapshot, islandEncounter); behemothState = islandEncounter.boss;
@@ -2515,6 +2543,7 @@ online.addEventListener('promoted', () => {
     const newer = latestOnlineBosses.get(current.id);
     if (newer?.time >= snapshot.time) current.boss = plainState(newer.boss);
     restoreLatest(current.summon);
+    for (const other of current.others ?? []) restoreLatest(other);
   };
   restoreLatest(encounter);
   islandEncounter = restoreEncounter(encounter, islandEncounter); behemothState = islandEncounter.boss;
@@ -2669,12 +2698,14 @@ const simulateHunter = (movementStep, moveX, moveY, cameraYaw, aimYaw) => {
       stepEncounter(movementStep, (bossFrom, enemyFrom) => resolveContinuousContacts(
         weaponTick.events, playerState.position, playerState.position, bossFrom, enemyFrom,
       ));
-      if (selectedArena === 'island' && equipment?.state?.action?.move?.phaseEnemies !== true) {
+      if (isHuntMap() && equipment?.state?.action?.move?.phaseEnemies !== true) {
         playerState.position = movementCollisionWorld.moveCapsule(playerState.position, [0, 0, 0], 0.36, 1.72).position;
       }
-      behemothView.root.position.set(...behemothState.position);
-      behemothView.root.rotation.y = behemothState.yaw;
-      behemothView.root.updateMatrixWorld(true);
+      for (const { boss, view } of enemyRecords()) {
+        view.root.position.set(...boss.position);
+        view.root.rotation.y = boss.yaw;
+        view.root.updateMatrixWorld(true);
+      }
       stepProjectiles(movementStep);
       renderCombatHud();
 
@@ -2722,11 +2753,11 @@ const animate = () => {
       tempestCastRing.rotation.z = castProgress * Math.PI * 1.5;
     } else tempestCastMaterial.opacity = 0.9;
     updateAttackVolume();
-    if (selectedArena === 'island') updateBehemothView(behemothView, onlineBossPose(islandEncounter.id, behemothState), delta, collisionVisibilityToggle.checked);
+    if (isHuntMap()) updateBehemothView(behemothView, onlineBossPose(islandEncounter.id, behemothState), delta, collisionVisibilityToggle.checked);
     for (const record of summonViews.values()) {
-      updateBehemothView(record.view, onlineBossPose(islandEncounter.summon?.id, record.boss), delta, collisionVisibilityToggle.checked);
-      record.view.root.visible &&= selectedArena === 'island';
-      if (record.view.projectileRoot) record.view.projectileRoot.visible &&= selectedArena === 'island';
+      updateBehemothView(record.view, onlineBossPose(record.id, record.boss), delta, collisionVisibilityToggle.checked);
+      record.view.root.visible &&= isHuntMap();
+      if (record.view.projectileRoot) record.view.projectileRoot.visible &&= isHuntMap();
     }
     if (playerState.invulnerability < 0.48 && playerBodyMaterial.emissiveIntensity > 0) {
       playerBodyMaterial.emissiveIntensity = Math.max(0, playerBodyMaterial.emissiveIntensity - delta * 2);

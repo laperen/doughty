@@ -139,7 +139,10 @@ export const STRIKER_SWORD = Object.freeze({
   setSheathed: setStrikerSheathed,
   cancelAction: cancelStrikerAction,
   onHit: (state, event) => confirmStrikerHit(state, event),
-  onTargetRemoved: state => { state.karmaDotRemaining = 0; state.karmaDotAccumulator = 0; },
+  onTargetRemoved: (state, id) => {
+    if (id && state.karmaTargetId && state.karmaTargetId !== id) return;
+    state.karmaDotRemaining = 0; state.karmaDotAccumulator = 0; state.karmaTargetId = null;
+  },
 });
 
 export function createStrikerState() {
@@ -160,6 +163,7 @@ export function createStrikerState() {
     appliedTravel: 0,
     mantras: [],
     surgeAvailabilityRemaining: 0,
+    karmaTargetId: null,
     karmaDotRemaining: 0,
     karmaDotAccumulator: 0,
     surgeReady: false,

@@ -1,8 +1,9 @@
+import { ISLAND_ROSTERS, islandPopulationLimit } from './island-rosters.js';
 import { defineEnvironment } from './map-environment.js';
 
-// Population is deliberately disabled until these locations receive authored rosters.
+// Each map leaves at least one arena free for encounter rotation.
 const define = (id, name, theme, names, centers, links, palette, environment) => Object.freeze({
-  id, name, theme, roster: Object.freeze([]), maxAlive: 0, arrival: [0, 0.15, 100],
+  id, name, theme, roster: ISLAND_ROSTERS[id], maxAlive: islandPopulationLimit(names, ISLAND_ROSTERS[id]), arrival: [0, 0.15, 100],
   arenas: names.map((name, i) => ({ id: `${id}-${i}`, name, center: centers[i], radius: 25 + i % 2 * 3 })),
   links, palette, environment: defineEnvironment(environment),
 });
