@@ -1,3 +1,4 @@
+import { applyEquipmentVisuals } from './equipment-visuals.js';
 import { CHESTPLATE_TEXT, chestplateAbility } from './chestplate-abilities.js';
 import { configureMenuClose } from './menu-close.js';
 import { ARMOR, ARMOR_SLOTS, armorDefense, armorPieceDefense, armorUpgradeRecipe, canUpgradeArmor, canCraftArmor } from './armor.js';
@@ -133,15 +134,24 @@ export function createEquipmentView({ inventory, area, onEquip, onCraft, onEquip
   function updatePreview(item) {
     initializePreview();
     hunter.root.visible = !crafter || isArmor(); weaponRoot.visible = !!crafter && !isArmor();
-    const definition = WEAPONS[item?.type];
+    const previewInventory = { equipment: { equipped: inventory.equipment.equipped }, armor: { equipped: { ...inventory.armor.equipped } } };
+    if (item && isArmor()) previewInventory.armor.equipped[item.type] = item.id;
+    else if (item) previewInventory.equipment.equipped = item.id;
+    if (!item && isArmor()) previewInventory.armor.equipped[type] = null;
+    const pendingVisuals = applyEquipmentVisuals(hunter, previewInventory);
+    const definition = WEAPONS[isArmor() ? EQUIPMENT[inventory.equipment.equipped]?.type : item?.type];
     const state = definition?.createState();
     if (state) state.sheathed = false;
     // The same presentation function owns combat and menu weapon poses.
     updatePlayerView(hunter, createPlayerState([0, 0, 0]), definition ? { definition, state } : null, 0);
     // Reuse the existing weapon meshes; crafted variants intentionally share starter visuals.
-    weaponRoot.clear();
-    const meshes = item?.type === 'striker-sword' ? [hunter.sword] : item?.type === 'repeaters' ? hunter.pistols : item && !isArmor() ? hunter.chainblades : [];
-    meshes.forEach((mesh, i) => { const copy = mesh.clone(); copy.visible = true; copy.position.set(i ? .4 : -.2, 0, 0); copy.rotation.set(0, 0, item.type === 'chainblades' ? -.3 : 0); weaponRoot.add(copy); });
+    const copyWeapon = () => {
+      weaponRoot.clear();
+      const meshes = item?.type === 'striker-sword' ? [hunter.sword] : item?.type === 'repeaters' ? hunter.pistols : item && !isArmor() ? hunter.chainblades : [];
+      meshes.forEach((mesh, i) => { const copy = mesh.clone(); copy.visible = true; copy.position.set(i ? .4 : -.2, 0, 0); copy.rotation.set(0, 0, item.type === 'chainblades' ? -.3 : 0); weaponRoot.add(copy); });
+    };
+    copyWeapon();
+    pendingVisuals.then(() => { if (selected === item?.id) copyWeapon(); });
     camera.position.set(0, crafter && !isArmor() ? .5 : 1, crafter && !isArmor() ? -4.4 : -4.7); camera.lookAt(0, crafter && !isArmor() ? .35 : .9, 0);
     hunter.root.rotation.y = previewYaw; weaponRoot.rotation.y = previewYaw;
   }

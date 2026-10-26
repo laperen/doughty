@@ -1,3 +1,4 @@
+import { CELL_TUNING, FAMILY_TUNING } from './content-tuning.js';
 import { CHESTPLATE_TEXT, CHESTPLATE_TUNING } from './chestplate-abilities.js';
 import { getStatModifierRemaining } from './stat-modifiers.js';
 import { FAMILY_TEXT, QUILL_TUNING } from './weapon-family-abilities.js';
@@ -54,7 +55,7 @@ export function createArenaHud(container, text = entry => entry.value) {
       if (player.burning) items.push({ id: 'burning', label: text(COMBAT_TEXT.burning), kind: 'burning',
         value: player.burning.remaining, max: 6, text: `${text(COMBAT_TEXT.burning)} ${Math.ceil(player.burning.remaining)}s` });
       const movement = player.statModifiers.find(m => m.source === 'embermane-movement');
-      if (movement) items.push({ id: 'embermane-movement', label: FAMILY_TEXT.embermane, kind: 'status', value: movement.remaining, max: 20, text: `+${movement.percent}% / ${Math.ceil(movement.remaining)}s` });
+      if (movement) items.push({ id: 'embermane-movement', label: FAMILY_TEXT.embermane, kind: 'status', value: movement.remaining, max: FAMILY_TUNING.embermane.duration, text: `+${movement.percent}% / ${Math.ceil(movement.remaining)}s` });
       if (equipment && player.familyAbility?.species === 'quillshot') items.push({ id: 'weapon-quills', label: FAMILY_TEXT.quillshot, kind: 'status', value: player.familyAbility.charge, max: QUILL_TUNING.chargeTime, text: `${player.familyAbility.count} / ${player.familyAbility.charge.toFixed(1)}s` });
       const chestplate = player.chestplateAbility;
       if (chestplate?.species === 'embermane') {
@@ -71,9 +72,9 @@ export function createArenaHud(container, text = entry => entry.value) {
       const woundHaste = getStatModifierRemaining(player.statModifiers, 'wound-haste');
       if (woundHaste > 0) items.push({ id: 'wound-haste', label: 'Wound haste +15%', kind: 'status', glyph: '+15%', value: woundHaste, max: 20, text: `+15% / ${Math.ceil(woundHaste)}s` });
       const fury = player.statModifiers.find(m => m.source === 'evasive-fury');
-      if (fury) items.push({ id: 'evasive-fury', label: 'Evasive Fury', kind: 'status', value: fury.remaining, max: 8, text: `+${fury.percent}% / ${Math.ceil(fury.remaining)}s` });
+      if (fury) items.push({ id: 'evasive-fury', label: 'Evasive Fury', kind: 'status', value: fury.remaining, max: CELL_TUNING['evasive-fury'].duration, text: `+${fury.percent}% / ${Math.ceil(fury.remaining)}s` });
       const frenzy = player.statModifiers.find(m => m.source === 'wild-frenzy');
-      if (frenzy) items.push({ id: 'wild-frenzy', label: 'Wild Frenzy', kind: 'status', value: frenzy.remaining, max: 15, text: `+${frenzy.percent}% / ${Math.ceil(frenzy.remaining)}s` });
+      if (frenzy) items.push({ id: 'wild-frenzy', label: 'Wild Frenzy', kind: 'status', value: frenzy.remaining, max: CELL_TUNING['wild-frenzy'].duration, text: `+${frenzy.percent}% / ${Math.ceil(frenzy.remaining)}s` });
       if (player.cellStatus?.id === 'recycle') items.push({ id: 'recycle', label: 'Recycle', kind: 'status', value: player.cellStatus.stacks, max: 5, text: `${player.cellStatus.stacks}/5 +${Number(player.cellStatus.bonus.toFixed(1))}%` });
       const layout = JSON.stringify(items.map(({ id, label, kind, glyph }) => ({ id, label, kind, glyph })));
       if (layout !== resourceLayout) {

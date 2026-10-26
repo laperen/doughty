@@ -1,15 +1,16 @@
+import { QUILL_TUNING, FAMILY_TUNING } from './content-tuning.js';
+import { contentText } from './content-text.js';
 import { addTimedStatModifier } from './stat-modifiers.js';
 
-export const QUILL_TUNING = Object.freeze({ chargeTime: 12, speed: 24, range: 25,
-  width: .18, height: .18, depth: .65, centerHeight: 1.3, spacing: .22 });
+export { QUILL_TUNING } from './content-tuning.js';
 export const FAMILY_TEXT = Object.freeze({
   embermane: 'Embermane movement', quillshot: 'Regrowing volley',
-  embermaneDescription: 'Dodging through an attack grants movement speed for 20 seconds. Further qualifying evades refresh the timer. Tiers 1-3: 10%; tier 4: 20%; reforge 8+: 30%.',
-  quillshotDescription: 'Charge for 12 seconds, including while sheathed. The next executed attack launches quills forward, even on a miss. Each quill deals 100% weapon base damage. Tiers 1-3: one quill; tier 4: two; reforge 8+: three. Launching restarts charging; one ready volley is retained until used.',
+  get embermaneDescription() { return contentText('family:embermane'); },
+  get quillshotDescription() { return contentText('family:quillshot'); },
 });
 export function familyAbility(item, { tier = 1, reforges = 0 } = {}) {
-  if (item?.species === 'embermane') return { species: item.species, percent: reforges >= 8 ? 30 : tier >= 4 ? 20 : 10 };
-  if (item?.species === 'quillshot') return { species: item.species, count: reforges >= 8 ? 3 : tier >= 4 ? 2 : 1, damage: item.damage };
+  if (item?.species === 'embermane') return { species: item.species, percent: reforges >= 8 ? FAMILY_TUNING.embermane.reforge8 : tier >= 4 ? FAMILY_TUNING.embermane.tier4 : FAMILY_TUNING.embermane.base };
+  if (item?.species === 'quillshot') return { species: item.species, count: reforges >= 8 ? FAMILY_TUNING.quillshot.reforge8 : tier >= 4 ? FAMILY_TUNING.quillshot.tier4 : FAMILY_TUNING.quillshot.base, damage: item.damage * FAMILY_TUNING.quillshot.damagePercent / 100 };
   return null;
 }
 export function createFamilyAbilityState() { return { charge: 0, seenActions: new WeakSet() }; }
@@ -18,7 +19,7 @@ export function stepFamilyAbility(state, ability, dt) {
 }
 export function activateEmbermane(modifiers, ability, { contact, dodgeProtected, otherwiseProtected = false, damage = 0 }) {
   if (ability?.species !== 'embermane' || !contact || !dodgeProtected || otherwiseProtected || damage <= 0) return false;
-  addTimedStatModifier(modifiers, { source: 'embermane-movement', stat: 'movementSpeed', percent: ability.percent, duration: 20 });
+  addTimedStatModifier(modifiers, { source: 'embermane-movement', stat: 'movementSpeed', percent: ability.percent, duration: FAMILY_TUNING.embermane.duration });
   return true;
 }
 /** Observe actual action identity, so buffering, reloads and unsheathing never consume a volley. */

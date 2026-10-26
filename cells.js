@@ -1,21 +1,23 @@
+import { CELL_TUNING, CELL_RECIPES } from './content-tuning.js';
+import { contentText } from './content-text.js';
 import { addTimedStatModifier, getEffectiveStat } from './stat-modifiers.js';
 import { grantShield } from './resource-shields.js';
 
 export const CELL_TYPES = Object.freeze({ defense: 'Defense', mobility: 'Mobility', power: 'Power', technique: 'Technique', utility: 'Utility' });
 
 export const CELLS = Object.freeze({
-  tough: { name: 'Tough', type: 'defense', levels: [25, 30, 35, 40, 45, 50], description: 'Increase maximum health by 25/30/35/40/45/50% at +1/+2/+3/+4/+5/+6.' },
-  'counter-measures': { name: 'Counter Measures', type: 'defense', levels: [10, 20, 30, 40, 50, 60], description: 'Dodging through a damaging attack with invulnerability grants 10/20/30/40/50/60 health shields at +1/+2/+3/+4/+5/+6, once per dodge. Shields accumulate without a cap and absorb damage before health. All remaining shields disappear after 60 seconds without gaining shields.' },
-  endurance: { name: 'Endurance', type: 'mobility', levels: [50, 60, 70, 80, 90, 100], description: 'Increase maximum stamina by 50/60/70/80/90/100% at +1/+2/+3/+4/+5/+6.' },
-  'evasive-fury': { name: 'Evasive Fury', type: 'mobility', description: 'Avoid damage with dodge invulnerability to gain attack speed for 8 seconds. Successful evades refresh the duration.' },
-  discipline: { name: 'Discipline', type: 'power', levels: [30, 40, 50, 60, 70, 80], description: 'Reduce maximum health by 30/40/50/60/70/80% and increase base power by 30/40/50/60/70/80% at +1/+2/+3/+4/+5/+6.' },
-  'stunning-grace': { name: 'Stunning Grace', type: 'technique', levels: [15, 30, 55, 70, 85, 100], description: 'Dodging through a damaging attack with invulnerability immediately deals 15/30/55/70/85/100% of the equipped weapon’s first basic attack stagger damage at +1/+2/+3/+4/+5/+6, once per dodge. At +3 and above, this hit can interrupt, even with a weapon that deals no stagger damage.' },
-  'wild-frenzy': { name: 'Wild Frenzy', type: 'technique', levels: [10, 12, 14, 16, 18, 20], description: 'After personally breaking a Behemoth part, gain 10/12/14/16/18/20% attack speed at +1/+2/+3/+4/+5/+6 for 15 seconds. Further breaks refresh the duration without stacking.' },
-  parasitic: { name: 'Parasitic', type: 'utility', levels: [10, 12, 14, 16, 18, 20], description: 'Direct melee hits on Behemoth parts other than growths heal for 10/12/14/16/18/20% of actual core health damage dealt at +1/+2/+3/+4/+5/+6. Already-broken parts qualify; periodic damage does not.' },
-  agility: { name: 'Agility', type: 'utility', levels: [25, 30, 35, 40, 45, 50], description: 'Reduce dodge stamina cost by 25/30/35/40/45/50% at +1/+2/+3/+4/+5/+6.' },
-  recycle: { name: 'Recycle', type: 'power', description: 'Each direct hit on the same Behemoth part adds one fifth of the damage bonus, up to five stacks. Hitting another part starts a new streak. Periodic damage does not build stacks.' },
+  "tough": { name: "Tough", type: "defense", ...CELL_TUNING["tough"], get description() { return contentText("cell:tough"); } },
+  "counter-measures": { name: "Counter Measures", type: "defense", ...CELL_TUNING["counter-measures"], get description() { return contentText("cell:counter-measures"); } },
+  "endurance": { name: "Endurance", type: "mobility", ...CELL_TUNING["endurance"], get description() { return contentText("cell:endurance"); } },
+  "evasive-fury": { name: "Evasive Fury", type: "mobility", ...CELL_TUNING["evasive-fury"], get description() { return contentText("cell:evasive-fury"); } },
+  "discipline": { name: "Discipline", type: "power", ...CELL_TUNING["discipline"], get description() { return contentText("cell:discipline"); } },
+  "stunning-grace": { name: "Stunning Grace", type: "technique", ...CELL_TUNING["stunning-grace"], get description() { return contentText("cell:stunning-grace"); } },
+  "wild-frenzy": { name: "Wild Frenzy", type: "technique", ...CELL_TUNING["wild-frenzy"], get description() { return contentText("cell:wild-frenzy"); } },
+  "parasitic": { name: "Parasitic", type: "utility", ...CELL_TUNING["parasitic"], get description() { return contentText("cell:parasitic"); } },
+  "agility": { name: "Agility", type: "utility", ...CELL_TUNING["agility"], get description() { return contentText("cell:agility"); } },
+  "recycle": { name: "Recycle", type: "power", ...CELL_TUNING["recycle"], get description() { return contentText("cell:recycle"); } },
 });
-export const cellBonus = level => level > 0 ? 5 + (Math.min(6, level) - 1) * 3 : 0;
+export const cellBonus = level => cellEffect('recycle', level);
 export const embeddedCellLevel = ({ tier = 1, reforges = 0 } = {}) => Math.min(3, Math.max(Math.min(3, tier), reforges >= 4 ? 3 : reforges >= 2 ? 2 : 1));
 export function createCellInventory(saved = {}) {
   return Object.fromEntries(Object.entries(saved || {}).filter(([key, count]) => {
@@ -26,16 +28,16 @@ export function createCellInventory(saved = {}) {
 /** Craft +1, or consume two identical preceding-rank cells. Validate before mutation. */
 export function canCreateCell(inventory, id, rank, area) {
   if (area !== 'old-town' || !Object.hasOwn(CELLS, id) || ![1, 2, 3].includes(rank)) return false;
-  return inventory.aetherDust >= (rank === 3 ? 40 : 20)
-    && (rank === 1 || (inventory.cells[`${id}:${rank - 1}`] || 0) >= 2)
+  return inventory.aetherDust >= CELL_RECIPES[rank].dust
+    && (rank === 1 || (inventory.cells[`${id}:${rank - 1}`] || 0) >= CELL_RECIPES[rank].inputs)
     && Number.isSafeInteger((inventory.cells[`${id}:${rank}`] || 0) + 1);
 }
 export function createCell(inventory, id, rank, area) {
   if (!canCreateCell(inventory, id, rank, area)) return false;
-  inventory.aetherDust -= rank === 3 ? 40 : 20;
+  inventory.aetherDust -= CELL_RECIPES[rank].dust;
   if (rank > 1) {
     const input = `${id}:${rank - 1}`;
-    inventory.cells[input] -= 2;
+    inventory.cells[input] -= CELL_RECIPES[rank].inputs;
     if (!inventory.cells[input]) delete inventory.cells[input];
   }
   const output = `${id}:${rank}`;
@@ -67,14 +69,14 @@ export function activateDodgeCells(state, player, levels, qualification, basicSt
   for (const id of ['counter-measures', 'stunning-grace']) {
     if (!levels[id] || state.dodgeTriggers.has(id)) continue;
     state.dodgeTriggers.add(id);
-    if (id === 'counter-measures') grantShield(player, 'health', 'counter-measures', cellEffect(id, levels[id]), 60);
-    else return { stagger: Math.max(0, basicStagger) * cellEffect(id, levels[id]) / 100, interrupt: levels[id] >= 3 };
+    if (id === 'counter-measures') grantShield(player, 'health', 'counter-measures', cellEffect(id, levels[id]), CELL_TUNING[id].duration);
+    else return { stagger: Math.max(0, basicStagger) * cellEffect(id, levels[id]) / 100, interrupt: levels[id] >= CELL_TUNING[id].interruptLevel };
   }
   return null;
 }
 export function recordCellDamage(player, levels, { brokenPart, coreDamage = 0, melee = false, periodic = false, growth = false, hasPart = true }) {
   if (brokenPart && levels['wild-frenzy']) addTimedStatModifier(player.statModifiers, {
-    source: 'wild-frenzy', stat: 'attackSpeed', percent: cellEffect('wild-frenzy', levels['wild-frenzy']), duration: 15,
+    source: 'wild-frenzy', stat: 'attackSpeed', percent: cellEffect('wild-frenzy', levels['wild-frenzy']), duration: CELL_TUNING['wild-frenzy'].duration,
   });
   if (melee && !periodic && !growth && hasPart && player.health > 0) {
     const heal = Math.max(0, coreDamage) * cellEffect('parasitic', levels.parasitic) / 100;
@@ -83,12 +85,12 @@ export function recordCellDamage(player, levels, { brokenPart, coreDamage = 0, m
 }
 export function recordRecycleHit(state, target, part, level, periodic = false) {
   if (!level || periodic) return 0;
-  state.stacks = state.target === target && state.part === part ? Math.min(5, state.stacks + 1) : 1;
+  state.stacks = state.target === target && state.part === part ? Math.min(CELL_TUNING.recycle.maxStacks, state.stacks + 1) : 1;
   state.target = target; state.part = part;
-  return cellBonus(level) * state.stacks / 5;
+  return cellBonus(level) * state.stacks / CELL_TUNING.recycle.maxStacks;
 }
 export function activateEvasiveFury(modifiers, level, { contact, dodgeProtected, otherwiseProtected = false, damage = 0 }) {
   if (!level || !contact || !dodgeProtected || otherwiseProtected || damage <= 0) return false;
-  addTimedStatModifier(modifiers, { source: 'evasive-fury', stat: 'attackSpeed', percent: cellBonus(level), duration: 8 });
+  addTimedStatModifier(modifiers, { source: 'evasive-fury', stat: 'attackSpeed', percent: cellEffect('evasive-fury', level), duration: CELL_TUNING['evasive-fury'].duration });
   return true;
 }

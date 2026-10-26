@@ -1,3 +1,5 @@
+import { applyEquipmentVisuals } from './equipment-visuals.js';
+import { CELL_TUNING } from './content-tuning.js';
 import { createHuntChat } from './hunt-chat.js';
 import { OnlineConnection } from './online-connection.js';
 import { OnlinePresentation, motionKey } from './online-presentation.js';
@@ -703,7 +705,7 @@ const damageBehemoth = (damage, { part = 'body', stagger = 0, wound = 0, interru
   const modifiers = [...playerState.statModifiers, ...damageModifiers];
   if (damage > 0 && cell.id === 'recycle') {
     const bonus = periodic
-      ? (cellCombat.target === behemothState ? cellBonus(cell.level) * cellCombat.stacks / 5 : 0)
+      ? (cellCombat.target === behemothState ? cellBonus(cell.level) * cellCombat.stacks / CELL_TUNING.recycle.maxStacks : 0)
       : recordRecycleHit(cellCombat, behemothState, part, cell.level);
     modifiers.push({ source: 'recycle', stat: 'coreDamage', percent: bonus, flat: 0, remaining: 1 });
     playerState.cellStatus = { id: cell.id, level: cell.level, stacks: cellCombat.stacks, bonus };
@@ -2356,10 +2358,7 @@ const disposeRemoteHunter = id => {
   const h = remoteHunters.get(id); if (!h) return;
   onlinePresentation.remove(id); onlineMotionKeys.delete(id);
   buffCollectors.delete(h.playerState);
-  scene.remove(h.player);
-  const geometries = new Set(), materials = new Set();
-  h.player.traverse(node => { if (node.geometry) geometries.add(node.geometry); if (node.material) for (const m of Array.isArray(node.material) ? node.material : [node.material]) materials.add(m); });
-  for (const geometry of geometries) geometry.dispose(); for (const material of materials) material.dispose();
+  h.playerView.dispose();
   for (const p of h.activeProjectiles) scene.remove(p.mesh);
   withHunter(h, clearRangedEffects);
   remoteHunters.delete(id);
@@ -2402,7 +2401,7 @@ const stepRemoteHunters = dt => {
     const x = Number(heldKeys.has('d') || heldKeys.has('arrowright')) - Number(heldKeys.has('a') || heldKeys.has('arrowleft'));
     const y = Number(heldKeys.has('w') || heldKeys.has('arrowup')) - Number(heldKeys.has('s') || heldKeys.has('arrowdown'));
     simulateHunter(dt, x, y, h.input.cameraYaw, h.input.aimYaw);
-    pressedKeys.clear(); updatePlayerView(playerView, playerState, equipment, dt);
+    pressedKeys.clear(); applyEquipmentVisuals(playerView, materialInventory); updatePlayerView(playerView, playerState, equipment, dt);
   });
 };
 const applyOnlineWorld = data => {
@@ -2508,7 +2507,7 @@ const updateOnlinePresentation = dt => {
     const pose = onlinePresentation.sample(h.id); if (!pose) continue;
     Object.assign(h.playerState, pose.state);
     const equipment = h.equipment ? { ...h.equipment, state: pose.weapon ?? h.equipment.state } : null;
-    updatePlayerView(h.playerView, h.playerState, equipment, dt);
+    applyEquipmentVisuals(h.playerView, h.materialInventory); updatePlayerView(h.playerView, h.playerState, equipment, dt);
   }
 };
 const onlineBossPose = (id, boss) => {
@@ -2822,7 +2821,7 @@ const animate = () => {
     }
     if (consumedActionPress) pressedKeys.clear();
 
-    updatePlayerView(playerView, playerState, equipment, delta);
+    applyEquipmentVisuals(playerView, materialInventory); updatePlayerView(playerView, playerState, equipment, delta);
     burningEffect.visible = Boolean(playerState.burning && playerState.health > 0);
     burningEffect.scale.setScalar(1 + Math.sin(performance.now() / 90) * 0.12);
     const tempestAction = equipment?.state?.action?.ability === 'tempest-form' ? equipment.state.action : null;

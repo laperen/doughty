@@ -138,10 +138,10 @@
         "value": "Regrowing volley"
       },
       "01120e84-cda8-4a7b-a07e-4f24e4dfd849": {
-        "value": "Dodging through an attack grants movement speed for 20 seconds. Further qualifying evades refresh the timer. Tiers 1-3: 10%; tier 4: 20%; reforge 8+: 30%."
+        "value": "Dodging through an attack grants movement speed for {{name:b5fac45f-630a-5a0f-8ed6-afca6d40abea}} seconds. Further qualifying evades refresh the timer. Tiers 1-3: {{name:7098af93-7252-5d30-9c33-6622e868e545}}%; tier 4: {{name:5aae537f-ada0-5b7b-ac8c-4f5dd6b6cc7b}}%; reforge 8+: {{name:33f65597-0955-5b7d-b135-79dafaaa3628}}%."
       },
       "007023cc-e310-4d17-acf4-2169cdeebb92": {
-        "value": "Charge for 12 seconds, including while sheathed. The next executed attack launches quills forward, even on a miss. Each quill deals 100% weapon base damage. Tiers 1-3: one quill; tier 4: two; reforge 8+: three. Launching restarts charging; one ready volley is retained until used."
+        "value": "Charge for {{name:9b5be079-9407-58e1-95e5-41ae38815779}} seconds, including while sheathed. The next executed attack launches quills forward, even on a miss. Each quill deals {{name:399f18c1-cd6d-5eba-b2ec-94f2d0277014}}% weapon base damage. Tiers 1-3: {{name:82033dad-88da-5206-aa40-917cf8f7d365}} quill(s); tier 4: {{name:68c513c6-1546-5d02-b68e-3cc4c5fb8d39}}; reforge 8+: {{name:9403ca2f-a795-56aa-80bb-50ecc413947e}}. Launching restarts charging; one ready volley is retained until used."
       },
       "39f52b5a-e913-41c9-a1b8-007880f94963": {
         "value": "Doughty"
@@ -1503,10 +1503,10 @@
         "value": "Crafted cells are stored for future equipment slots. Embedded weapon effects work independently."
       },
       "f78c7585-4808-48a9-af80-68588473cea6": {
-        "value": "Avoid damage with dodge invulnerability to gain attack speed for 8 seconds. Successful evades refresh the duration."
+        "value": "Avoid damage with dodge invulnerability to gain attack speed for {{name:fd846117-3780-5122-af20-ff5d325c6fb1}} seconds. Successful evades refresh the duration."
       },
       "49a6155c-39d5-4da5-88d3-0703c5b8501a": {
-        "value": "Each direct hit on the same Behemoth part adds one fifth of the damage bonus, up to five stacks. Hitting another part starts a new streak. Periodic damage does not build stacks."
+        "value": "Each direct hit on the same Behemoth part adds 1/{{name:a8169d5b-6b46-5688-8675-958235b19ab1}} of the damage bonus, up to {{name:a8169d5b-6b46-5688-8675-958235b19ab1}} stacks. Hitting another part starts a new streak. Periodic damage does not build stacks."
       },
       "d9db83dd-08b3-4094-86cd-225ce0d0b787": {
         "value": "Parts"
@@ -1632,10 +1632,10 @@
         "value": "Quill Throw"
       },
       "afbabfba-216b-4d05-a326-68ff1d8d6de0": {
-        "value": "Tap V to gain attack speed for 20 seconds. Cooldown: 30 seconds. Base: 5%; tier 4 adds 5%; reforge 8 adds 5%, for a maximum of 15%."
+        "value": "Tap V to gain attack speed for {{name:0f5cb525-2231-58a1-b4c6-1be5bc025aea}} seconds. Cooldown: {{name:b9d67eb6-618a-5d46-8817-8346662b5579}} seconds. Base: {{name:c5307f16-1357-5a94-b919-eb52e903dbbe}}%; tier 4 adds {{name:f42a377d-2077-5f30-bac1-f0179d1e8447}}%; reforge 8 adds {{name:1804600e-0c65-54ce-a634-4179489ac3f5}}%, for a maximum of {{name:22f0dc1b-0f61-5f3e-9984-f962be790208}}%."
       },
       "f08ed5fb-efc6-4e78-b733-da2edcab5580": {
-        "value": "Charge for 30 seconds, then tap V to fire interrupting quills centered on your facing direction, with 5 degrees between adjacent quills. Base: 1 quill; tier 4 adds 1; reforge 8 adds 1, for a maximum of 3. Each deals 60 base damage and travels up to the maximum repeater shooting range. One ready volley is retained until used."
+        "value": "Charge for {{name:82494ec9-1a05-54f9-859e-d835c04be244}} seconds, then tap V to throw {{name:3239da21-b1a4-5d85-934d-ebf260d4540b}} interrupting quill(s) straight in your facing direction. Deals {{name:f411360c-47ac-513c-9398-842a78bf3555}} base damage per quill and travels up to the maximum repeater shooting range. Tier 4 adds {{name:826c0c75-8a26-56ab-ac54-6273b700ade8}} quill(s); reforge 8 adds {{name:f25577c9-df81-57b1-8f63-4b00a770750e}}. One ready volley is retained until used."
       },
       "409adeae-a9ae-47f5-bbf4-c6432724de03": {
         "value": "V / Ready"
@@ -1650,49 +1650,49 @@
         "value": "Tough"
       },
       "1075c2e1-a5ee-42a1-818d-a1e9c2f62b5b": {
-        "value": "Increase maximum health by 25/30/35/40/45/50% at +1/+2/+3/+4/+5/+6."
+        "value": "Increase maximum health by {{name:f2d2e365-5dd3-5ec0-bc06-714371e84827}}% at +1/+2/+3/+4/+5/+6."
       },
       "584ce70e-c1c5-4fbb-b6a6-3b688c4795c5": {
         "value": "Counter Measures"
       },
       "8f4afdbe-cc0a-4feb-95b4-4c3368683eff": {
-        "value": "Dodging through a damaging attack with invulnerability grants 10/20/30/40/50/60 health shields at +1/+2/+3/+4/+5/+6, once per dodge. Shields accumulate without a cap and absorb damage before health. All remaining shields disappear after 60 seconds without gaining shields."
+        "value": "Dodging through a damaging attack with invulnerability grants {{name:b692d5d6-b1b0-53c9-beb0-7439e35f6b29}} health shields at +1/+2/+3/+4/+5/+6, once per dodge. Shields accumulate without a cap and absorb damage before health. All remaining shields disappear after {{name:c97b8737-e44b-5013-99c4-475def208247}} seconds without gaining shields."
       },
       "f5c72dea-14e4-48ff-a0de-668e3a2ef6f5": {
         "value": "Endurance"
       },
       "e1a094e7-870f-46f0-a5a7-15946d328fb7": {
-        "value": "Increase maximum stamina by 50/60/70/80/90/100% at +1/+2/+3/+4/+5/+6."
+        "value": "Increase maximum stamina by {{name:318f3ff6-d157-5502-bcb0-bb3fc804155c}}% at +1/+2/+3/+4/+5/+6."
       },
       "86d46ce5-25ba-400a-bf12-544afe0d93d5": {
         "value": "Discipline"
       },
       "e6f5b30e-3fe6-4d9f-9003-bb2e8dd3d883": {
-        "value": "Reduce maximum health by 30/40/50/60/70/80% and increase base power by 30/40/50/60/70/80% at +1/+2/+3/+4/+5/+6."
+        "value": "Reduce maximum health by {{name:5048d974-fb46-56fc-b19a-b9709329c968}}% and increase base power by 30/40/50/60/70/80% at +1/+2/+3/+4/+5/+6."
       },
       "3acf5453-65eb-46e1-8faa-e7202272c0f9": {
         "value": "Stunning Grace"
       },
       "19b0b15f-a23a-4a28-904e-cda3bb1dfc12": {
-        "value": "Dodging through a damaging attack with invulnerability immediately deals 15/30/55/70/85/100% of the equipped weapon’s first basic attack stagger damage at +1/+2/+3/+4/+5/+6, once per dodge. At +3 and above, this hit can interrupt, even with a weapon that deals no stagger damage."
+        "value": "Dodging through a damaging attack with invulnerability immediately deals {{name:4a983aac-3136-5e48-877d-699d3bb2e5ec}}% of the equipped weapon’s first basic attack stagger damage at +1/+2/+3/+4/+5/+6, once per dodge. At +{{name:2b20a1f2-8010-52e8-9903-23435057f7d2}} and above, this hit can interrupt, even with a weapon that deals no stagger damage."
       },
       "1e01b68e-d5d5-4a16-8b67-a3f1e5405d7a": {
         "value": "Wild Frenzy"
       },
       "bbd51852-85a4-4985-a851-64d960bde1bc": {
-        "value": "After personally breaking a Behemoth part, gain 10/12/14/16/18/20% attack speed at +1/+2/+3/+4/+5/+6 for 15 seconds. Further breaks refresh the duration without stacking."
+        "value": "After personally breaking a Behemoth part, gain {{name:d760826e-1798-5b06-adfa-aac4e17d85fc}}% attack speed at +1/+2/+3/+4/+5/+6 for {{name:8939c6b5-405f-5ee1-b0d6-8d4cbaa80850}} seconds. Further breaks refresh the duration without stacking."
       },
       "0594029d-c44a-4fb8-9e7f-36cd6d4b462d": {
         "value": "Parasitic"
       },
       "930b4ff5-f638-4818-8ab8-5a95fe38ad0b": {
-        "value": "Direct melee hits on Behemoth parts other than growths heal for 10/12/14/16/18/20% of actual core health damage dealt at +1/+2/+3/+4/+5/+6. Already-broken parts qualify; periodic damage does not."
+        "value": "Direct melee hits on Behemoth parts other than growths heal for {{name:0c02e8a8-b061-5399-99e2-b25ce6e6ed94}}% of actual core health damage dealt at +1/+2/+3/+4/+5/+6. Already-broken parts qualify; periodic damage does not."
       },
       "cf4b231d-d551-41f1-9978-094f0eb7f8c9": {
         "value": "Agility"
       },
       "db0ac43d-33b5-4f1f-9210-028110239045": {
-        "value": "Reduce dodge stamina cost by 25/30/35/40/45/50% at +1/+2/+3/+4/+5/+6."
+        "value": "Reduce dodge stamina cost by {{name:c4c8ae6c-11c7-5c35-a0f0-28509c9bb020}}% at +1/+2/+3/+4/+5/+6."
       },
       "8e599172-9c2a-48aa-a992-f39a8504f38d": {
         "value": "Health shields"
@@ -2032,6 +2032,267 @@
       },
       "ba37990e-2f46-4836-9c04-70607f245dac": {
         "value": "FOLLOW THE PATHS"
+      },
+      "f2d2e365-5dd3-5ec0-bc06-714371e84827": {
+        "value": "levels"
+      },
+      "b692d5d6-b1b0-53c9-beb0-7439e35f6b29": {
+        "value": "levels"
+      },
+      "c97b8737-e44b-5013-99c4-475def208247": {
+        "value": "duration"
+      },
+      "318f3ff6-d157-5502-bcb0-bb3fc804155c": {
+        "value": "levels"
+      },
+      "fd846117-3780-5122-af20-ff5d325c6fb1": {
+        "value": "duration"
+      },
+      "5048d974-fb46-56fc-b19a-b9709329c968": {
+        "value": "levels"
+      },
+      "4a983aac-3136-5e48-877d-699d3bb2e5ec": {
+        "value": "levels"
+      },
+      "2b20a1f2-8010-52e8-9903-23435057f7d2": {
+        "value": "interruptLevel"
+      },
+      "d760826e-1798-5b06-adfa-aac4e17d85fc": {
+        "value": "levels"
+      },
+      "8939c6b5-405f-5ee1-b0d6-8d4cbaa80850": {
+        "value": "duration"
+      },
+      "0c02e8a8-b061-5399-99e2-b25ce6e6ed94": {
+        "value": "levels"
+      },
+      "c4c8ae6c-11c7-5c35-a0f0-28509c9bb020": {
+        "value": "levels"
+      },
+      "a8169d5b-6b46-5688-8675-958235b19ab1": {
+        "value": "maxStacks"
+      },
+      "b5fac45f-630a-5a0f-8ed6-afca6d40abea": {
+        "value": "duration"
+      },
+      "7098af93-7252-5d30-9c33-6622e868e545": {
+        "value": "base"
+      },
+      "5aae537f-ada0-5b7b-ac8c-4f5dd6b6cc7b": {
+        "value": "tier4"
+      },
+      "33f65597-0955-5b7d-b135-79dafaaa3628": {
+        "value": "reforge8"
+      },
+      "399f18c1-cd6d-5eba-b2ec-94f2d0277014": {
+        "value": "damagePercent"
+      },
+      "82033dad-88da-5206-aa40-917cf8f7d365": {
+        "value": "base"
+      },
+      "68c513c6-1546-5d02-b68e-3cc4c5fb8d39": {
+        "value": "tier4"
+      },
+      "9403ca2f-a795-56aa-80bb-50ecc413947e": {
+        "value": "reforge8"
+      },
+      "9b5be079-9407-58e1-95e5-41ae38815779": {
+        "value": "chargeTime"
+      },
+      "0f5cb525-2231-58a1-b4c6-1be5bc025aea": {
+        "value": "buffDuration"
+      },
+      "b9d67eb6-618a-5d46-8817-8346662b5579": {
+        "value": "cooldown"
+      },
+      "c5307f16-1357-5a94-b919-eb52e903dbbe": {
+        "value": "basePercent"
+      },
+      "f42a377d-2077-5f30-bac1-f0179d1e8447": {
+        "value": "tier4Percent"
+      },
+      "1804600e-0c65-54ce-a634-4179489ac3f5": {
+        "value": "reforge8Percent"
+      },
+      "22f0dc1b-0f61-5f3e-9984-f962be790208": {
+        "value": "maximum"
+      },
+      "82494ec9-1a05-54f9-859e-d835c04be244": {
+        "value": "chargeTime"
+      },
+      "3239da21-b1a4-5d85-934d-ebf260d4540b": {
+        "value": "baseQuills"
+      },
+      "f411360c-47ac-513c-9398-842a78bf3555": {
+        "value": "damage"
+      },
+      "826c0c75-8a26-56ab-ac54-6273b700ade8": {
+        "value": "tier4Quills"
+      },
+      "f25577c9-df81-57b1-8f63-4b00a770750e": {
+        "value": "reforge8Quills"
+      },
+      "b7779690-d8fa-5f92-b15f-60fcaeb0a6fb": {
+        "value": "Equipment previewer"
+      },
+      "6946473d-0f9f-5500-945c-4121e146398a": {
+        "value": "Inspect equipment, cells and visual assets with a temporary loadout."
+      },
+      "56b410e5-bfcc-5ff5-8253-ef848b2db082": {
+        "value": "Loadout"
+      },
+      "f81fbe03-4e2c-55dc-b728-18cc1fc39246": {
+        "value": "Reset preview"
+      },
+      "be505f22-4129-5150-a72e-86f7b26929c4": {
+        "value": "Drag to orbit; scroll to zoom."
+      },
+      "e653ae24-fd8f-591d-a489-b3854bbbf5cf": {
+        "value": "Visual assets"
+      },
+      "af592690-4290-58b5-996f-3e818b6321e6": {
+        "value": "Visual overrides affect appearance only."
+      },
+      "d6cd2e29-d2ec-5da1-9a7e-86719ee635f5": {
+        "value": "Character preview"
+      },
+      "2f47d718-0178-584b-8893-2bf6d18ebe91": {
+        "value": "Unequipped"
+      },
+      "2e4adeb5-8724-5d4f-8cf1-0d047cb05445": {
+        "value": "Reforges"
+      },
+      "439f30af-7bd0-5690-a918-343cdfa08c70": {
+        "value": "Total defense"
+      },
+      "1f0cbfd2-3ca7-5e7f-ab11-49b3b9de595b": {
+        "value": "Maximum health"
+      },
+      "16e7efab-4a0f-5646-b7c1-b13669f91fcc": {
+        "value": "Maximum stamina"
+      },
+      "e170d82b-c15c-5255-949c-378b46652b67": {
+        "value": "Base weapon damage"
+      },
+      "5e8c0c5a-3bd7-5abe-8566-764a50ea51ef": {
+        "value": "Dodge cost multiplier"
+      },
+      "3156d077-37a3-5c26-8751-9efa7b31164a": {
+        "value": "Bonus (%)"
+      },
+      "53873a6c-abdb-51a7-9bcb-39d4670a60a9": {
+        "value": "Quills"
+      },
+      "183b85b6-5de0-5c82-9843-62a8705b1039": {
+        "value": "Damage per quill"
+      },
+      "1aa7ee31-de27-5559-b210-2fb23a4a7ca7": {
+        "value": "Total points"
+      },
+      "c01b5d5c-5954-5b80-8cc2-7077b0bca07f": {
+        "value": "Effective level"
+      },
+      "c86e178f-759b-5e04-b00a-cc50657602d2": {
+        "value": "Excess points"
+      },
+      "78c2f76b-7a1c-5fd0-b211-92e542c2d621": {
+        "value": "Idle"
+      },
+      "b2003b27-656a-5d1c-9316-de1da0ccad21": {
+        "value": "Walk"
+      },
+      "1cf86efd-5964-567b-9c97-eb00edc8c414": {
+        "value": "Dodge"
+      },
+      "34cd01b7-6534-5a69-9ae0-8f7b0fccd89a": {
+        "value": "Draw / sheath"
+      },
+      "eee8e0d5-bb79-542a-9278-4678c84cf5ca": {
+        "value": "Light attack"
+      },
+      "7348cd07-2481-58b4-87a1-a25ba6037281": {
+        "value": "Heavy attack"
+      },
+      "af490845-d796-5eff-a55d-0dc07a1fd5ce": {
+        "value": "Pause / resume"
+      },
+      "3c3544de-35ea-5645-9cae-715495e333b6": {
+        "value": "Visual slot"
+      },
+      "f4ef5306-d486-5611-9eaf-50f9f5d96eed": {
+        "value": "Asset type"
+      },
+      "990077a1-2b74-5d0c-b4ae-a11d5d061d1b": {
+        "value": "Skinned"
+      },
+      "31f68c86-10d3-5ae0-b0be-81e40f7aeb1c": {
+        "value": "Rigid attachment"
+      },
+      "450acdd8-6680-5a4e-8397-fd4315ae5b40": {
+        "value": "Asset URL"
+      },
+      "d0acba8e-882d-5e62-b5f5-819970fd1b5a": {
+        "value": "Hide hair"
+      },
+      "4e0f8322-a52b-5bb0-825e-e9918d1bd5e3": {
+        "value": "Hide face parts"
+      },
+      "d7e3e52b-797c-52a7-8a3e-7bea7d778a1f": {
+        "value": "Hide entire head"
+      },
+      "8e13de9b-25ab-5c29-b942-174d22030b33": {
+        "value": "Load asset"
+      },
+      "1697a8c9-5dc9-5796-8e4a-a23e4c0a0b94": {
+        "value": "Local GLB"
+      },
+      "24d5427d-cc7c-53fc-848a-13b9f3f6a985": {
+        "value": "Restore slot"
+      },
+      "8083a595-d6bd-52ca-b607-f5b7927f0c0a": {
+        "value": "Export rig contract"
+      },
+      "dec0fe41-7f78-5afe-be25-2773c5071b0f": {
+        "value": "Body"
+      },
+      "1b0c525d-f87b-57d8-b930-df3d47da7274": {
+        "value": "Hair"
+      },
+      "f849fca5-dae9-51ee-b694-a91390812de1": {
+        "value": "Mask"
+      },
+      "1bd67dc1-032d-5b34-b112-a00837db6309": {
+        "value": "Glasses / goggles"
+      },
+      "35bf54f3-af8b-5f69-8f72-59218f052ebe": {
+        "value": "Left repeater"
+      },
+      "c58fb573-cf74-5bc9-be80-625d1a0fa874": {
+        "value": "Right repeater"
+      },
+      "ca74aadb-b195-5672-beab-d33a5be4b4ee": {
+        "value": "Left chainblade"
+      },
+      "1a6a2476-f849-5e75-83ce-e2f91ea00af2": {
+        "value": "Right chainblade"
+      },
+      "2bd15050-479d-5756-87f9-7feb0942f482": {
+        "value": "procedural"
+      },
+      "9e64623b-81ab-553e-90cf-2de6893096d6": {
+        "value": "skinned"
+      },
+      "a492646f-cf45-568a-bece-484eee355d1c": {
+        "value": "rigid"
+      },
+      "9f4bf2dc-49a1-526b-b961-a8f343039544": {
+        "value": "Face parts"
+      },
+      "c9d8778a-f751-52a1-a1cb-0102a1550f7a": {
+        "value": "Effect (%)"
+      },
+      "98fdc463-6cdc-54dc-981b-243e8e582cce": {
+        "value": "Maximum streak bonus (%)"
       }
     },
     "stats": {

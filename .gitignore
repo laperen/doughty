@@ -3,3 +3,4 @@
 *.cjs
 /__pycache__
 /behemoth-previewer
+/equipment-previewer

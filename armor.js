@@ -1,3 +1,4 @@
+import { ARMOR_DEFENSE_TIERS } from './content-tuning.js';
 import { canChangeEquipment } from './equipment.js';
 
 export const ARMOR_SLOTS = Object.freeze({ helmet: 'Helmet', chestplate: 'Chestplate', gloves: 'Gloves', legs: 'Legs' });
@@ -16,7 +17,7 @@ export const ARMOR = Object.freeze(Object.fromEntries(Object.entries(parts).flat
     const id = `${species}:${slot}`, prefix = species === 'embermane' ? 'first-behemoth' : species;
     return [id, { id, type: slot, species, name: `${species === 'embermane' ? 'Embermane' : 'Quillshot'} ${label}`,
       embeddedCell: cellLayouts[species][slot][0], cellSlots: Object.freeze(cellLayouts[species][slot][1]),
-      defense: slot === 'chestplate' ? 2 : 1, currency: slot === 'chestplate' ? 200 : 100,
+      defense: ARMOR_DEFENSE_TIERS[slot][0], currency: slot === 'chestplate' ? 200 : 100,
       materials: Object.fromEntries(Object.entries(recipes[slot]).map(([part, count]) => [`${prefix}:${part}`, count])) }];
   }))));
 export function createArmorState(saved = {}) {
@@ -53,9 +54,8 @@ export function craftArmor(inventory, id, area) {
   inventory.armor.owned[id] = { tier: 1, reforges: 0 };
   return true;
 }
-const DEFENSE_TIERS = { helmet: [1, 3, 4, 5], chestplate: [2, 3, 4, 5], gloves: [1, 2, 4, 5], legs: [1, 2, 3, 5] };
 export function armorPieceDefense(item, { tier = 1 } = {}) {
-  return DEFENSE_TIERS[item?.type]?.[tier - 1] ?? 0;
+  return ARMOR_DEFENSE_TIERS[item?.type]?.[tier - 1] ?? 0;
 }
 export function armorUpgradeRecipe(inventory, id) {
   const item = Object.hasOwn(ARMOR, id) ? ARMOR[id] : null;

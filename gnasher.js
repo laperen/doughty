@@ -34,7 +34,7 @@ export const GNASHER_TUNING = Object.freeze({
   tailSlams: 4, tailChaseStep: .45, tailChaseWindow: .45, tailBlastStart: 1.5,
   blastCount: 6, blastRadius: 1.2, blastDelay: 0.12, blastLife: 0.4, blastDamage: 18,
   // These waits follow move recovery; they do not apply between combo strikes.
-  afterAttack: Object.freeze({ somersault: 1.5, charge: 1, footSlam: 1.2, tailSweep: 1.2, tailSlam: 1.5, enrageBurst: .6 }) });
+  afterAttack: Object.freeze({ somersault: 3, charge: 2, footSlam: 2.4, tailSweep: 2.4, tailSlam: 3, enrageBurst: 1.2 }) });
 const distance = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
 const yawTo = (a, b) => Math.atan2(-(b[0] - a[0]), -(b[2] - a[2]));
 const delta = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));

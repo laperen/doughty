@@ -1,3 +1,4 @@
+import { tuningSources, tuningDefaults, tuningParameterIds } from './content-text.js';
 import { sourceText, parameters } from './narrative-references.js';
 import { StoryNodesRuntime } from './storynodes-runtime/index.js';
 
@@ -38,9 +39,9 @@ export class NarrativeCatalog {
     this.exact = new Map();
     this.patterns = [];
     this.cache = new Map();
-    const parameterKeys = new Set(Object.values(parameterIds));
+    const parameterKeys = new Set([...Object.values(parameterIds), ...tuningParameterIds]);
     // References preserve the English input snapshot even after an editor re-export.
-    const originals = new Map(Object.entries(sources));
+    const originals = new Map([...Object.entries(sources), ...Object.entries(tuningSources)]);
     const expand = (text, seen = []) => String(text).replace(tokens, (token, kind, key) => {
       if (kind !== 'name' || parameterKeys.has(key) || seen.includes(key)) return token;
       const value = originals.get(key) ?? runtime.project.text[key]?.value;
@@ -74,7 +75,7 @@ export class NarrativeCatalog {
     this.patterns.sort((a, b) => b.weight - a.weight);
   }
   clearCache() { this.cache.clear(); }
-  text(uuid, overrides = {}) { return this.runtime.getText(uuid, { overrides }); }
+  text(uuid, overrides = {}) { return this.runtime.getText(uuid, { overrides: { ...tuningDefaults[uuid]?.(), ...overrides } }); }
   translate(input, depth = 0) {
     const value = String(input ?? '');
     if (!value.trim() || depth > 8) return value;

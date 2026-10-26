@@ -1,3 +1,4 @@
+import { createCharacterAssets } from './character-assets.js';
 import { CHAINBLADES_TUNING } from './chainblades-weapon.js';
 import { RECOVERY } from './player-recovery.js';
 import * as THREE from 'three';
@@ -7,7 +8,7 @@ import { attackPose } from './combat-presentation.js';
 export function createPlayerView() {
   const root = new THREE.Group();
   root.name = 'Range hunter';
-  const bodyRig = new THREE.Group();
+  const bodyRig = new THREE.Bone(); bodyRig.name = 'body';
   bodyRig.position.y = 0.91;
   root.add(bodyRig);
   const armor = new THREE.MeshStandardMaterial({ color: '#d9ff69', roughness: 0.52, metalness: 0.22 });
@@ -27,7 +28,7 @@ export function createPlayerView() {
     ['leftArm', -0.36, 0.39, 0.51, armor], ['rightArm', 0.36, 0.39, 0.51, armor],
     ['leftLeg', -0.15, -0.12, 0.67, dark], ['rightLeg', 0.15, -0.12, 0.67, dark],
   ]) {
-    const pivot = new THREE.Group(); pivot.name = name; pivot.position.set(x, y, 0);
+    const pivot = new THREE.Bone(); pivot.name = name; pivot.position.set(x, y, 0);
     mesh(pivot, name + ' segment', [0.18, length, 0.2], [0, -length / 2, 0], material);
     mesh(pivot, name + ' tip', [0.21, 0.16, 0.27], [0, -length, -0.035], dark);
     bodyRig.add(pivot); limbs[name] = pivot;
@@ -85,7 +86,37 @@ export function createPlayerView() {
     dashTrail.add(new THREE.Mesh(geometry, dashMaterial));
   }
   dashTrail.visible = false; root.add(dashTrail);
-  return { root, bodyRig, armor, limbs, sword, pistols, chainblades, trail, dashTrail, dashMaterial, gait: 0 };
+  const view = { root, bodyRig, armor, limbs, sword, pistols, chainblades, trail, dashTrail, dashMaterial, gait: 0 };
+  const headBone = new THREE.Bone(); headBone.name = 'head'; headBone.position.y = .63; bodyRig.add(headBone);
+  const bones = { body: bodyRig, head: headBone, ...limbs };
+  for (const [name, limb] of Object.entries(limbs)) {
+    const tip = new THREE.Bone(); tip.name = name.replace('Arm', 'Hand').replace('Leg', 'Foot');
+    tip.position.y = name.endsWith('Arm') ? -.51 : -.67; limb.add(tip); bones[tip.name] = tip;
+  }
+  const piece = name => bodyRig.getObjectByName(name);
+  const defaults = {
+    body: ['chest', 'belt', 'leftArm segment', 'rightArm segment'].map(piece),
+    legs: ['leftLeg segment', 'rightLeg segment', 'leftLeg tip', 'rightLeg tip'].map(piece),
+    gloves: ['leftArm tip', 'rightArm tip'].map(piece),
+    head: [piece('helmet')], face: [piece('visor')], helmet: [], hair: [], mask: [], goggles: [],
+  };
+  const attachments = { helmet: headBone, mask: headBone, goggles: headBone,
+    head: headBone, leftHand: bones.leftHand, rightHand: bones.rightHand, back: bodyRig };
+  for (const [slot, mount] of Object.entries({ sword, repeaterLeft: pistols[0], repeaterRight: pistols[1],
+    chainbladeLeft: chainblades[0], chainbladeRight: chainblades[1] })) {
+    // The moving mount retains all current draw/sheath/reload/spin transforms.
+    const visual = new THREE.Group(); visual.name = `${slot} asset`;
+    for (const child of [...mount.children]) visual.add(child);
+    mount.add(visual); defaults[slot] = [visual]; attachments[slot] = mount;
+  }
+  view.assets = createCharacterAssets(view, defaults, bones, attachments);
+  view.dispose = () => {
+    view.assets.dispose(); root.removeFromParent();
+    const geometries = new Set(), materials = new Set();
+    root.traverse(node => { if (node.geometry) geometries.add(node.geometry); for (const m of [].concat(node.material ?? [])) materials.add(m); });
+    for (const resource of [...geometries, ...materials]) resource.dispose();
+  };
+  return view;
 }
 
 export function updatePlayerView(view, player, equipment, dt) {

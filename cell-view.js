@@ -1,3 +1,4 @@
+import { CELL_RECIPES } from './content-tuning.js';
 import { CELLS, CELL_TYPES, canCreateCell } from './cells.js';
 import { configureMenuClose } from './menu-close.js';
 
@@ -65,8 +66,8 @@ export function createCellView({ inventory, area, onCreate, onBack, narrative })
         node('p', CELL_TYPES[definition.type], details); node('p', definition.description, details);
         const actions = node('div', '', row); actions.className = 'cell-row-actions';
         const count = node('p', 'Owned', actions); node('strong', String(inventory.cells[`${id}:${rank}`] || 0), count);
-        const cost = node('p', 'Aether-dust', actions); node('strong', String(rank === 3 ? 40 : 20), cost);
-        if (rank > 1) { const input = node('p', 'Required identical cells', actions); node('strong', `2 \u00d7 +${rank - 1}`, input); }
+        const cost = node('p', 'Aether-dust', actions); node('strong', String(CELL_RECIPES[rank].dust), cost);
+        if (rank > 1) { const input = node('p', 'Required identical cells', actions); node('strong', `${CELL_RECIPES[rank].inputs} \u00d7 +${rank - 1}`, input); }
         const button = node('button', rank === 1 ? 'Craft cell' : 'Upgrade cell', actions);
         button.className = 'menu-button'; button.dataset.rank = rank;
         button.disabled = !canCreateCell(inventory, id, rank, area());
