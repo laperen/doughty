@@ -1,45 +1,22 @@
 import { shieldAmount, shieldCapacity } from './resource-shields.js';
 export const USERNAME_KEY = 'doughty-username';
-export function normalizeUsername(value) {
-  return Array.from(typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, '').trim() : '').slice(0, 24).join('');
-}
-export class RoomIdentities {
-  constructor() { this.players = new Map(); }
-  ensure(id, name = '') {
-    let entry = this.players.get(id);
-    if (!entry) {
-      const used = new Set([...this.players.values()].map(p => p.number));
-      let number = 1; while (used.has(number)) number++;
-      entry = { id, number, name: normalizeUsername(name) }; this.players.set(id, entry);
-    }
-    return entry;
-  }
-  restore(entries) {
-    if (!Array.isArray(entries) || entries.length > 6) return;
-    const next = new Map(), numbers = new Set();
-    for (const p of entries) {
-      if (!p || typeof p.id !== 'string' || !Number.isInteger(p.number) || p.number < 1 || p.number > 6 || numbers.has(p.number) || next.has(p.id)) return;
-      numbers.add(p.number); next.set(p.id, { id: p.id, number: p.number, name: normalizeUsername(p.name) });
-    }
-    this.players = next;
-  }
-  snapshot() { return [...this.players.values()].sort((a, b) => a.number - b.number); }
-  label(id) { const p = this.players.get(id); return p ? `${p.number}. ${p.name || 'player'}` : 'player'; }
-}
+export { normalizeUsername, RoomIdentities } from './vendor/online-client.min.js';
+import { normalizeUsername, RoomIdentities, createProfile } from './vendor/online-client.min.js';
 export function createRoomRoster({ online, narrative, THREE, scene, remoteHunters }) {
   const identities = new RoomIdentities();
-  let username = ''; try { username = normalizeUsername(localStorage.getItem(USERNAME_KEY)); } catch {}
+  const profile = createProfile({ storageKey: USERNAME_KEY, onChange: () => publishName() });
+  let username = profile.name;
   const label = document.createElement('label'); label.className = 'username-setting';
   const caption = document.createElement('span'); caption.dataset.textId = '05f60795-5e1e-4690-a0ab-5098616a02ad';
   caption.textContent = narrative.text(caption.dataset.textId);
   const input = document.createElement('input'); input.maxLength = 48; input.value = username; input.placeholder = 'player';
   label.append(caption, input); document.querySelector('#preferencesPanel').prepend(label);
   const publishName = () => {
+    username = profile.name;
     if (online.host) identities.ensure(online.id).name = username;
     else if (online.guest) online.send('profile', { name: username });
   };
-  input.addEventListener('input', () => { username = normalizeUsername(input.value); try { localStorage.setItem(USERNAME_KEY, username); } catch {} publishName(); });
-  input.addEventListener('change', () => { input.value = username; });
+  profile.bindInput(input);
   const list = document.createElement('div'); list.className = 'room-roster'; list.hidden = true;
   document.querySelector('.player-vitals').append(list);
   const rows = new Map(), markers = new Map();

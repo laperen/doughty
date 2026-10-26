@@ -1,3 +1,4 @@
+import { createRenderer, createStaticWorld, createCapsuleController } from './vendor/three-foundation.min.js';
 import { createRoomRoster } from './room-roster.js';
 import { applyEquipmentVisuals } from './equipment-visuals.js';
 import { CELL_TUNING } from './content-tuning.js';
@@ -39,8 +40,6 @@ import { createArenaHud } from './arena-hud.js';
 import { isRecovering, isRecoveryProtected, startKnockdown } from './player-recovery.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { Octree } from 'three/addons/math/Octree.js';
-import { Capsule } from 'three/addons/math/Capsule.js';
 import { ARENA_COLLIDERS, ARENA_SCALE, createPlayerState, isWalkableSlope, slopeContactCorrection, resolveWeaponMovement, stepPlayer } from './player-movement.js';
 import { REPEATERS, REPEATER_TUNING, repeaterFalloff } from './repeaters-weapon.js';
 import { STRIKER_SWORD } from './striker-weapon.js';
@@ -203,19 +202,12 @@ fovValue.textContent = `${selectedFov}Â°`;
 
 let renderer;
 try {
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer = createRenderer({ container: root });
 } catch (error) {
   fallback.classList.remove('hidden');
   loading.classList.add('done');
   throw error;
 }
-
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(root.clientWidth, root.clientHeight);
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
-root.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#11151b');
@@ -815,25 +807,11 @@ const rebuildArenaCollision = () => {
     return;
   }
   const mapRoot = explorationViews.get(selectedArena) ?? (isTown() ? currentTownView().root : isHuntMap() ? islandView : arena);
-  mapRoot.updateMatrixWorld(true);
-  movementGeometry = new THREE.Group();
-  movementMeshes = [];
-  mapRoot.traverse((object) => {
-    if (!object.isMesh || !object.visible || object.userData.movementCollision === false) return;
-    // Collision only needs positions and indices; omit render-only attributes.
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', object.geometry.attributes.position);
-    if (object.geometry.index) geometry.setIndex(object.geometry.index);
-    const proxy = new THREE.Mesh(geometry);
-    proxy.matrix.copy(object.matrixWorld);
-    proxy.matrixAutoUpdate = false;
-    movementGeometry.add(proxy);
-    movementMeshes.push(object);
-  });
+  const world = createStaticWorld(mapRoot, { tree: preparedMapCollision.get(selectedArena),
+    include: object => object.isMesh && object.visible && object.userData.movementCollision !== false });
+  movementGeometry = world.geometry; movementMeshes = world.meshes; movementOctree = world.octree;
   projectileObstacleMeshes = movementMeshes;
-  movementGeometry.updateMatrixWorld(true);
-  movementOctree = preparedMapCollision.get(selectedArena) || new Octree().fromGraphNode(movementGeometry);
-  mapCollisionCache.set(selectedArena, { geometry: movementGeometry, meshes: movementMeshes, octree: movementOctree });
+  mapCollisionCache.set(selectedArena, world);
 };
 // Analytic footprint (base, wheels and pad) so every side blocks movement equally.
 const DUMMY_HALF = { x: 1.32, z: 1.3, height: 2.1 };
@@ -853,89 +831,22 @@ const dummyPushOut = (cx, baseY, cz, radius) => {
   const k = (radius - d) / d;
   return [dx * k, dz * k];
 };
-const createMovementCapsule = (position, radius, height) => new Capsule(
-  new THREE.Vector3(position[0], position[1] + radius, position[2]),
-  new THREE.Vector3(position[0], position[1] + height - radius, position[2]),
-  radius,
-);
+const capsuleController = createCapsuleController({
+  getWorlds: () => [mapCollisionCache.get(selectedArena)].filter(Boolean),
+  isWalkable: isWalkableSlope, correctContact: slopeContactCorrection,
+  getPushProviders: () => [
+    ...(selectedArena === 'range' ? [(position, radius) => { const push = dummyPushOut(position[0], position[1], position[2], radius); return push && [push[0], 0, push[1]]; }] : []),
+    ...(isHuntMap() ? encounterEnemies(islandEncounter).filter(encounterTouchable).map(enemy => (position, radius, height) => {
+      const push = behemothPushOut(enemy, position, radius, height); return push && [push[0], 0, push[1]];
+    }) : []),
+  ],
+});
 const movementCollisionWorld = {
-  moveCapsule(position, displacement, radius, height, { phaseEnemies = false, onTravel } = {}) {
-    const capsule = createMovementCapsule(position, radius, height);
-    const contacts = [];
-    const skin = 0.001;
-    const solveContacts = () => {
-      let moved = false;
-      for (let iteration = 0; iteration < 5; iteration += 1) {
-        let corrected = false;
-        // Resolve each collision world independently. A floor contact from
-        // the arena must not mask a simultaneous overlap with the Dummy.
-        for (const octree of [movementOctree]) {
-          const hit = octree.capsuleIntersect(capsule);
-          if (!hit || hit.depth <= 1e-5) continue;
-          const normal = hit.normal.clone().normalize();
-          capsule.translate(new THREE.Vector3(...slopeContactCorrection(normal.toArray(), hit.depth, skin)));
-          if (!isWalkableSlope(normal.toArray())) contacts.push(normal.toArray());
-          corrected = true;
-          moved = true;
-        }
-        const dummyPush = phaseEnemies || selectedArena !== 'range' ? null : dummyPushOut(capsule.start.x, capsule.start.y - radius, capsule.start.z, radius);
-        if (dummyPush) {
-          const length = Math.hypot(dummyPush[0], dummyPush[1]);
-          capsule.translate(new THREE.Vector3(dummyPush[0] + dummyPush[0] / length * skin, 0, dummyPush[1] + dummyPush[1] / length * skin));
-          contacts.push([dummyPush[0] / length, 0, dummyPush[1] / length]);
-          corrected = true;
-          moved = true;
-        }
-        for (const enemy of isHuntMap() && !phaseEnemies ? encounterEnemies(islandEncounter).filter(encounterTouchable) : []) {
-          const push = behemothPushOut(enemy, [capsule.start.x, capsule.start.y - radius, capsule.start.z], radius, height);
-          if (push) {
-            const length = Math.hypot(...push);
-            capsule.translate(new THREE.Vector3(push[0] * (1 + skin / length), 0, push[1] * (1 + skin / length)));
-            contacts.push([push[0] / length, 0, push[1] / length]);
-            corrected = true;
-            moved = true;
-          }
-        }
-        if (!corrected) break;
-      }
-      return moved;
-    };
-
-    // First recover any overlap, so starting beside an edge cannot leave the
-    // capsule embedded when the next movement input arrives.
-    solveContacts();
-    const distance = Math.hypot(...displacement);
-    const steps = Math.max(1, Math.ceil(distance / (radius * 0.3)));
-    const increment = displacement.map((component) => component / steps);
-    for (let step = 0; step < steps; step += 1) {
-      const from = [capsule.start.x, capsule.start.y - radius, capsule.start.z];
-      capsule.translate(new THREE.Vector3(...increment));
-      solveContacts();
-      onTravel?.(from, [capsule.start.x, capsule.start.y - radius, capsule.start.z]);
-    }
-    return {
-      position: [capsule.start.x, capsule.start.y - radius, capsule.start.z],
-      contacts,
-    };
+  moveCapsule(position, displacement, radius, height, { phaseEnemies = false, ...options } = {}) {
+    return capsuleController.moveCapsule(position, displacement, radius, height, { ...options, ignoreDynamic: phaseEnemies });
   },
-  overlapsCapsule(position, radius, height) {
-    const capsule = createMovementCapsule(position, radius, height);
-    const dummyBlocked = selectedArena === 'range' && Boolean(dummyPushOut(capsule.start.x, capsule.start.y - radius, capsule.start.z, radius));
-    const contact = [movementOctree]
-      .map((octree) => octree.capsuleIntersect(capsule))
-      .find((hit) => hit && hit.depth > 1e-4 && !isWalkableSlope(hit.normal.toArray()));
-    // A capsule resting on a floor or platform is expected to touch it. Treat
-    // only penetration into a wall/ceiling as a blocked movement candidate.
-    return Boolean(contact) || dummyBlocked || (isHuntMap() && encounterEnemies(islandEncounter).some(enemy => encounterTouchable(enemy) && Boolean(behemothPushOut(enemy, position, radius, height))));
-  },
-  raycast(origin, direction, distance) {
-    movementRaycaster.set(new THREE.Vector3(...origin), new THREE.Vector3(...direction).normalize());
-    movementRaycaster.far = distance;
-    const hit = movementRaycaster.intersectObjects(movementMeshes, false)[0];
-    if (!hit) return null;
-    const normal = hit.face?.normal.clone().transformDirection(hit.object.matrixWorld) ?? new THREE.Vector3(0, 1, 0);
-    return { point: hit.point.toArray(), normal: normal.toArray(), distance: hit.distance, climbable: hit.object.userData.climbable !== false };
-  },
+  overlapsCapsule: (...args) => capsuleController.overlapsCapsule(...args),
+  raycast: (...args) => capsuleController.raycast(...args),
 };
 
 // Gameplay state is plain data; Three.js objects below are presentation only.
