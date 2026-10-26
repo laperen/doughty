@@ -179,7 +179,7 @@ export function stepIslandEncounter(encounter, players, dt, replace = true) {
   const summonTier = BEHEMOTH_TIERS[boss.tier ?? 'normal'].summon;
   if (summonTier && boss.health < boss.definition.maxHealth * SUMMON_HEALTH_FRACTION) encounter.summonUnlocked = true;
   if (summonTier && encounter.summonUnlocked && encounter.awareness === 'engaged' && !encounter.summon) {
-    if (encounter.summonCooldown <= 1e-8 && !['windup', 'active', 'recovery', 'reaction'].includes(boss.mode)) {
+    if (encounter.summonCooldown <= 1e-8 && !['windup', 'active', 'recovery', 'reaction', 'healing-retreat', 'healing-channel'].includes(boss.mode)) {
       const summon = createIslandEncounter(encounter.index, encounter.serial, encounter.speciesId, summonTier, encounter.mapId);
       summon.id = `${encounter.id}-summon-${++encounter.summonSerial}`;
       summon.boss.position = [boss.position[0] + 7, boss.position[1], boss.position[2]];

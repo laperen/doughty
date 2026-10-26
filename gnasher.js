@@ -119,7 +119,7 @@ function releaseBlasts(s) {
       damage: GNASHER_TUNING.blastDamage * s.definition.projectileDamageMultiplier });
   }
 }
-function stepBlasts(s, dt) {
+export function stepBlasts(s, dt) {
   s.impactEvents = [];
   for (const q of s.projectiles) {
     q.age += dt;

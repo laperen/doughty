@@ -190,7 +190,7 @@ const poseFor = (state) => {
   if (state.mode === 'recovery') return { bodyY: 0.94, bodyX: 0.12, neckX: 0.3, headX: 0.22, tailX: -0.28, foreX: 0.35, hindX: -0.12 };
   if (state.mode === 'observe') return { bodyY: 1 + Math.sin(state.elapsed * 4) * 0.025, bodyX: 0.015, neckX: -0.08, headX: 0.09, tailX: Math.sin(state.elapsed * 3) * 0.12, foreX: 0, hindX: 0 };
   if (state.mode === 'circle') return { bodyY: 1, bodyX: 0, neckX: -0.1, headX: 0.06, tailX: 0.2, foreX: Math.sin(state.elapsed * 9) * 0.35, hindX: -Math.sin(state.elapsed * 9) * 0.25 };
-  if (state.mode === 'retreat') return { bodyY: 0.97, bodyX: 0.08, neckX: 0.14, headX: 0.08, tailX: -0.15, foreX: Math.sin(state.elapsed * 9) * 0.3, hindX: -Math.sin(state.elapsed * 9) * 0.3 };
+  if (state.mode === 'retreat' || state.mode === 'healing-retreat') return { bodyY: 0.97, bodyX: 0.08, neckX: 0.14, headX: 0.08, tailX: -0.15, foreX: Math.sin(state.elapsed * 9) * 0.3, hindX: -Math.sin(state.elapsed * 9) * 0.3 };
   return { bodyY: 1, bodyX: 0, neckX: 0, headX: 0, tailX: 0, foreX: 0, hindX: 0 };
 };
 
@@ -268,7 +268,7 @@ export function updateBehemothView(view, state, dt, visibleCollision = false) {
   view.hitboxes.tail.position.z = state.parts.tail.broken ? 0.15 : 0.8;
   for (const key of ['leftFore', 'rightFore']) view.bodyRig.userData[key].rotation.x = THREE.MathUtils.lerp(view.bodyRig.userData[key].rotation.x, p.foreX, blend);
   for (const key of ['leftHind', 'rightHind']) view.bodyRig.userData[key].rotation.x = THREE.MathUtils.lerp(view.bodyRig.userData[key].rotation.x, p.hindX, blend);
-  const moving = ['chase', 'circle', 'retreat', 'patrol', 'run-out'].includes(state.mode) || (state.mode === 'active' && state.move === 'charge');
+  const moving = ['chase', 'circle', 'retreat', 'healing-retreat', 'patrol', 'run-out'].includes(state.mode) || (state.mode === 'active' && state.move === 'charge');
   if (moving) {
     const gait = Math.sin(state.elapsed * (state.move === 'charge' || state.mode === 'run-out' ? 22 : 10)) * 0.45;
     view.bodyRig.userData.leftFore.rotation.x = gait;

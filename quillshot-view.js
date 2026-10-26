@@ -127,7 +127,7 @@ export function updateQuillshotView(v, s, dt, collision = false) {
     const broken = s.parts[id]?.broken;
     if (QUARTERS.includes(id) || id.includes('Tusk') || id === 'tail') mesh.visible = !broken;
     else mesh.material.color.copy(broken ? new THREE.Color('#734456') : mesh.userData.originalMaterial.color);
-    if (id.includes('Fore') || id.includes('Hind')) mesh.rotation.x = ['chase', 'charge', 'retreat', 'patrol'].includes(s.move ?? s.mode) ? Math.sin(s.elapsed * 12 + mesh.position.x * 2) * 0.24 : 0;
+    if (id.includes('Fore') || id.includes('Hind')) mesh.rotation.x = ['chase', 'charge', 'retreat', 'healing-retreat', 'patrol'].includes(s.move ?? s.mode) ? Math.sin(s.elapsed * 12 + mesh.position.x * 2) * 0.24 : 0;
   }
   // Disable destroyed quill collision while leaving broken body parts hittable for core damage.
   for (const id of QUARTERS) v.hitboxes[id].layers.set(s.parts[id].broken ? 31 : 0);

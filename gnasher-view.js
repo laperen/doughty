@@ -219,7 +219,7 @@ export function updateGnasherView(v, s, dt, collision = false) {
   else if (s.move === 'enrageBurst') { v.rig.rotation.x = -.12; v.rig.position.y = Math.sin(s.elapsed * 18) * .08; }
   for (const [id, part] of Object.entries(v.parts)) {
     if (id.includes('Fore') || id.includes('Hind')) {
-      part.rotation.x = (['chase', 'patrol', 'run-out'].includes(s.mode) || s.move === 'charge' && s.mode === 'active') ? Math.sin(s.elapsed * (s.mode === 'run-out' ? 18 : 10) + part.position.x * 2) * (s.mode === 'run-out' ? .45 : .3) : 0;
+      part.rotation.x = (['chase', 'patrol', 'run-out', 'healing-retreat'].includes(s.mode) || s.move === 'charge' && s.mode === 'active') ? Math.sin(s.elapsed * (s.mode === 'run-out' ? 18 : 10) + part.position.x * 2) * (s.mode === 'run-out' ? .45 : .3) : 0;
       if (s.move === 'footSlam' && Math.sign(part.position.x) === s.side) part.rotation.x += windup * .7;
       if (s.move === 'tailSlam' && s.mode === 'windup' && s.slamStep?.distance > 0 && s.elapsed < GNASHER_TUNING.tailChaseWindow) {
         part.rotation.x += .2 * Math.sin(Math.PI * s.elapsed / GNASHER_TUNING.tailChaseWindow) * Math.sign(part.position.x);

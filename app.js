@@ -1381,7 +1381,8 @@ const renderCombatHud = () => {
       : behemothState.mode === 'windup' ? `${behemothState.move.toUpperCase()} WINDUP`
       : behemothState.mode === 'observe' ? 'WATCHING THE HUNTER'
       : behemothState.mode === 'circle' ? 'CIRCLING'
-      : behemothState.mode === 'retreat' ? 'CREATING SPACE' : '';
+      : behemothState.mode === 'healing-retreat' ? 'RETREATING TO HEAL'
+      : behemothState.mode === 'healing-channel' ? 'RECOVERING' : behemothState.mode === 'retreat' ? 'CREATING SPACE' : '';
     const summon = islandEncounter.summon?.boss;
     const summonLabel = summon ? `<div><span>${definitionFor(summon).name}</span> ${Math.ceil(summon.health)} / ${Math.ceil(definitionFor(summon).maxHealth)}</div>` : '';
     behemothHud.innerHTML = `<div>${BEHEMOTH.name ?? 'Embermane'}</div><div>${isHuntMap() ? islandEncounter.arena.name.toUpperCase() + ' / ' + (behemothState.lifecycle === 'alive' ? islandEncounter.awareness : behemothState.lifecycle).toUpperCase() : 'FIRST BEHEMOTH'}</div><div>${behemothState.mode === 'defeated' ? '' : enrageLabel}</div>${statusLabels}<div class="meter"><span style="width:${health}%"></span></div>${summonLabel}<div>STAGGER ${Math.ceil(behemothState.stagger)} / ${Math.ceil(behemothState.staggerThreshold)}</div><div class="meter stagger"><span style="width:${stagger}%"></span></div>${parts}<div class="player-health">HUNTER ${Math.ceil(playerState.health)} / ${playerState.maxHealth}</div><div class="state">${stateLabel}</div>`;
