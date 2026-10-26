@@ -10,6 +10,7 @@ export const QUARTERS = ['quillFrontLeft', 'quillFrontRight', 'quillRearLeft', '
 export const QUILLSHOT = Object.freeze({
   name: 'Quillshot', maxHealth: 1440, maxStagger: BEHEMOTH.maxStagger,
   bodyRadius: 2.7, bodyHeight: 5.1, sizeScale: 1.5, modelSpaceMoves: true,
+  pacing: { maxChaseDuration: 3 },
   states: { enrage: { ...BEHEMOTH.states.enrage, waitMultiplier: 1 } },
   parts: Object.fromEntries([
     ['head', 'Head', 222], ['tail', 'Tail', 200],
@@ -238,7 +239,10 @@ export function stepQuillshot(s, playerPosition, dt, bounds = 68, options = {}) 
     if (s.elapsed >= 1.5) { s.mode = 'idle'; s.pause = 0.4; s.afterRetreat = true; }
   } else {
     s.pause = Math.max(0, s.pause - dt); turn(s, playerPosition, dt);
-    if (s.pause > 0 || (options.targetKnockedDown && !s.canTargetKnockedDownPlayers)) return [];
+    if (s.pause > 0 || (options.targetKnockedDown && !s.canTargetKnockedDownPlayers)) {
+      if (s.mode === 'chase') s.elapsed = 0;
+      return [];
+    }
     if (s.forceBarrage) { s.forceBarrage = false; s.opened = true; start(s, 'bombardment'); }
     else if (!s.opened) { s.opened = true; start(s, 'intermittent'); }
     else if (s.meleeCount >= 2 || s.afterRetreat) {
@@ -252,7 +256,13 @@ export function stepQuillshot(s, playerPosition, dt, bounds = 68, options = {}) 
         s.queuedMeleeTarget = [...playerPosition];
       }
       if (dist(s.position, playerPosition) > (s.queuedMelee === 'charge' ? 13 : 5 * (s.definition ?? QUILLSHOT).sizeScale)) {
-        s.mode = 'chase'; s.position[0] -= Math.sin(s.yaw) * 3.4 * dt; s.position[2] -= Math.cos(s.yaw) * 3.4 * dt;
+        // Only continuous pursuit counts; idle, recovery and waiting do not.
+        if (s.mode === 'chase' && s.elapsed >= (s.definition ?? QUILLSHOT).pacing.maxChaseDuration) {
+          start(s, ['charge', 'intermittent', 'sideDrop'][Math.floor(random(s) * 3)], playerPosition);
+        } else {
+          if (s.mode !== 'chase') s.elapsed = 0;
+          s.mode = 'chase'; s.position[0] -= Math.sin(s.yaw) * 3.4 * dt; s.position[2] -= Math.cos(s.yaw) * 3.4 * dt;
+        }
       } else start(s, s.queuedMelee, playerPosition);
     }
   }
