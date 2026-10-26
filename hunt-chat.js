@@ -43,9 +43,9 @@ export function createHuntChat({ send, releaseControls, resumeCamera }) {
     get focused() { return document.activeElement === input; },
     open() { if (!enabled) return false; releaseControls(); touch(); input.focus(); return true; },
     setRoom(active) { enabled = active; root.hidden = !active; if (!active) { input.blur(); input.value = ''; history.replaceChildren(); latest.replaceChildren(); clearTimeout(timer); root.classList.add('collapsed'); } },
-    receive({ sender, text }) {
+    receive({ sender, identifier, text }) {
       const line = document.createElement('div'); line.className = 'hunt-chat-line';
-      const name = document.createElement('strong'); name.textContent = sender + ': ';
+      const name = document.createElement('strong'); name.textContent = (identifier || sender) + ': ';
       line.append(name, document.createTextNode(text)); history.append(line);
       while (history.children.length > 100) history.firstChild.remove();
       latest.replaceChildren(line.cloneNode(true)); history.scrollTop = history.scrollHeight;

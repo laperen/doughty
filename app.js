@@ -1,3 +1,4 @@
+import { createRoomRoster } from './room-roster.js';
 import { applyEquipmentVisuals } from './equipment-visuals.js';
 import { CELL_TUNING } from './content-tuning.js';
 import { createHuntChat } from './hunt-chat.js';
@@ -2432,6 +2433,7 @@ const applyOnlineWorld = data => {
     }
   }
   syncSummonView();
+  roomRoster.accept(data.roster);
   const ids = new Set();
   for (const hunter of data.hunters) {
     if (!hunter.player?.position || !hunter.player.position.every(Number.isFinite)) continue;
@@ -2544,13 +2546,14 @@ const onlineHunters = () => [{ id: online.id, player: plainState(playerState), e
     weapon: h.equipment ? plainState(h.equipment.state) : null, loadout: networkLoadout(h.materialInventory) }))];
 const leaveOnlineHunt = async () => { onlinePresentation.clear(); onlineMotionKeys.clear(); if (online?.room) await online.leave(); clearRemoteHunters(); pendingWorld = null; latestConfirmedWorld = null; };
 online = new OnlineConnection();
+const roomRoster = createRoomRoster({ online, narrative, THREE, scene, remoteHunters });
 const chatRates = new Map();
 const acceptChat = (sender, text) => {
   if (typeof text !== 'string' || !text.trim() || text.length > 500) return false;
   const now = performance.now();
   if (now - (chatRates.get(sender) ?? -Infinity) < 500) return false;
   chatRates.set(sender, now);
-  const message = { sender, text: text.trim() };
+  const message = { sender, identifier: roomRoster.identities.label(sender), text: text.trim() };
   huntChat.receive(message); online.broadcast('chat', message); return true;
 };
 huntChat = createHuntChat({
@@ -2564,7 +2567,7 @@ online.addEventListener('packet', ({ detail: { peer, type, data } }) => {
   try {
     if (type === 'chat') {
       if (online.host && remoteHunters.has(peer)) acceptChat(peer, data?.text);
-      else if (online.guest && peer === online.room?.host && typeof data?.sender === 'string' && data.sender.length <= 128 && typeof data.text === 'string' && data.text.length <= 500) huntChat.receive(data);
+      else if (online.guest && peer === online.room?.host && typeof data?.sender === 'string' && data.sender.length <= 128 && typeof data.text === 'string' && data.text.length <= 500) huntChat.receive({ ...data, identifier: typeof data.identifier === 'string' ? data.identifier.slice(0, 64) : 'player' });
       return;
     }
     if (online.host) {
@@ -2680,9 +2683,10 @@ setInterval(() => {
   if (online.guest) online.send('input', { ...onlineInput(), ackReward: onlineRewardAck, ackEvent: onlineEventAck });
   else if (online.host && ++onlineTick % 2 === 0) {
     const hunters = onlineHunters();
+    const roster = roomRoster.snapshot();
     const encounter = plainState(islandEncounter);
     const mines = mineSnapshot();
-    for (const h of remoteHunters.values()) online.send('world', { time: performance.now(), encounter, hunters, mines, epoch: huntEpoch,
+    for (const h of remoteHunters.values()) online.send('world', { time: performance.now(), encounter, hunters, roster, mines, epoch: huntEpoch,
       eventSequence: onlineEventSequence, rewardSequence,
       eventStart: h.eventStart, events: onlineEventHistory.filter(e => e.sequence > h.eventStart && e.sequence > h.ackEvent),
       rewards: rewardHistory.filter(r => r.sequence > h.rewardStart && r.sequence > h.ackReward) }, h.id);
@@ -2868,6 +2872,7 @@ const animate = () => {
   }
   environment.update(delta);
   sunShadows.update(controls.target);
+  roomRoster.update(Boolean(online.room) && !arenaScreen.classList.contains('hidden') && !mapTransitionActive);
   if (!equipmentView.open) renderer.render(scene, camera);
 };
 animate();

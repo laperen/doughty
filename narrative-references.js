@@ -3,6 +3,7 @@
 export const projectId = "39f52b5a-e913-41c9-a1b8-007880f94963";
 
 export const sourceText = {
+  "05f60795-5e1e-4690-a0ab-5098616a02ad": "Username",
   "c9d8778a-f751-52a1-a1cb-0102a1550f7a": "Effect (%)",
   "98fdc463-6cdc-54dc-981b-243e8e582cce": "Maximum streak bonus (%)",
   "9f4bf2dc-49a1-526b-b961-a8f343039544": "Face parts",
